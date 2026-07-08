@@ -37,7 +37,7 @@ interface Props {
 
 export function RegisterRoleForm({ mobile, onSuccess, onBack, redirectTo }: Props) {
   const [step, setStep] = useState<Step>("role");
-  const [role, setRole] = useState<Role>("owner");
+  const [role, setRole] = useState<Role | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [consent, setConsent] = useState(false);
@@ -53,11 +53,13 @@ export function RegisterRoleForm({ mobile, onSuccess, onBack, redirectTo }: Prop
   }, [cooldown]);
 
   function buildData(): RegistrationData {
+    // role is guaranteed non-null here: this is only reachable from the
+    // "form"/"otp" steps, which require an explicit role selection first.
     return {
       fullName,
       email,
       mobile,
-      role,
+      role: role as Role,
       termsAccepted: consent,
       privacyAccepted: consent,
       marketingOptIn: false,
@@ -143,8 +145,13 @@ export function RegisterRoleForm({ mobile, onSuccess, onBack, redirectTo }: Prop
           </div>
         </div>
         <RoleSelector value={role} onChange={setRole} />
-        <button type="button" onClick={() => setStep("form")} className={BTN_PRIMARY}>
-          Continue as {ROLE_META[role].label.split(" / ")[0]}
+        <button
+          type="button"
+          onClick={() => setStep("form")}
+          disabled={!role}
+          className={BTN_PRIMARY}
+        >
+          {role ? `Continue as ${ROLE_META[role].label.split(" / ")[0]}` : "Select a role to continue"}
         </button>
       </div>
     );
@@ -212,14 +219,16 @@ export function RegisterRoleForm({ mobile, onSuccess, onBack, redirectTo }: Prop
   }
 
   // ── Registration form (design screen 9) ──
-  const RoleIcon = ROLE_META[role].Icon;
+  // role is guaranteed non-null: only reachable after explicit selection above.
+  const activeRole = role as Role;
+  const RoleIcon = ROLE_META[activeRole].Icon;
   return (
     <form onSubmit={handleFormSubmit} noValidate className="flex flex-col gap-3.5">
       {/* Role chip */}
       <div className="flex items-center gap-2.5 rounded-xl bg-[#E7F2EF] px-3.5 py-2.5">
         <RoleIcon className="h-4 w-4 flex-shrink-0" color="#0F6B5C" />
         <span className="flex-1 text-[13px] font-medium text-[#0F6B5C]">
-          Registering as {ROLE_META[role].label}
+          Registering as {ROLE_META[activeRole].label}
         </span>
         <button type="button" onClick={() => setStep("role")} className="text-xs font-medium text-[#0F6B5C] underline">
           Change

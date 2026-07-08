@@ -139,8 +139,33 @@ export async function acceptStaffInvite(
   if (new Date(invite.expires_at).getTime() < Date.now())
     return { success: false, error: "INVITE_EXPIRED" };
 
+  // Atomically claim the invite before doing any account creation — the
+  // conditional `.eq("status", "pending")` means only one concurrent
+  // request can win this update; a second submit of the same token sees
+  // 0 rows affected and bails before creating a duplicate auth user.
+  const { data: claimed, error: claimError } = await admin
+    .from("staff_invites")
+    .update({ status: "accepted", accepted_at: new Date().toISOString() })
+    .eq("id", invite.id)
+    .eq("status", "pending")
+    .select("id");
+
+  if (claimError || !claimed || claimed.length === 0) {
+    return { success: false, error: "INVITE_ACCEPTED" };
+  }
+
   const email = invite.email.trim().toLowerCase();
   const role = invite.internal_role as InternalRole;
+  const inviteId = invite.id;
+
+  // Puts the invite back to "pending" so the invitee can retry — used on
+  // every failure path after the claim above already flipped it to accepted.
+  async function releaseClaim() {
+    await admin
+      .from("staff_invites")
+      .update({ status: "pending", accepted_at: null })
+      .eq("id", inviteId);
+  }
 
   // Guard: no existing staff account for this email.
   const { data: existingStaff } = await admin
@@ -149,6 +174,7 @@ export async function acceptStaffInvite(
     .eq("email", email)
     .maybeSingle();
   if (existingStaff) {
+    await releaseClaim();
     return { success: false, error: "INVITE_ALREADY_STAFF" };
   }
 
@@ -163,6 +189,7 @@ export async function acceptStaffInvite(
 
   if (authError || !authData.user) {
     console.error("[acceptStaffInvite] createUser error:", authError?.code);
+    await releaseClaim();
     // Most common cause: an auth user already exists for this email.
     return { success: false, error: "INVITE_ACCOUNT_EXISTS" };
   }
@@ -188,6 +215,7 @@ export async function acceptStaffInvite(
     } catch {
       /* logged upstream */
     }
+    await releaseClaim();
     return { success: false, error: "UNKNOWN_ERROR" };
   }
 
@@ -222,11 +250,8 @@ export async function acceptStaffInvite(
     }
   }
 
-  // Mark invite accepted (single-use).
-  await admin
-    .from("staff_invites")
-    .update({ status: "accepted", accepted_at: new Date().toISOString() })
-    .eq("id", invite.id);
+  // Invite was already atomically claimed (marked accepted) before account
+  // creation began — nothing further to do here.
 
   // Best-effort audit (actor = the newly joined staff member).
   const actor = {

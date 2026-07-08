@@ -2723,3 +2723,70 @@ Batch 3 homepage true-port implemented cleanly: lint/typecheck/build PASS; live 
 - **Title:** `getContactRevealStatus` returned distinct `LEAD_NOT_FOUND` vs `NOT_PARTICIPANT` errors, letting an authenticated caller enumerate valid lead IDs
 - **Fix:** `src/lib/actions/contact.ts` — both cases now return the same `NOT_PARTICIPANT` error.
 - **Retest:** PASS — build 40/40 green.
+
+### Deep auth flow audit — Login/Register, all roles [2026-07-08]
+
+#### BUG-20260708-AUTH-001 [RESOLVED — CRITICAL]
+- **Category:** AUTH / SESSION / FAKE_SUCCESS
+- **Severity:** S1_CRITICAL
+- **Title:** `verifyOtpAndRegister` never checked `establishDevSession()`'s result — new accounts could be created with no session, silently returning `success:true` and bouncing the user to `/login?redirectTo=...` via the auth-required middleware
+- **Found:** Live-verified in browser — registration consistently landed back on the login form after "Verify & create account" instead of the dashboard.
+- **Root cause (2 layered bugs):**
+  1. `verifyOtpAndRegister` (`src/lib/auth/actions.ts`) called `await establishDevSession(...)` without checking success, unlike `verifyOtpAndLogin` which already did.
+  2. `establishDevSession`'s fallback synthetic email used `userData.user.email ?? fallback` — Supabase returns `""` (empty string, not `null`) for phone-only accounts, so `??` never triggered the fallback and `signInWithPassword` was called with an empty email (`"missing email or phone"` from GoTrue).
+- **Fix:** `verifyOtpAndRegister` now checks the result and rolls back the orphaned auth user + returns an honest error on failure. `establishDevSession` now always signs in via email+password (synthetic `dev-mock-<id>@internal.mgptest.dev` for phone-only accounts) using `||` instead of `??`, since phone+password sign-in was also independently unreliable in this project's auth config.
+- **Retest:** PASS — live: Owner, Broker, Builder registration all verified end-to-end through the real UI, landing on the correct role dashboard with a persistent session. Existing seeded-account logins (Owner/Broker/Super Admin) re-verified unaffected.
+
+#### BUG-20260708-AUTH-002 [RESOLVED]
+- **Category:** SECURITY / RATE_LIMITING
+- **Severity:** S2_MEDIUM
+- **Title:** OTP verify (login+register) and admin password lockout counters were client-side `useState` only — reloading the page or calling the action directly reset the count, so brute-forcing OTP/admin password was server-side unbounded
+- **Fix:** New `auth_login_attempts` table (`supabase/migrations/20260709090000_auth_login_attempts_rate_limit.sql`, **not yet applied to remote — run `supabase db push`**) + server-side lockout in `verifyOtpAndLogin`/`verifyOtpAndRegister` (5 attempts / 15 min) and `adminLogin` (3 attempts / 30 min) in `src/lib/auth/actions.ts`. Client-shown counters are now UX only, no longer the enforcement.
+- **Retest:** Build/typecheck PASS. Rate-limit table not yet live in remote DB — code fails open safely (no lockout enforced, no crash) until migration is applied; SETUP_REQUIRED until then.
+
+#### BUG-20260708-AUTH-003 [RESOLVED]
+- **Category:** SECURITY / ENUMERATION
+- **Severity:** S3_LOW
+- **Title:** `checkMobileExists` had no rate limit — any caller could enumerate which mobile numbers are registered
+- **Fix:** Same `auth_login_attempts` ledger, `mobile_check` type, 15 attempts / 15 min cap.
+
+#### BUG-20260708-AUTH-004 [RESOLVED]
+- **Category:** SECURITY / PREDICTABLE_CREDENTIAL
+- **Severity:** S2_MEDIUM (DEV_ONLY code path, hard-gated to non-production)
+- **Title:** `establishDevSession`'s minted password was `dev-otp-${authUserId}-123456` — fully computable from a non-secret ID + the fixed dev OTP constant
+- **Fix:** Password is now `dev-${crypto.randomUUID()}`, unique per call, never derived from any guessable input.
+
+#### BUG-20260708-AUTH-005 [RESOLVED]
+- **Category:** SECURITY / RACE_CONDITION
+- **Severity:** S2_MEDIUM
+- **Title:** Staff invite acceptance (`acceptStaffInvite`) only marked the invite `accepted` *after* creating the auth user + staff profile — two concurrent submits of the same token could both pass the pending-status check before either write landed
+- **Fix:** `src/lib/actions/staff-invite.ts` now atomically claims the invite (`UPDATE ... WHERE status='pending'`, checks rows affected) before any account creation; releases the claim back to `pending` on any downstream failure so the invitee can retry.
+
+#### BUG-20260708-AUTH-006 [RESOLVED]
+- **Category:** ROUTING / MIDDLEWARE
+- **Severity:** S3_LOW (latent — no affected route existed yet)
+- **Title:** `proxy.ts` used bare `pathname.startsWith(p)` for route-group matching, which would incorrectly match a future route like `/admin-tools` as admin-protected, or `/dashboard-preview` as auth-required
+- **Fix:** Added `matchesPathPrefix()` helper (exact match or `${base}/` boundary) used for all three route groups.
+
+#### BUG-20260708-AUTH-007 [RESOLVED]
+- **Category:** UX / ROLE_ASSIGNMENT
+- **Severity:** S3_LOW
+- **Title:** `RegisterRoleForm` defaulted `role` state to `"owner"` — a user who never interacted with the role selector could register as Owner without an explicit choice
+- **Fix:** `role` now starts `null`; "Continue" is disabled until a role is explicitly clicked (`RoleSelector` already supported `Role | null`).
+- **Retest:** PASS — live-verified: role step shows "Select a role to continue" (disabled) until a card is clicked.
+
+#### BUG-20260708-AUTH-008 [RESOLVED]
+- **Category:** INFO_LEAK
+- **Severity:** S4_LOW
+- **Title:** `getContactRevealStatus` returned distinct `LEAD_NOT_FOUND` vs `NOT_PARTICIPANT` errors, letting an authenticated caller enumerate valid lead IDs
+- **Fix:** Both cases now return the same `NOT_PARTICIPANT` error (`src/lib/actions/contact.ts`).
+
+#### BUG-20260708-AUTH-009 [RESOLVED]
+- **Category:** UX / REDUNDANT_REDIRECT
+- **Severity:** S4_LOW
+- **Title:** `verifyOtpAndLogin`'s default redirect was role-agnostic `/dashboard` (extra 302 hop through `src/app/dashboard/page.tsx`), inconsistent with `verifyOtpAndRegister`'s direct role-specific redirect; `getDashboardRouteForRole` was duplicated in both `actions.ts` and `session.ts`
+- **Fix:** `verifyOtpAndLogin` now redirects directly to the role-specific dashboard; `actions.ts` imports `getDashboardRoute` from `session.ts` instead of duplicating it.
+
+**Not fixed — needs a human decision:** `src/proxy.ts`'s `/admin/*` guard only checks "is any authenticated user", not "is staff" (staff check happens per-page via `requireStaff()`). Confirmed every current admin page already calls it, so no live gap — but there's no central enforcement, so a future admin page added without remembering the check would be silently exposed. Adding a blanket `src/app/admin/layout.tsx` guard was evaluated and skipped: it would also wrap `/admin/login` and `/admin/invite` (which must stay reachable pre-auth), and server-component layouts have no reliable pathname branch to exclude them — risks a redirect loop. Flagging for a deliberate follow-up rather than a rushed fix.
+
+**Setup required:** Apply `supabase/migrations/20260709090000_auth_login_attempts_rate_limit.sql` to the remote DB (`supabase db push` or via Management API) to activate the new server-side OTP/admin-login/mobile-check rate limiting. Until applied, the code fails open (no lockout enforced, no crash).

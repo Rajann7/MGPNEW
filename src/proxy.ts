@@ -15,6 +15,11 @@ const ADMIN_ONLY_PATHS = ["/admin"];
 /** Routes to redirect to dashboard if already logged in */
 const AUTH_PAGES = ["/login", "/register"];
 
+/** True if `pathname` is exactly `base` or a sub-path of it (segment-boundary safe). */
+function matchesPathPrefix(pathname: string, base: string): boolean {
+  return pathname === base || pathname.startsWith(`${base}/`);
+}
+
 // ============================================================
 // Middleware
 // ============================================================
@@ -52,11 +57,14 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // ----- Admin routes guard -----
-  if (ADMIN_ONLY_PATHS.some((p) => pathname.startsWith(p))) {
+  if (ADMIN_ONLY_PATHS.some((p) => matchesPathPrefix(pathname, p))) {
     // Public (pre-auth) admin landing pages: staff login + token-based invite
     // acceptance. These must be reachable without a session. Authorization for
     // the invite page comes from possession of a valid token (checked server-side).
-    if (pathname === "/admin/login" || pathname.startsWith("/admin/invite")) {
+    if (
+      matchesPathPrefix(pathname, "/admin/login") ||
+      matchesPathPrefix(pathname, "/admin/invite")
+    ) {
       return response;
     }
 
@@ -73,7 +81,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // ----- Auth required routes guard -----
-  if (AUTH_REQUIRED_PATHS.some((p) => pathname.startsWith(p))) {
+  if (AUTH_REQUIRED_PATHS.some((p) => matchesPathPrefix(pathname, p))) {
     if (!user) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("redirectTo", pathname);
@@ -83,7 +91,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // ----- Auth pages: redirect if already logged in -----
-  if (AUTH_PAGES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+  if (AUTH_PAGES.some((p) => matchesPathPrefix(pathname, p))) {
     if (user) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }

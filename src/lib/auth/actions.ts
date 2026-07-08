@@ -12,11 +12,58 @@ import {
   normalizeMobile,
   isSafeRedirectUrl,
 } from "@/lib/validators/auth";
+import { getDashboardRoute as getDashboardRouteForRole } from "@/lib/auth/session";
 import type { ActionResult, RegistrationData } from "@/types";
 
 const OTP_PROVIDER = process.env.OTP_PROVIDER ?? "";
 const IS_DEV = process.env.NODE_ENV === "development";
 const DEV_MOCK_OTP = "123456";
+
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCKOUT_MINUTES = 15;
+const ADMIN_MAX_ATTEMPTS = 3;
+const ADMIN_LOCKOUT_MINUTES = 30;
+const MOBILE_CHECK_MAX_ATTEMPTS = 15;
+const MOBILE_CHECK_WINDOW_MINUTES = 15;
+
+// ============================================================
+// Server-side rate-limit ledger (auth_login_attempts table).
+// Client-side attempt counters are UX only — this is the real gate.
+// ============================================================
+
+type AttemptType = "otp_verify" | "admin_password" | "mobile_check";
+
+async function getRecentFailedAttempts(
+  admin: ReturnType<typeof createServiceClient>,
+  identifier: string,
+  attemptType: AttemptType,
+  windowMinutes: number
+): Promise<number> {
+  const since = new Date(Date.now() - windowMinutes * 60_000).toISOString();
+  const { count } = await admin
+    .from("auth_login_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("identifier", identifier)
+    .eq("attempt_type", attemptType)
+    .eq("succeeded", false)
+    .gte("created_at", since);
+  return count ?? 0;
+}
+
+async function recordAttempt(
+  admin: ReturnType<typeof createServiceClient>,
+  identifier: string,
+  attemptType: AttemptType,
+  succeeded: boolean
+): Promise<void> {
+  try {
+    await admin
+      .from("auth_login_attempts")
+      .insert({ identifier, attempt_type: attemptType, succeeded });
+  } catch {
+    // Non-blocking — a logging failure must not affect auth flow.
+  }
+}
 
 // ============================================================
 // checkMobileExists — does this mobile exist in profiles?
@@ -34,6 +81,21 @@ export async function checkMobileExists(
 
   try {
     const admin = createServiceClient();
+
+    const recentAttempts = await getRecentFailedAttempts(
+      admin,
+      normalizedMobile,
+      "mobile_check",
+      MOBILE_CHECK_WINDOW_MINUTES
+    );
+    if (recentAttempts >= MOBILE_CHECK_MAX_ATTEMPTS) {
+      return {
+        success: false,
+        error: "Too many attempts. Please try again later.",
+      };
+    }
+    await recordAttempt(admin, normalizedMobile, "mobile_check", false);
+
     const { data, error } = await admin
       .from("profiles")
       .select("id, account_status")
@@ -143,23 +205,40 @@ export async function verifyOtpAndLogin(
     return { success: false, error: "OTP_PROVIDER_SETUP_REQUIRED" };
   }
 
-  // Verify OTP
-  const isValid =
-    IS_DEV && OTP_PROVIDER === "dev_mock" ? otp === DEV_MOCK_OTP : false; // Real provider verification goes here
-
   if (!IS_DEV || OTP_PROVIDER !== "dev_mock") {
     return { success: false, error: "OTP_PROVIDER_SETUP_REQUIRED" };
   }
 
+  const admin = createServiceClient();
+
+  // Server-side lockout — the true gate. Any client-shown attempt counter
+  // is UX only; this is what actually blocks brute-forcing the OTP.
+  const recentFailed = await getRecentFailedAttempts(
+    admin,
+    normalizedMobile,
+    "otp_verify",
+    OTP_LOCKOUT_MINUTES
+  );
+  if (recentFailed >= OTP_MAX_ATTEMPTS) {
+    return {
+      success: false,
+      error: `Too many incorrect attempts. Please try again in ${OTP_LOCKOUT_MINUTES} minutes.`,
+    };
+  }
+
+  // Verify OTP — real provider verification goes here.
+  const isValid = otp === DEV_MOCK_OTP;
+
   if (!isValid) {
+    await recordAttempt(admin, normalizedMobile, "otp_verify", false);
     return {
       success: false,
       error: "Invalid OTP. Please check and try again.",
     };
   }
+  await recordAttempt(admin, normalizedMobile, "otp_verify", true);
 
   // Fetch the profile by mobile (tolerate both "+919000000001" and "9000000001" storage formats)
-  const admin = createServiceClient();
   const { data: profileData, error: profileError } = await admin
     .from("profiles")
     .select("id, auth_user_id, account_status, public_role, full_name, display_name")
@@ -205,7 +284,7 @@ export async function verifyOtpAndLogin(
 
   const safeRedirect = isSafeRedirectUrl(redirectTo ?? null)
     ? redirectTo!
-    : "/dashboard";
+    : getDashboardRouteForRole(profileData.public_role);
 
   const firstName = (profileData.display_name || profileData.full_name || "")
     .trim()
@@ -256,18 +335,34 @@ export async function verifyOtpAndRegister(
     return { success: false, error: "OTP_PROVIDER_SETUP_REQUIRED" };
   }
 
+  const normalizedMobile = normalizeMobile(registrationData.mobile);
+  const admin = createServiceClient();
+
+  // Server-side lockout — shares the same bucket/window as login OTP verify.
+  const recentFailed = await getRecentFailedAttempts(
+    admin,
+    normalizedMobile,
+    "otp_verify",
+    OTP_LOCKOUT_MINUTES
+  );
+  if (recentFailed >= OTP_MAX_ATTEMPTS) {
+    return {
+      success: false,
+      error: `Too many incorrect attempts. Please try again in ${OTP_LOCKOUT_MINUTES} minutes.`,
+    };
+  }
+
   const isValid = otp === DEV_MOCK_OTP;
   if (!isValid) {
+    await recordAttempt(admin, normalizedMobile, "otp_verify", false);
     return {
       success: false,
       error: "Invalid OTP. Please check and try again.",
     };
   }
-
-  const normalizedMobile = normalizeMobile(registrationData.mobile);
+  await recordAttempt(admin, normalizedMobile, "otp_verify", true);
 
   // Check mobile not already registered
-  const admin = createServiceClient();
   const { data: existing } = await admin
     .from("profiles")
     .select("id")
@@ -334,8 +429,23 @@ export async function verifyOtpAndRegister(
     };
   }
 
-  // DEV_ONLY: establish a real session for the newly registered dev-mock user
-  await establishDevSession(authData.user.id);
+  // DEV_ONLY: establish a real session for the newly registered dev-mock user.
+  // Must check the result — silently continuing on failure meant a new
+  // account was created with no session, so the client redirected to the
+  // dashboard, got bounced by the auth middleware, and landed back on /login.
+  const devSessionResult = await establishDevSession(authData.user.id);
+  if (!devSessionResult.success) {
+    // Roll back so the mobile number isn't stranded as a sessionless account.
+    try {
+      await admin.auth.admin.deleteUser(authData.user.id);
+    } catch {
+      /* logged upstream */
+    }
+    return {
+      success: false,
+      error: "Registration failed while starting your session. Please try again.",
+    };
+  }
 
   // Record consents
   try {
@@ -409,6 +519,23 @@ export async function adminLogin(
     return { success: false, error: "Validation error", fieldErrors };
   }
 
+  const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  const admin = createServiceClient();
+
+  // Server-side lockout — the true gate; any client-shown attempt counter is UX only.
+  const recentFailed = await getRecentFailedAttempts(
+    admin,
+    normalizedEmail,
+    "admin_password",
+    ADMIN_LOCKOUT_MINUTES
+  );
+  if (recentFailed >= ADMIN_MAX_ATTEMPTS) {
+    return {
+      success: false,
+      error: `Too many failed attempts. Locked for ${ADMIN_LOCKOUT_MINUTES} minutes.`,
+    };
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
@@ -416,9 +543,9 @@ export async function adminLogin(
   });
 
   if (error || !data.user) {
+    await recordAttempt(admin, normalizedEmail, "admin_password", false);
     // Record failed attempt audit (best effort, service role)
     try {
-      const admin = createServiceClient();
       await admin.from("auth_audit_events").insert({
         event_type: "admin_access_denied",
         metadata_safe: {
@@ -431,9 +558,9 @@ export async function adminLogin(
     }
     return { success: false, error: "Invalid email or password." };
   }
+  await recordAttempt(admin, normalizedEmail, "admin_password", true);
 
   // Verify the user is a registered staff member
-  const admin = createServiceClient();
   const { data: staffData, error: staffError } = await admin
     .from("staff_profiles")
     .select("id, staff_status, internal_role")
@@ -533,11 +660,24 @@ async function establishDevSession(
     return { success: false, error: "Login failed" };
   }
 
-  const devPassword = `dev-otp-${authUserId}-${DEV_MOCK_OTP}`;
+  // Random per call — never derived from a guessable formula (authUserId is
+  // not a secret and must not be sufficient to compute a valid password).
+  const devPassword = `dev-${crypto.randomUUID()}`;
+
+  // Always sign in via email+password, even for mobile-only accounts — this
+  // Supabase project's phone+password grant is unreliable, while email+password
+  // works. The synthetic address is DEV_ONLY internal plumbing, never shown to
+  // the user and unrelated to the profiles.email field they fill in themselves.
+  // `||` (not `??`) — Supabase returns "" (not null) for phone-only accounts,
+  // and "" would otherwise slip past a nullish-coalescing fallback.
+  const signInEmail =
+    userData.user.email || `dev-mock-${authUserId}@internal.mgptest.dev`;
 
   const { error: updateError } = await admin.auth.admin.updateUserById(
     authUserId,
     {
+      email: signInEmail,
+      email_confirm: true,
       password: devPassword,
     }
   );
@@ -546,30 +686,13 @@ async function establishDevSession(
   }
 
   const supabase = await createClient();
-  const credentials = userData.user.email
-    ? { email: userData.user.email, password: devPassword }
-    : { phone: userData.user.phone!, password: devPassword };
-
-  const { error: signInError } =
-    await supabase.auth.signInWithPassword(credentials);
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: signInEmail,
+    password: devPassword,
+  });
   if (signInError) {
     return { success: false, error: "Login failed" };
   }
 
   return { success: true, data: { ok: true } };
-}
-
-function getDashboardRouteForRole(
-  role: "owner" | "broker" | "builder"
-): string {
-  switch (role) {
-    case "owner":
-      return "/dashboard/owner";
-    case "broker":
-      return "/dashboard/broker";
-    case "builder":
-      return "/dashboard/builder";
-    default:
-      return "/dashboard";
-  }
 }
