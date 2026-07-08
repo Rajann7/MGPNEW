@@ -17,7 +17,6 @@ type Step =
   | "provider_down";
 
 const RESEND_COOLDOWN = 30;
-const MAX_ATTEMPTS = 3;
 
 interface Props {
   onRegistrationNeeded: (mobile: string) => void;
@@ -44,7 +43,6 @@ export function MobileOtpForm({
   const [consent, setConsent] = useState(false);
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [attemptsLeft, setAttemptsLeft] = useState(MAX_ATTEMPTS);
   const [lockoutMessage, setLockoutMessage] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [isPending, startTransition] = useTransition();
@@ -98,7 +96,6 @@ export function MobileOtpForm({
       }
       setStep("otp");
       setCooldown(RESEND_COOLDOWN);
-      setAttemptsLeft(MAX_ATTEMPTS);
     });
   }
 
@@ -114,27 +111,26 @@ export function MobileOtpForm({
             return;
           }
           setOtp("");
-          // The server is the real gate — its own lockout message overrides
-          // the client's attempt counter, which resets on reload/back-nav
-          // and would otherwise wrongly imply the account isn't locked.
+          // The server is the only real gate (auth_login_attempts table).
+          // We never guess a remaining-attempts count client-side — that
+          // count is unknowable here (resets on reload, doesn't survive
+          // navigation) and showing a fake one previously caused a fake
+          // "locked for 15 min" screen to appear after only 3 tries even
+          // though the server's actual cap is 5, so the "lock" wasn't real
+          // and the same number could immediately retry. Only the server's
+          // own lockout response ever switches to the lockout screen now.
           if (result.error.startsWith("Too many incorrect attempts")) {
             setLockoutMessage(result.error);
             setStep("rate_limited");
             return;
           }
-          const left = attemptsLeft - 1;
-          setAttemptsLeft(left);
-          if (left <= 0) setStep("rate_limited");
-          else
-            setError(
-              `Incorrect or expired OTP. ${left} attempt${left === 1 ? "" : "s"} left.`
-            );
+          setError("Incorrect or expired OTP. Please try again.");
           return;
         }
         onSuccess(result.data.redirectTo, result.data.firstName);
       });
     },
-    [mobile, redirectTo, attemptsLeft, isPending, onSuccess]
+    [mobile, redirectTo, isPending, onSuccess]
   );
 
   // ── Unregistered number → register prompt (design screen 7) ──
@@ -175,7 +171,7 @@ export function MobileOtpForm({
     );
   }
 
-  // ── Honest full-stop: too many attempts (design screen 6). Real server lockout = Prompt 13. ──
+  // ── Honest full-stop: too many attempts (design screen 6). Server-enforced. ──
   if (step === "rate_limited") {
     return (
       <div className="flex flex-col items-center gap-2.5 py-2 text-center">
@@ -198,7 +194,6 @@ export function MobileOtpForm({
             setStep("mobile");
             setOtp("");
             setError(null);
-            setAttemptsLeft(MAX_ATTEMPTS);
             // Not resetting lockoutMessage here on purpose: if the user
             // re-enters the same number and requests a fresh OTP, the next
             // verify attempt still re-checks the real server-side lockout —
