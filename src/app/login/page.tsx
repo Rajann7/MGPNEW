@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Building2 } from "lucide-react";
 import { AuthModal } from "@/components/auth/AuthModal";
 import type { AuthStep } from "@/types";
 
 function LoginContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirectTo") ?? undefined;
   const [step, setStep] = useState<AuthStep>("mobile_entry");
@@ -26,7 +27,7 @@ function LoginContent() {
 
       <AuthModal
         isOpen={true}
-        onClose={() => {}} // keep open on login page
+        onClose={() => router.push("/")}
         step={step}
         mobile={mobile}
         redirectTo={redirectTo}

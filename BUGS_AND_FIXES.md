@@ -2801,3 +2801,23 @@ Batch 3 homepage true-port implemented cleanly: lint/typecheck/build PASS; live 
 - Test attempt rows and lockout state cleaned up afterward (seeded Owner/Super Admin test accounts confirmed to log in normally post-cleanup).
 
 **Status: BUG-20260708-AUTH-002 fully closed** (was previously SETUP_REQUIRED pending migration apply).
+
+### User-reported: rate limit appeared not to work + dead close button [2026-07-08]
+
+#### BUG-20260708-AUTH-010 [RESOLVED]
+- **Category:** UX / SECURITY_VISIBILITY
+- **Severity:** S2_MEDIUM
+- **Title:** OTP lockout appeared to "not work" after reload — client's own 3-attempt UX counter (`MobileOtpForm`) resets on page reload/back-navigation and is separate from the real server-side 5-attempt cap; worse, when the server's real lockout error did fire, the client silently treated it as a generic wrong-OTP message ("Incorrect or expired OTP. N attempts left.") instead of surfacing it — masking the real lockout entirely.
+- **Reported by user:** "rate limit not work, when i reload re-enter number than showing enter otp option why?"
+- **Fix:** `src/components/auth/MobileOtpForm.tsx` — `submitOtp` now checks whether the server's error is the real lockout message (`"Too many incorrect attempts..."`) and, if so, immediately switches to the lockout screen showing that exact server message — overriding the locally-reset attempt counter. The mobile-entry step and OTP-request itself were never the gate; verify-time checks always were, this just makes that visible instead of silently swallowed.
+- **Retest:** PASS — live: accumulated 5 real server-recorded failures for a seeded account across two page reloads, confirmed via direct table query (`auth_login_attempts`, capped at exactly 5 rows); the 6th verify attempt was blocked server-side (row count stayed at 5) and the UI correctly displayed "Too many incorrect attempts. Please try again in 15 minutes." instead of a misleading "1 attempt left."
+
+#### BUG-20260708-AUTH-011 [RESOLVED]
+- **Category:** DEAD_UI
+- **Severity:** S3_LOW
+- **Title:** Close (X) button on the standalone `/login` page was a hardcoded no-op (`onClose={() => {}}`) — visible, clickable, does nothing
+- **Reported by user:** "close btn not working"
+- **Fix:** `src/app/login/page.tsx` — close now navigates to `/` via `router.push`.
+- **Retest:** PASS — live: clicking Close on `/login` now lands on the homepage. Popup-modal close (header Login button → X) confirmed unaffected/working.
+
+**Dead-UI sweep:** grepped the full `src/` tree for `onClick={() => {}}` and `href="#"` — no other dead handlers found. Admin login's "Forgot password?" / "Continue with Google" buttons are intentional honest `SETUP_REQUIRED` notices (not dead), confirmed correct per CLAUDE.md §20.

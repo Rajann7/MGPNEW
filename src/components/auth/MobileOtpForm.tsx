@@ -45,6 +45,7 @@ export function MobileOtpForm({
   const [otp, setOtp] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [attemptsLeft, setAttemptsLeft] = useState(MAX_ATTEMPTS);
+  const [lockoutMessage, setLockoutMessage] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [isPending, startTransition] = useTransition();
 
@@ -112,9 +113,17 @@ export function MobileOtpForm({
             setStep("provider_down");
             return;
           }
+          setOtp("");
+          // The server is the real gate — its own lockout message overrides
+          // the client's attempt counter, which resets on reload/back-nav
+          // and would otherwise wrongly imply the account isn't locked.
+          if (result.error.startsWith("Too many incorrect attempts")) {
+            setLockoutMessage(result.error);
+            setStep("rate_limited");
+            return;
+          }
           const left = attemptsLeft - 1;
           setAttemptsLeft(left);
-          setOtp("");
           if (left <= 0) setStep("rate_limited");
           else
             setError(
@@ -175,9 +184,13 @@ export function MobileOtpForm({
         </span>
         <div className="text-[17px] font-semibold text-[#18181b]">Too many attempts</div>
         <p className="text-[13px] leading-[1.6] text-[#52525b]">
-          For your security, OTP login for this number is paused.
-          <br />
-          Try again in <strong className="font-semibold text-[#18181b]">15 minutes</strong>.
+          {lockoutMessage ?? (
+            <>
+              For your security, OTP login for this number is paused.
+              <br />
+              Try again in <strong className="font-semibold text-[#18181b]">15 minutes</strong>.
+            </>
+          )}
         </p>
         <button
           type="button"
@@ -186,6 +199,11 @@ export function MobileOtpForm({
             setOtp("");
             setError(null);
             setAttemptsLeft(MAX_ATTEMPTS);
+            // Not resetting lockoutMessage here on purpose: if the user
+            // re-enters the same number and requests a fresh OTP, the next
+            // verify attempt still re-checks the real server-side lockout —
+            // this only clears the locally cached copy of that message.
+            setLockoutMessage(null);
           }}
           className="mt-2 rounded-[10px] border border-[#d4d4d8] px-[18px] py-2.5 text-[13px] font-medium text-[#3f3f46] hover:border-[#a1a1aa]"
         >
