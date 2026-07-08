@@ -153,7 +153,7 @@ function AdminLoginForm() {
             Contact your admin
           </a>
           <div className="mt-1 text-[11px] text-[#a1a1aa]">
-            Client-side guard · server-side lockout is enforced in a later phase.
+            This screen is a client-side display only — the lockout itself is enforced server-side.
           </div>
         </div>
       ) : (

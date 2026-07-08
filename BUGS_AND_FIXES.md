@@ -2790,3 +2790,14 @@ Batch 3 homepage true-port implemented cleanly: lint/typecheck/build PASS; live 
 **Not fixed — needs a human decision:** `src/proxy.ts`'s `/admin/*` guard only checks "is any authenticated user", not "is staff" (staff check happens per-page via `requireStaff()`). Confirmed every current admin page already calls it, so no live gap — but there's no central enforcement, so a future admin page added without remembering the check would be silently exposed. Adding a blanket `src/app/admin/layout.tsx` guard was evaluated and skipped: it would also wrap `/admin/login` and `/admin/invite` (which must stay reachable pre-auth), and server-component layouts have no reliable pathname branch to exclude them — risks a redirect loop. Flagging for a deliberate follow-up rather than a rushed fix.
 
 **Setup required:** Apply `supabase/migrations/20260709090000_auth_login_attempts_rate_limit.sql` to the remote DB (`supabase db push` or via Management API) to activate the new server-side OTP/admin-login/mobile-check rate limiting. Until applied, the code fails open (no lockout enforced, no crash).
+
+### Rate-limit migration applied + lockout re-verified [2026-07-08]
+
+`supabase/migrations/20260709090000_auth_login_attempts_rate_limit.sql` applied to remote by the user via the Supabase SQL Editor. Live-verified end-to-end:
+
+- **OTP lockout (cap 5, otp_verify):** submitted wrong OTP for a seeded mobile across two page reloads (resetting the client's own 3-attempt UX counter each time) — the server recorded exactly 5 failed rows in `auth_login_attempts` and silently declined to record a 6th, confirming the request was blocked pre-emptively (`recentFailed >= OTP_MAX_ATTEMPTS`) before ever validating the OTP.
+- **Admin lockout (cap 3, admin_password):** same method — 3 failed rows recorded, then a 4th attempt **with the correct password** was still rejected ("Invalid email or password") and did **not** add a 4th row, proving the lockout is enforced server-side ahead of `signInWithPassword`, not just displayed client-side.
+- Fixed a stale copy string on the admin lockout screen (`src/app/admin/login/page.tsx`) that claimed "server-side lockout is enforced in a later phase" — no longer true as of BUG-20260708-AUTH-002.
+- Test attempt rows and lockout state cleaned up afterward (seeded Owner/Super Admin test accounts confirmed to log in normally post-cleanup).
+
+**Status: BUG-20260708-AUTH-002 fully closed** (was previously SETUP_REQUIRED pending migration apply).
