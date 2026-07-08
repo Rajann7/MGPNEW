@@ -296,11 +296,13 @@ export async function getContactRevealStatus(
     .select("*")
     .eq("id", leadId)
     .maybeSingle();
-  if (!lead) return { success: false, error: "LEAD_NOT_FOUND" };
   if (
-    !isLeadRequester(profile, lead as Lead) &&
-    !isLeadReceiver(profile, lead as Lead)
+    !lead ||
+    (!isLeadRequester(profile, lead as Lead) &&
+      !isLeadReceiver(profile, lead as Lead))
   ) {
+    // Same error for "no such lead" and "not a participant" — avoids
+    // leaking which lead IDs exist to a non-participant caller.
     return { success: false, error: "NOT_PARTICIPANT" };
   }
 

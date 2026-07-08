@@ -2686,3 +2686,40 @@ Batch 3 homepage true-port implemented cleanly: lint/typecheck/build PASS; live 
 - **Status:** RESOLVED (was OPEN/DEFERRED).
 - **Fix:** migration `supabase/migrations/20260704120000_requirement_audience_verified_pro_only.sql` — applied to remote (Management API, HTTP 201). (1) Dropped anon-public `requirements_public_read`; added `requirements_verified_pro_read` (approved+published requirement readable only if the caller is an **active, verified broker/builder** — EXISTS on profiles). (2) Recreated `public_requirements_view` `WITH (security_invoker=true)` (same column list, still excludes description) so the view honors the caller's RLS instead of bypassing it as a definer view. Owners still see their own via `requirements_owner_read`; admin/staff via service role.
 - **Retest:** PASS — live: guest reads base `requirements`=0 rows and `public_requirements_view`=0 rows; **verified broker session reads the seeded approved requirement=1 row**; guest simultaneously=0; anon insert still DENIED (42501); properties/projects public views unchanged (2/1 rows). Test data + temp verification flag cleaned up. lint/tsc/build GREEN (39/39).
+
+### Codebase-wide bug scan [2026-07-08]
+
+#### BUG-20260708-PERF-001 [RESOLVED]
+- **Category:** PERFORMANCE / N+1
+- **Severity:** S3_LOW
+- **Title:** `getTotalUnreadMessageCount` issued one count query per thread in a loop
+- **Fix:** `src/lib/actions/messages.ts` — single `.in("thread_id", threadIds)` query for all unread messages across threads, tallied in-memory against each thread's last-read timestamp.
+- **Retest:** PASS — build 40/40 green.
+
+#### BUG-20260708-PERF-002 [RESOLVED]
+- **Category:** PERFORMANCE / N+1
+- **Severity:** S3_LOW
+- **Title:** `listSavedItems` / `listRecentlyViewed` queried the target entity table once per row
+- **Fix:** `src/lib/actions/saved.ts` — added shared `batchLoadEntities()` helper (same pattern as `admin/leads.ts`) grouping ids by item_type and batching with `.in()`. Both functions now use it.
+- **Retest:** PASS — build 40/40 green.
+
+#### BUG-20260708-PERF-003 [RESOLVED]
+- **Category:** PERFORMANCE / UNBOUNDED READ
+- **Severity:** S4
+- **Title:** `trackRecentlyViewed` trim step fetched the user's entire history on every page view
+- **Fix:** `src/lib/actions/saved.ts` — trim query now uses `.range(RECENTLY_VIEWED_MAX, RECENTLY_VIEWED_MAX + 199)` instead of an unbounded select.
+- **Retest:** PASS — build 40/40 green.
+
+#### BUG-20260708-SEC-001 [RESOLVED]
+- **Category:** SECURITY / PRIVILEGE_ESCALATION
+- **Severity:** S3_MEDIUM
+- **Title:** `updateStaffPermissions` allowed a staff member to grant permission flags they did not themselves hold (incl. `can_manage_staff`) to any non-super-admin target
+- **Fix:** `src/lib/actions/admin/staff.ts` — non-super-admin granters are now checked against their own `staff_permissions` row for that module; any `true` flag being granted that the granter does not already hold is rejected with `PERMISSION_DENIED`. Super admin exempt (holds all permissions by definition).
+- **Retest:** PASS — build 40/40 green. Logic-verified; no UI surface change (server action only).
+
+#### BUG-20260708-SEC-002 [RESOLVED]
+- **Category:** SECURITY / INFO_LEAK
+- **Severity:** S4_LOW
+- **Title:** `getContactRevealStatus` returned distinct `LEAD_NOT_FOUND` vs `NOT_PARTICIPANT` errors, letting an authenticated caller enumerate valid lead IDs
+- **Fix:** `src/lib/actions/contact.ts` — both cases now return the same `NOT_PARTICIPANT` error.
+- **Retest:** PASS — build 40/40 green.

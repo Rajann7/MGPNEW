@@ -102,31 +102,56 @@ export async function listSavedItems(
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
 
   const admin = createServiceClient();
-  const items: SavedItemRow[] = await Promise.all(
-    (data as SavedItem[]).map(async (saved) => {
-      const table = TARGET_TABLE[saved.item_type];
-      const titleCol = TARGET_TITLE_COL[saved.item_type];
-      const selectCols: string = `id, ${titleCol}, city_text, slug`;
-      const { data: entity } = await admin
-        .from(table)
-        .select(selectCols)
-        .eq("id", saved.item_id)
-        .is("deleted_at", null)
-        .maybeSingle();
-      const row = entity as Record<string, unknown> | null;
-      return {
-        ...saved,
-        title: row
-          ? ((row[titleCol] as string) ?? "Untitled")
-          : "No longer available",
-        cityText: row ? ((row.city_text as string) ?? null) : null,
-        slug: row ? ((row.slug as string) ?? null) : null,
-        available: Boolean(row),
-      };
-    })
-  );
+  const entityByKey = await batchLoadEntities(admin, data as SavedItem[]);
+
+  const items: SavedItemRow[] = (data as SavedItem[]).map((saved) => {
+    const titleCol = TARGET_TITLE_COL[saved.item_type];
+    const row = entityByKey.get(`${saved.item_type}:${saved.item_id}`) ?? null;
+    return {
+      ...saved,
+      title: row
+        ? ((row[titleCol] as string) ?? "Untitled")
+        : "No longer available",
+      cityText: row ? ((row.city_text as string) ?? null) : null,
+      slug: row ? ((row.slug as string) ?? null) : null,
+      available: Boolean(row),
+    };
+  });
 
   return { success: true, data: { items } };
+}
+
+/** Batch-loads entity rows (title/city_text/slug) across mixed item types, no N+1. */
+async function batchLoadEntities(
+  admin: ReturnType<typeof createServiceClient>,
+  rows: { item_type: string; item_id: string }[]
+): Promise<Map<string, Record<string, unknown>>> {
+  const idsByType: Record<string, string[]> = {};
+  for (const row of rows) {
+    (idsByType[row.item_type] ??= []).push(row.item_id);
+  }
+
+  const entityByKey = new Map<string, Record<string, unknown>>();
+  await Promise.all(
+    Object.keys(idsByType).map(async (itemType) => {
+      const table = TARGET_TABLE[itemType];
+      const titleCol = TARGET_TITLE_COL[itemType];
+      const ids = Array.from(new Set(idsByType[itemType]));
+      if (!table || ids.length === 0) return;
+      const { data: entities } = await admin
+        .from(table)
+        .select(`id, ${titleCol}, city_text, slug`)
+        .in("id", ids)
+        .is("deleted_at", null);
+      for (const entity of (entities ?? []) as unknown as Record<
+        string,
+        unknown
+      >[]) {
+        entityByKey.set(`${itemType}:${entity.id}`, entity);
+      }
+    })
+  );
+  return entityByKey;
 }
 
 // ============================================================
@@ -219,13 +244,15 @@ export async function trackRecentlyViewed(
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
 
   // Trim to max — delete oldest beyond the limit for this user.
-  const { data: all } = await supabase
+  // Only fetch ids past the cutoff (offset RECENTLY_VIEWED_MAX), not the whole history.
+  const { data: overflow } = await supabase
     .from("recently_viewed_items")
     .select("id")
     .eq("profile_id", profile.id)
-    .order("viewed_at", { ascending: false });
-  if (all && all.length > RECENTLY_VIEWED_MAX) {
-    const idsToDelete = all.slice(RECENTLY_VIEWED_MAX).map((r) => r.id);
+    .order("viewed_at", { ascending: false })
+    .range(RECENTLY_VIEWED_MAX, RECENTLY_VIEWED_MAX + 199);
+  if (overflow && overflow.length > 0) {
+    const idsToDelete = overflow.map((r) => r.id);
     await supabase.from("recently_viewed_items").delete().in("id", idsToDelete);
   }
 
@@ -256,18 +283,16 @@ export async function listRecentlyViewed(): Promise<
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
 
   const admin = createServiceClient();
-  const items: RecentlyViewedRow[] = await Promise.all(
-    (data as RecentlyViewedItem[]).map(async (viewed) => {
-      const table = TARGET_TABLE[viewed.item_type];
+  const entityByKey = await batchLoadEntities(
+    admin,
+    data as RecentlyViewedItem[]
+  );
+
+  const items: RecentlyViewedRow[] = (data as RecentlyViewedItem[]).map(
+    (viewed) => {
       const titleCol = TARGET_TITLE_COL[viewed.item_type];
-      const selectCols: string = `id, ${titleCol}, city_text, slug`;
-      const { data: entity } = await admin
-        .from(table)
-        .select(selectCols)
-        .eq("id", viewed.item_id)
-        .is("deleted_at", null)
-        .maybeSingle();
-      const row = entity as Record<string, unknown> | null;
+      const row =
+        entityByKey.get(`${viewed.item_type}:${viewed.item_id}`) ?? null;
       return {
         ...viewed,
         title: row
@@ -277,7 +302,7 @@ export async function listRecentlyViewed(): Promise<
         slug: row ? ((row.slug as string) ?? null) : null,
         available: Boolean(row),
       };
-    })
+    }
   );
 
   return { success: true, data: { items } };

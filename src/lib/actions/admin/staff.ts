@@ -283,6 +283,34 @@ export async function updateStaffPermissions(
     return { success: false, error: "PERMISSION_DENIED" };
   }
 
+  // A granter can only grant flags they themselves already hold for this module
+  // (super_admin is exempt — already has every permission by definition).
+  if (staff.internal_role !== "super_admin") {
+    const { data: granterPerm } = await admin
+      .from("staff_permissions")
+      .select("*")
+      .eq("staff_profile_id", staff.id)
+      .eq("module", module)
+      .maybeSingle();
+    const granterFlags = (granterPerm ?? {}) as Record<string, unknown>;
+    const escalatedFlags = Object.entries(permissions).filter(
+      ([key, value]) => value === true && granterFlags[key] !== true
+    );
+    if (escalatedFlags.length > 0) {
+      return {
+        success: false,
+        error: "PERMISSION_DENIED",
+        fieldErrors: {
+          permissions: [
+            `You cannot grant permissions you do not hold yourself: ${escalatedFlags
+              .map(([key]) => key)
+              .join(", ")}`,
+          ],
+        },
+      };
+    }
+  }
+
   const { data: existing } = await admin
     .from("staff_permissions")
     .select("id")

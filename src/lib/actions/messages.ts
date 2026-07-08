@@ -306,20 +306,28 @@ export async function getTotalUnreadMessageCount(): Promise<
   if (!threads || threads.length === 0)
     return { success: true, data: { count: 0 } };
 
-  let total = 0;
+  const threadIds = threads.map((t) => t.id);
+  const { data: unreadMessages } = await admin
+    .from("messages")
+    .select("thread_id, created_at")
+    .in("thread_id", threadIds)
+    .neq("sender_profile_id", profile.id);
+
+  const lastReadByThread = new Map<string, string | null>();
   for (const thread of threads) {
     const isParticipantA = thread.participant_a_profile_id === profile.id;
-    const myLastRead = isParticipantA
-      ? thread.participant_a_last_read_at
-      : thread.participant_b_last_read_at;
-    let q = admin
-      .from("messages")
-      .select("id", { count: "exact", head: true })
-      .eq("thread_id", thread.id)
-      .neq("sender_profile_id", profile.id);
-    if (myLastRead) q = q.gt("created_at", myLastRead);
-    const { count } = await q;
-    total += count ?? 0;
+    lastReadByThread.set(
+      thread.id,
+      isParticipantA
+        ? thread.participant_a_last_read_at
+        : thread.participant_b_last_read_at
+    );
+  }
+
+  let total = 0;
+  for (const msg of unreadMessages ?? []) {
+    const myLastRead = lastReadByThread.get(msg.thread_id);
+    if (!myLastRead || msg.created_at > myLastRead) total += 1;
   }
 
   return { success: true, data: { count: total } };
