@@ -15,7 +15,7 @@ import { RequirementResultCard } from "./RequirementResultCard";
 import { SearchPagination } from "./SearchPagination";
 import { RequestLocationModal } from "./RequestLocationModal";
 import { SearchShellHeader } from "./SearchShellHeader";
-import { List, Map as MapIcon, MapPinned, SlidersHorizontal, X } from "lucide-react";
+import { SlidersHorizontal, X } from "lucide-react";
 import type { Profile } from "@/types";
 import {
   PROPERTY_TYPES,
@@ -97,7 +97,6 @@ export function SearchResultsClient({ results, cities, profile }: Props) {
 
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(q);
-  const [view, setView] = useState<"list" | "map">("list");
   const [requestOpen, setRequestOpen] = useState(false);
 
   function renderCards() {
@@ -267,7 +266,6 @@ export function SearchResultsClient({ results, cities, profile }: Props) {
         searchInput={searchInput}
         onSearchInputChange={setSearchInput}
         onSubmit={handleSearch}
-        onToggleMap={() => setView((v) => (v === "map" ? "list" : "map"))}
       />
 
       {/* Secondary filter bar — directly below the header. */}
@@ -327,37 +325,6 @@ export function SearchResultsClient({ results, cities, profile }: Props) {
           </button>
 
           <span className="ml-auto flex-shrink-0" />
-
-          {/* Map view / List toggle (right) — honest map fallback */}
-          <div className="hidden flex-shrink-0 overflow-hidden rounded-full border border-border-strong sm:flex">
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              aria-pressed={view === "list"}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors",
-                view === "list"
-                  ? "bg-brand text-white"
-                  : "bg-surface text-ink-soft hover:bg-surface-muted"
-              )}
-            >
-              <List className="h-3.5 w-3.5" /> List
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("map")}
-              aria-pressed={view === "map"}
-              title="Map view — pins arrive once maps are enabled"
-              className={cn(
-                "flex items-center gap-1.5 border-l border-border-strong px-3 py-1.5 text-xs font-medium transition-colors",
-                view === "map"
-                  ? "bg-brand text-white"
-                  : "bg-surface text-ink-soft hover:bg-surface-muted"
-              )}
-            >
-              <MapIcon className="h-3.5 w-3.5" /> Map view
-            </button>
-          </div>
         </div>
       </div>
 
@@ -542,7 +509,25 @@ export function SearchResultsClient({ results, cities, profile }: Props) {
             </div>
 
             {isPending && (
-              <div className="mb-4 text-sm text-ink-muted">Loading…</div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="overflow-hidden rounded-card border border-surface-muted"
+                  >
+                    <div className="h-[140px] animate-pulse bg-surface-muted" />
+                    <div className="flex flex-col gap-2 p-3">
+                      <div className="h-4 w-2/5 animate-pulse rounded bg-surface-muted" />
+                      <div className="h-3 w-[85%] animate-pulse rounded bg-surface-muted" />
+                      <div className="h-2.5 w-3/5 animate-pulse rounded bg-surface-muted" />
+                      <div className="flex gap-1.5">
+                        <div className="h-[18px] w-12 animate-pulse rounded-full bg-surface-muted" />
+                        <div className="h-[18px] w-16 animate-pulse rounded-full bg-surface-muted" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
 
             {items.length === 0 && !isPending && (
@@ -554,40 +539,9 @@ export function SearchResultsClient({ results, cities, profile }: Props) {
               />
             )}
 
-            {items.length > 0 && view === "list" && (
+            {items.length > 0 && !isPending && (
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {renderCards()}
-              </div>
-            )}
-
-            {items.length > 0 && view === "map" && (
-              <div className="flex flex-col gap-4 lg:flex-row">
-                <div className="flex flex-col gap-3 lg:w-[42%]">
-                  {renderCards()}
-                </div>
-                {/* Honest map fallback pane — real map lands with the maps provider. */}
-                <div className="relative min-h-[320px] flex-1 overflow-hidden rounded-card border border-border bg-[repeating-linear-gradient(0deg,#eef1ee,#eef1ee_40px,#e6ebe6_40px,#e6ebe6_41px),repeating-linear-gradient(90deg,#eef1ee,#eef1ee_40px,#e6ebe6_40px,#e6ebe6_41px)]">
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-sm">
-                      <MapPinned className="h-6 w-6 text-brand" />
-                    </span>
-                    <div className="text-sm font-semibold text-ink">
-                      Map is not available yet
-                    </div>
-                    <p className="max-w-xs text-xs leading-[1.5] text-ink-soft">
-                      Precise map pins arrive once maps are enabled. Meanwhile all{" "}
-                      {items.length} result{items.length === 1 ? "" : "s"} are shown
-                      in the list — nothing is hidden.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setView("list")}
-                      className="mt-1 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-ink-soft hover:border-brand/40 hover:text-brand"
-                    >
-                      Back to list
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
 

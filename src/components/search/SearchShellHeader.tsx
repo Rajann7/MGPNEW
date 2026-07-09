@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Building, Search, ChevronLeft, ChevronDown, Map as MapIcon, MapPin } from "lucide-react";
+import { Building, Search, ChevronLeft, ChevronDown, MapPin } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import { useCity } from "@/components/location/CityProvider";
 import type { Profile } from "@/types";
@@ -19,13 +19,11 @@ export function SearchShellHeader({
   searchInput,
   onSearchInputChange,
   onSubmit,
-  onToggleMap,
 }: {
   profile: Profile | null;
   searchInput: string;
   onSearchInputChange: (v: string) => void;
   onSubmit: (e: React.FormEvent) => void;
-  onToggleMap: () => void;
 }) {
   const router = useRouter();
   const { openAuth } = useAuthModal();
@@ -131,14 +129,6 @@ export function SearchShellHeader({
               className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-muted"
             />
           </label>
-          <button
-            type="button"
-            onClick={onToggleMap}
-            aria-label="Map view"
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-[10px] text-ink-soft hover:bg-surface-muted"
-          >
-            <MapIcon className="h-[18px] w-[18px]" />
-          </button>
         </form>
       </div>
     </header>
