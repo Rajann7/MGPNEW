@@ -6,6 +6,7 @@ import {
   Inbox,
   UserCircle,
   Bookmark,
+  Heart,
   Bell,
   Wallet,
   ShieldCheck,
@@ -18,11 +19,24 @@ import {
   MessageCircle,
   Search,
   Plus,
+  CalendarClock,
+  History,
+  Settings,
+  BarChart3,
 } from "lucide-react";
 import type { SidebarNavItem } from "./DashboardSidebar";
 import type { MobileTabItem } from "./DashboardMobileTabBar";
 
-export function getOwnerNav(activeHref: string): SidebarNavItem[] {
+/**
+ * Owner desktop sidebar (Batch 6 · Screen 1A design + Verification/Profile/
+ * Support restored per owner request). Site Visits / Analytics / Settings
+ * have no live route yet so they're honestly disabled ("Coming soon")
+ * rather than linking nowhere.
+ */
+export function getOwnerNav(
+  activeHref: string,
+  badges?: { properties?: number; leads?: number }
+): SidebarNavItem[] {
   return [
     {
       label: "Overview",
@@ -35,6 +49,7 @@ export function getOwnerNav(activeHref: string): SidebarNavItem[] {
       href: "/dashboard/owner/properties",
       icon: Home,
       active: activeHref.startsWith("/dashboard/owner/properties"),
+      badge: badges?.properties,
     },
     {
       label: "My Requirements",
@@ -43,10 +58,12 @@ export function getOwnerNav(activeHref: string): SidebarNavItem[] {
       active: activeHref.startsWith("/dashboard/owner/requirements"),
     },
     {
-      label: "Inquiries / Leads",
+      label: "Leads",
       href: "/dashboard/owner/leads",
       icon: Inbox,
       active: activeHref === "/dashboard/owner/leads",
+      badge: badges?.leads,
+      badgeVariant: "danger",
     },
     {
       label: "Messages",
@@ -55,16 +72,120 @@ export function getOwnerNav(activeHref: string): SidebarNavItem[] {
       active: activeHref.startsWith("/dashboard/messages"),
     },
     {
-      label: "Saved Items",
+      label: "Site Visits",
+      href: "#",
+      icon: CalendarClock,
+      disabled: true,
+    },
+    {
+      label: "Saved",
       href: "/dashboard/owner/saved",
-      icon: Bookmark,
+      icon: Heart,
       active: activeHref === "/dashboard/owner/saved",
     },
     {
-      label: "Notifications",
-      href: "/dashboard/owner/notifications",
-      icon: Bell,
-      active: activeHref === "/dashboard/owner/notifications",
+      label: "Analytics",
+      href: "#",
+      icon: BarChart3,
+      disabled: true,
+    },
+    {
+      label: "Billing",
+      href: "/dashboard/owner/billing",
+      icon: Wallet,
+      active: activeHref === "/dashboard/owner/billing",
+    },
+    {
+      label: "Settings",
+      href: "#",
+      icon: Settings,
+      disabled: true,
+    },
+    {
+      label: "Verification",
+      href: "/dashboard/owner/verification",
+      icon: ShieldCheck,
+      active: activeHref === "/dashboard/owner/verification",
+      dividerBefore: true,
+    },
+    {
+      label: "Profile",
+      href: "/profile",
+      icon: UserCircle,
+      active: activeHref === "/profile",
+    },
+    { label: "Support", href: "/support", icon: LifeBuoy },
+  ];
+}
+
+/**
+ * Full mobile-drawer module list for Owner (Batch 6 · Screen 1D) — a
+ * superset of the desktop sidebar. Badge counts are real counts passed in
+ * by the page (never fabricated); items with no live route yet are marked
+ * disabled ("Coming soon") rather than linking nowhere.
+ */
+export function getOwnerDrawerNav(
+  activeHref: string,
+  badges?: { properties?: number; leads?: number }
+): SidebarNavItem[] {
+  return [
+    {
+      label: "Overview",
+      href: "/dashboard/owner",
+      icon: LayoutGrid,
+      active: activeHref === "/dashboard/owner",
+    },
+    {
+      label: "My Properties",
+      href: "/dashboard/owner/properties",
+      icon: Home,
+      active: activeHref.startsWith("/dashboard/owner/properties"),
+      badge: badges?.properties,
+    },
+    {
+      label: "My Requirements",
+      href: "/dashboard/owner/requirements",
+      icon: ClipboardList,
+      active: activeHref.startsWith("/dashboard/owner/requirements"),
+    },
+    {
+      label: "Leads",
+      href: "/dashboard/owner/leads",
+      icon: Inbox,
+      active: activeHref === "/dashboard/owner/leads",
+      badge: badges?.leads,
+      badgeVariant: "danger",
+    },
+    {
+      label: "Messages",
+      href: "/dashboard/messages",
+      icon: MessageSquare,
+      active: activeHref.startsWith("/dashboard/messages"),
+    },
+    {
+      label: "Site Visits",
+      href: "#",
+      icon: CalendarClock,
+      disabled: true,
+    },
+    {
+      label: "Saved",
+      href: "/dashboard/owner/saved",
+      icon: Heart,
+      active: activeHref === "/dashboard/owner/saved",
+    },
+    {
+      label: "Recently Viewed",
+      href: "#",
+      icon: History,
+      disabled: true,
+    },
+    {
+      label: "Analytics",
+      href: "#",
+      icon: BarChart3,
+      disabled: true,
+      dividerBefore: true,
     },
     {
       label: "Billing",
@@ -79,10 +200,10 @@ export function getOwnerNav(activeHref: string): SidebarNavItem[] {
       active: activeHref === "/dashboard/owner/verification",
     },
     {
-      label: "Profile",
-      href: "/profile",
-      icon: UserCircle,
-      active: activeHref === "/profile",
+      label: "Settings",
+      href: "#",
+      icon: Settings,
+      disabled: true,
     },
     { label: "Support", href: "/support", icon: LifeBuoy },
   ];

@@ -665,13 +665,14 @@ export async function getLeadTimeline(
 // ============================================================
 
 export async function getLeadCounts(): Promise<
-  ActionResult<{ total: number; open: number }>
+  ActionResult<{ total: number; open: number; newThisWeek: number }>
 > {
   const profile = await getCurrentProfile();
   if (!profile) return { success: false, error: "AUTH_REQUIRED" };
 
   const supabase = await createClient();
-  const [total, open] = await Promise.all([
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const [total, open, newThisWeek] = await Promise.all([
     supabase
       .from("leads")
       .select("id", { count: "exact", head: true })
@@ -681,10 +682,19 @@ export async function getLeadCounts(): Promise<
       .select("id", { count: "exact", head: true })
       .eq("receiver_profile_id", profile.id)
       .not("status", "in", "(converted,lost,closed,spam,blocked,archived)"),
+    supabase
+      .from("leads")
+      .select("id", { count: "exact", head: true })
+      .eq("receiver_profile_id", profile.id)
+      .gte("created_at", weekAgo),
   ]);
 
   return {
     success: true,
-    data: { total: total.count ?? 0, open: open.count ?? 0 },
+    data: {
+      total: total.count ?? 0,
+      open: open.count ?? 0,
+      newThisWeek: newThisWeek.count ?? 0,
+    },
   };
 }
