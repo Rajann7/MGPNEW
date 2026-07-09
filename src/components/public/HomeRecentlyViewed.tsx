@@ -21,7 +21,7 @@ export async function HomeRecentlyViewed() {
   if (items.length === 0) return null; // no history → section removed
 
   return (
-    <section className="mx-auto max-w-[1120px] px-6 pb-2 pt-10">
+    <section className="mx-auto max-w-7xl px-4 pb-2 pt-10 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-[22px] font-semibold text-[#18181b]">Recently viewed</h2>
         <ClearHistoryButton />

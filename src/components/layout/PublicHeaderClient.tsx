@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useTransition } from "react";
+import { useMemo, useState, useEffect, useRef, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,61 +12,22 @@ import {
   Home,
   Building,
   Building2,
-  LandPlot,
-  Store,
   MapPin,
   KeyRound,
   User,
-  ArrowRight,
 } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import { CitySelector } from "@/components/public/CitySelector";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import { Logo } from "@/components/layout/Logo";
 import { logout } from "@/lib/auth/actions";
 import { ROLE_LABELS } from "@/config";
-import { GUJARAT_CITIES } from "@/components/location/CityProvider";
+import { useCity, GUJARAT_CITIES } from "@/components/location/CityProvider";
 import type { Profile } from "@/types";
 
 interface Props {
   profile: Profile | null;
 }
-
-/* ── Primary nav (Batch 3 · Screen 1A: Buy · Rent · Projects · Cities ·
-   For Owners / Brokers / Builders) ── Items with `mega: true` open the shared
-   mega-menu on hover/focus. Every link is a REAL /search or /pricing route —
-   no href="#", no dead links. */
-type NavItem = { key: string; label: string; href: string; mega: boolean };
-const NAV: NavItem[] = [
-  { key: "buy", label: "Buy", href: "/search?purpose=buy", mega: true },
-  { key: "rent", label: "Rent", href: "/search?purpose=rent", mega: true },
-  { key: "projects", label: "Projects", href: "/search?entity=project", mega: true },
-  { key: "cities", label: "Cities", href: "/search", mega: true },
-  {
-    key: "owners",
-    label: "For Owners / Brokers / Builders",
-    href: "/pricing",
-    mega: false,
-  },
-];
-
-const PROPERTY_TYPE_LINKS = [
-  { label: "Apartments / Flats", Icon: Building2, href: "/search?category=residential" },
-  { label: "Houses & Villas", Icon: Home, href: "/search?category=residential" },
-  { label: "Plots & Land", Icon: LandPlot, href: "/search?category=plot" },
-  { label: "Commercial Offices", Icon: Store, href: "/search?category=commercial" },
-  { label: "Shops & Showrooms", Icon: Store, href: "/search?category=commercial" },
-];
-
-// Real localities are searched via the `q` param against the selected city.
-const AHMEDABAD_LOCALITIES = [
-  "Satellite",
-  "Bopal",
-  "SG Highway",
-  "Vastrapur",
-  "Chandkheda",
-];
-
-const POPULAR_CITIES = GUJARAT_CITIES.slice(0, 5);
 
 // Mobile drawer nav (MGP DESIGN Batch 1 · 3B) — icon per item, first is active.
 const DRAWER_NAV = [
@@ -76,14 +37,54 @@ const DRAWER_NAV = [
   { key: "cities", label: "Cities", href: "/search", Icon: MapPin },
 ];
 
+// City name → slug lookup used by the header's inline autosuggest, tolerant
+// of common transliterations (kept in sync with HomeHeroSearch).
+const CITY_TRANSLIT: Record<string, string> = {
+  amdavad: "ahmedabad",
+  ame: "ahmedabad",
+  surat: "surat",
+  vadodara: "vadodara",
+  baroda: "vadodara",
+  raj: "rajkot",
+  gandhi: "gandhinagar",
+  bhav: "bhavnagar",
+  jam: "jamnagar",
+};
+
 export function PublicHeaderClient({ profile }: Props) {
   const router = useRouter();
   const { openAuth: openAuthModal } = useAuthModal();
+  const { city: selectedCity, setCity } = useCity();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const [hoveredNav, setHoveredNav] = useState<string | null>(null);
   const [logoutPending, startLogout] = useTransition();
   const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Header search — typeable with city autosuggest (same behavior as the
+  // hero search card), not a plain link straight to /search.
+  const [headerQuery, setHeaderQuery] = useState("");
+  const [headerSuggestOpen, setHeaderSuggestOpen] = useState(false);
+  const headerBlurTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const headerSuggestions = useMemo(() => {
+    const raw = headerQuery.trim().toLowerCase();
+    if (!raw) return [];
+    const needle = CITY_TRANSLIT[raw] ?? raw;
+    return GUJARAT_CITIES.filter(
+      (c) =>
+        c.name.toLowerCase().includes(needle) ||
+        c.name.toLowerCase().includes(raw)
+    ).slice(0, 5);
+  }, [headerQuery]);
+
+  function goToSearch(cityOverride?: { name: string; slug: string }) {
+    const params = new URLSearchParams();
+    const q = headerQuery.trim();
+    if (q) params.set("q", q);
+    const city = cityOverride ?? selectedCity ?? undefined;
+    if (city?.slug) params.set("city", city.slug);
+    setHeaderSuggestOpen(false);
+    router.push(`/search${params.toString() ? `?${params}` : ""}`);
+  }
 
   useEffect(() => {
     function handler(e: MouseEvent) {
@@ -134,8 +135,6 @@ export function PublicHeaderClient({ profile }: Props) {
   const avatarInitial = profile?.full_name?.charAt(0).toUpperCase() ?? "U";
   const displayName = profile?.display_name || profile?.full_name || "";
 
-  const megaOpen = hoveredNav !== null;
-
   return (
     <>
       {/* ─── Header ─── */}
@@ -155,60 +154,65 @@ export function PublicHeaderClient({ profile }: Props) {
               </div>
             </div>
 
-            {/* Primary nav with mega menu — xl+ only (design desktop = 1280; avoids
-                header overflow at 1024 where brand+city+nav+search+auth won't fit) */}
-            <nav
-              className="hidden items-center gap-0.5 text-sm font-medium text-zinc-700 xl:flex"
-              aria-label="Primary"
-              onMouseLeave={() => setHoveredNav(null)}
-            >
-              {NAV.map((item) => (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  onMouseEnter={() =>
-                    setHoveredNav(item.mega ? item.key : null)
-                  }
-                  onFocus={() => setHoveredNav(item.mega ? item.key : null)}
-                  className={
-                    "flex items-center gap-1 whitespace-nowrap rounded-lg px-3 py-2 transition-colors " +
-                    (hoveredNav === item.key && item.mega
-                      ? "bg-brand-soft text-brand"
-                      : "hover:bg-zinc-50")
-                  }
+            {/* Search box — typeable with city autosuggest, grows to fill
+                remaining space (matches the hero search card's behavior
+                instead of just linking straight to /search). */}
+            <div className="relative mx-6 min-w-0 flex-1 lg:mx-10">
+              <div className="flex w-full items-center gap-2 rounded-[10px] border border-zinc-200 bg-zinc-50 px-3 py-2.5 transition-all focus-within:border-brand/50 focus-within:bg-white hover:border-brand/40 hover:bg-white">
+                <Search className="h-[15px] w-[15px] flex-shrink-0 text-zinc-400" />
+                <input
+                  value={headerQuery}
+                  onChange={(e) => {
+                    setHeaderQuery(e.target.value);
+                    setHeaderSuggestOpen(true);
+                  }}
+                  onFocus={() => setHeaderSuggestOpen(true)}
+                  onBlur={() => {
+                    headerBlurTimer.current = setTimeout(
+                      () => setHeaderSuggestOpen(false),
+                      120
+                    );
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") goToSearch();
+                  }}
+                  placeholder="Search locality, project, builder…"
+                  aria-label="Search properties and projects"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] text-zinc-800 outline-none placeholder:text-zinc-400"
+                />
+              </div>
+              {headerSuggestOpen && headerSuggestions.length > 0 && (
+                <div
+                  className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 rounded-xl border border-zinc-200 bg-white p-1.5 text-left shadow-[0_12px_32px_rgba(0,0,0,0.12)]"
+                  onMouseDown={() => {
+                    if (headerBlurTimer.current)
+                      clearTimeout(headerBlurTimer.current);
+                  }}
                 >
-                  {item.label}
-                  {item.mega && (
-                    <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
-                  )}
-                </Link>
-              ))}
-            </nav>
-
-            {/* Search box — grows to fill remaining space */}
-            <div className="ml-auto flex min-w-0 max-w-[300px] flex-1">
-              <Link
-                href="/search"
-                className="flex w-full items-center gap-2 rounded-[10px] border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-[13px] text-zinc-400 transition-all hover:border-brand/40 hover:bg-white hover:text-zinc-600"
-                aria-label="Search properties and projects"
-              >
-                <Search className="h-[15px] w-[15px] flex-shrink-0" />
-                <span className="truncate">
-                  Search locality, project, builder…
-                </span>
-              </Link>
+                  <div className="px-3 pb-1 pt-2 text-[10px] font-semibold tracking-[0.06em] text-zinc-400">
+                    CITIES
+                  </div>
+                  {headerSuggestions.map((c) => (
+                    <button
+                      key={c.slug}
+                      type="button"
+                      onClick={() => {
+                        setCity(c);
+                        setHeaderQuery("");
+                        goToSearch(c);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] text-zinc-800 hover:bg-zinc-50"
+                    >
+                      <Building2 className="h-[15px] w-[15px] flex-shrink-0 text-brand" />
+                      {c.name}, Gujarat
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Notification bell — only for signed-in users (guests have none) */}
-            {!isGuest && (
-              <Link
-                href={notificationsRoute}
-                aria-label="Notifications"
-                className="relative flex h-[38px] w-[38px] flex-shrink-0 items-center justify-center rounded-[10px] border border-zinc-200 text-zinc-600 transition-colors hover:bg-zinc-50"
-              >
-                <Bell className="h-[17px] w-[17px]" />
-              </Link>
-            )}
+            {/* Notification bell — real DB-backed dropdown, signed-in users only */}
+            {!isGuest && <NotificationBell />}
 
             {/* Auth controls */}
             {isGuest ? (
@@ -297,92 +301,6 @@ export function PublicHeaderClient({ profile }: Props) {
           </div>
         </div>
 
-        {/* ── Mega menu (desktop) ── */}
-        {megaOpen && (
-          <div
-            className="absolute inset-x-0 top-16 hidden border-b border-zinc-100 bg-white shadow-[0_24px_48px_rgba(0,0,0,0.10)] xl:block"
-            onMouseEnter={() => setHoveredNav(hoveredNav)}
-            onMouseLeave={() => setHoveredNav(null)}
-          >
-            <div className="mx-auto grid max-w-7xl grid-cols-2 gap-8 px-4 py-7 sm:px-6 lg:grid-cols-[1fr_1fr_1fr_1.1fr] lg:px-8">
-              <div>
-                <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
-                  Property types
-                </div>
-                <div className="flex flex-col gap-0.5 text-sm text-zinc-700">
-                  {PROPERTY_TYPE_LINKS.map((t) => (
-                    <Link
-                      key={t.label}
-                      href={t.href}
-                      onClick={() => setHoveredNav(null)}
-                      className="-mx-2.5 flex items-center gap-2.5 rounded-lg px-2.5 py-2 hover:bg-zinc-50 hover:text-brand"
-                    >
-                      <t.Icon className="h-4 w-4 text-brand" />
-                      {t.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
-                  Popular localities · Ahmedabad
-                </div>
-                <div className="flex flex-col gap-0.5 text-sm text-zinc-700">
-                  {AHMEDABAD_LOCALITIES.map((loc) => (
-                    <Link
-                      key={loc}
-                      href={`/search?city=ahmedabad&q=${encodeURIComponent(loc)}`}
-                      onClick={() => setHoveredNav(null)}
-                      className="-mx-2.5 rounded-lg px-2.5 py-2 hover:bg-zinc-50 hover:text-brand"
-                    >
-                      {loc}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-3.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-zinc-400">
-                  Popular cities
-                </div>
-                <div className="flex flex-col gap-0.5 text-sm text-zinc-700">
-                  {POPULAR_CITIES.map((c) => (
-                    <Link
-                      key={c.slug}
-                      href={`/search?city=${c.slug}`}
-                      onClick={() => setHoveredNav(null)}
-                      className="-mx-2.5 rounded-lg px-2.5 py-2 hover:bg-zinc-50 hover:text-brand"
-                    >
-                      {c.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-brand/10 bg-brand-soft/40 p-5">
-                <div className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-brand">
-                  Quick links
-                </div>
-                <div className="text-[15px] font-semibold leading-[1.4] text-zinc-900">
-                  Ready-to-move homes under ₹1 Cr
-                </div>
-                <p className="mt-2 text-[13px] leading-[1.55] text-zinc-500">
-                  Browse verified resale and new listings filtered for immediate
-                  possession.
-                </p>
-                <Link
-                  href="/search?purpose=buy&price_max=10000000"
-                  onClick={() => setHoveredNav(null)}
-                  className="mt-3.5 inline-flex items-center gap-1.5 rounded-[10px] bg-brand px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
-                >
-                  Explore now <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── Mobile row (city sits under the brand name per design) ── */}
         <div className="flex items-center gap-2 px-4 py-3 md:hidden">
           <button
@@ -416,15 +334,7 @@ export function PublicHeaderClient({ profile }: Props) {
             <CitySelector variant="inline" />
           </div>
 
-          {!isGuest && (
-            <Link
-              href={notificationsRoute}
-              aria-label="Notifications"
-              className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-[10px] border border-zinc-200 text-zinc-600"
-            >
-              <Bell className="h-[17px] w-[17px]" />
-            </Link>
-          )}
+          {!isGuest && <NotificationBell />}
 
           {isGuest && (
             <button

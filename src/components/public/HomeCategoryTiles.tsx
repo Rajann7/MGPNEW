@@ -16,7 +16,7 @@ const TILES = [
 
 export function HomeCategoryTiles() {
   return (
-    <section className="mx-auto max-w-[1120px] px-4 pt-10 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
       <h2 className="mb-4 text-[22px] font-semibold text-ink">
         Browse by category
       </h2>

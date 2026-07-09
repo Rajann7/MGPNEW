@@ -19,7 +19,7 @@ const STEPS = [
 
 export function HomeHowItWorks() {
   return (
-    <section className="mx-auto max-w-[1120px] px-4 pt-14 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8">
       <h2 className="mb-8 text-center text-[28px] font-semibold tracking-[-0.01em] text-ink">
         How it works
       </h2>

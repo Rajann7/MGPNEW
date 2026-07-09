@@ -26,7 +26,7 @@ const FEATURES = [
 
 export function HomeTrust() {
   return (
-    <section className="mx-auto max-w-[1120px] px-4 pb-14 pt-12 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 pb-14 pt-12 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 items-center gap-10 rounded-[20px] border border-border bg-white p-7 sm:p-12 lg:grid-cols-2 lg:gap-12">
         <div>
           <h2 className="text-[26px] font-semibold leading-[1.3] tracking-[-0.01em] text-ink">

@@ -15,7 +15,7 @@ export function HomeFeaturedProjects({
 }) {
   if (items.length === 0) {
     return (
-      <section className="mx-auto max-w-[1120px] px-4 pt-10 sm:px-6">
+      <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
         <h2 className="mb-4 text-[22px] font-semibold text-ink">
           Featured projects
         </h2>
@@ -35,7 +35,7 @@ export function HomeFeaturedProjects({
   }
 
   return (
-    <section className="mx-auto max-w-[1120px] px-4 pt-10 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-baseline justify-between">
         <h2 className="text-[22px] font-semibold text-ink">Featured projects</h2>
         <Link

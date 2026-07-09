@@ -18,7 +18,7 @@ export function HomeRoleCards({ profile }: { profile: Profile | null }) {
   }
 
   return (
-    <section className="mx-auto max-w-[1120px] px-4 pt-12 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 pt-12 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 gap-8 rounded-[20px] bg-[#0E3B2E] p-8 text-white sm:p-12 lg:grid-cols-[1.2fr_1fr_1fr_1fr] lg:items-center lg:gap-8">
         <div>
           <h2 className="text-[24px] font-semibold leading-[1.25] tracking-[-0.01em]">

@@ -32,7 +32,7 @@ export function HomeFeaturedProperties({
   items: PublicPropertyCard[];
 }) {
   return (
-    <section className="mx-auto max-w-[1120px] px-4 pt-10 sm:px-6">
+    <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-[22px] font-semibold text-ink">Featured properties</h2>
         <Link
