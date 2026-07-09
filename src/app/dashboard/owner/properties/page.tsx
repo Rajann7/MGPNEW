@@ -103,45 +103,56 @@ export default async function OwnerPropertiesPage({
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"
     >
-      <DashboardPageHeader
-        title="My Properties"
-        count={result.success ? result.data.total : 0}
-        itemLabel="property"
-        itemLabelPlural="properties"
-        actionLabel="Post Property"
-        actionHref="/dashboard/owner/properties/new"
-        hideActionOnMobile
-      />
+      <div className="sm:bg-surface sm:border sm:border-border sm:rounded-2xl sm:overflow-hidden">
+        <div className="sm:px-5 sm:pt-4">
+          <DashboardPageHeader
+            title="My Properties"
+            count={result.success ? result.data.total : 0}
+            itemLabel="property"
+            itemLabelPlural="properties"
+            actionLabel="Post Property"
+            actionHref="/dashboard/owner/properties/new"
+            hideActionOnMobile
+            dense
+          />
+        </div>
 
-      {!result.success && (
-        <Alert tone="danger">Failed to load properties. Please refresh.</Alert>
-      )}
+        {!result.success && (
+          <Alert tone="danger">Failed to load properties. Please refresh.</Alert>
+        )}
 
-      {result.success && allItems.length > 0 && (
-        <StatusTabs tabs={tabs} activeKey={activeTab} baseHref={BASE_HREF} />
-      )}
+        {result.success && allItems.length > 0 && (
+          <div className="sm:px-5">
+            <StatusTabs tabs={tabs} activeKey={activeTab} baseHref={BASE_HREF} />
+          </div>
+        )}
 
-      {result.success && allItems.length === 0 && (
-        <EmptyState
-          icon={Home}
-          tone="brand"
-          title="You haven't posted a property yet"
-          description="Posting is free and takes about 5 minutes."
-          actionLabel="Post Property"
-          actionHref="/dashboard/owner/properties/new"
-        />
-      )}
+        {result.success && allItems.length === 0 && (
+          <div className="sm:px-5 sm:pb-5">
+            <EmptyState
+              icon={Home}
+              tone="brand"
+              dashed
+              title="You haven't posted a property yet"
+              description="Posting is free and takes about 5 minutes."
+              actionLabel="Post Property"
+              actionHref="/dashboard/owner/properties/new"
+            />
+          </div>
+        )}
 
-      {result.success && allItems.length > 0 && items.length === 0 && (
-        <EmptyState
-          icon={Home}
-          title={`No ${activeTab} properties`}
-          description="Try a different filter to see more of your listings."
-        />
-      )}
+        {result.success && allItems.length > 0 && items.length === 0 && (
+          <div className="sm:px-5 sm:pb-5">
+            <EmptyState
+              icon={Home}
+              title={`No ${activeTab} properties`}
+              description="Try a different filter to see more of your listings."
+            />
+          </div>
+        )}
 
-      {items.length > 0 && (
-        <div className="space-y-3">
+        {items.length > 0 && (
+        <div className="space-y-3 sm:px-5 sm:pb-5 sm:pt-1">
           {items.map((property) => {
             const status = (property.status ?? "draft") as EntityStatus;
             const isPaused = status === "paused";
@@ -185,7 +196,8 @@ export default async function OwnerPropertiesPage({
             );
           })}
         </div>
-      )}
+        )}
+      </div>
     </DashboardShellV2>
   );
 }

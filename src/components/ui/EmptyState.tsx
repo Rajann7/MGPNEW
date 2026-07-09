@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import { Inbox } from "lucide-react";
-import { Button } from "./Button";
+import { Inbox, Plus } from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/cn";
 
 export function EmptyState({
   icon: Icon = Inbox,
@@ -9,6 +10,7 @@ export function EmptyState({
   actionLabel,
   actionHref,
   tone = "neutral",
+  dashed = false,
 }: {
   icon?: LucideIcon;
   title: string;
@@ -17,28 +19,56 @@ export function EmptyState({
   actionHref?: string;
   /** "brand" renders a green icon circle instead of the default neutral gray. */
   tone?: "neutral" | "brand";
+  /** Pixel-matches Batch 6 · 2D/3B: dashed border, tighter padding, left-radius-10 button. */
+  dashed?: boolean;
 }) {
   return (
-    <div className="text-center py-16 bg-white rounded-2xl border border-zinc-200">
+    <div
+      className={cn(
+        "text-center bg-white rounded-2xl border border-zinc-200",
+        dashed ? "border-dashed py-9 px-6" : "py-16"
+      )}
+    >
       <div
-        className={
-          tone === "brand"
-            ? "w-14 h-14 bg-brand-soft rounded-full flex items-center justify-center mx-auto mb-4"
-            : "w-14 h-14 bg-zinc-100 rounded-xl flex items-center justify-center mx-auto mb-4"
-        }
+        className={cn(
+          "flex items-center justify-center mx-auto",
+          dashed ? "w-[52px] h-[52px] rounded-full" : "w-14 h-14 rounded-xl mb-4",
+          tone === "brand" ? "bg-brand-soft" : "bg-zinc-100"
+        )}
       >
         <Icon
-          className={
-            tone === "brand" ? "w-7 h-7 text-brand" : "w-7 h-7 text-zinc-400"
-          }
+          className={cn(
+            dashed ? "w-6 h-6" : "w-7 h-7",
+            tone === "brand" ? "text-brand" : "text-zinc-400"
+          )}
           strokeWidth={1.5}
           aria-hidden="true"
         />
       </div>
-      <h2 className="text-base font-semibold text-zinc-900 mb-1">{title}</h2>
-      <p className="text-sm text-zinc-500 mb-5">{description}</p>
+      <h2
+        className={cn(
+          "font-semibold text-zinc-900",
+          dashed ? "text-[15px] mt-3.5" : "text-base mb-1"
+        )}
+      >
+        {title}
+      </h2>
+      <p className={cn("text-zinc-500", dashed ? "text-[13px] leading-[1.5] mt-1" : "text-sm mb-5")}>
+        {description}
+      </p>
       {actionLabel && actionHref && (
-        <Button href={actionHref}>{actionLabel}</Button>
+        <Link
+          href={actionHref}
+          className={cn(
+            "inline-flex items-center gap-2 font-medium text-white bg-brand hover:bg-brand-hover transition-colors",
+            dashed
+              ? "text-[13px] rounded-[10px] px-[18px] py-2.5 mt-4"
+              : "text-sm rounded-lg px-4 py-2.5"
+          )}
+        >
+          {dashed && <Plus className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden="true" />}
+          {actionLabel}
+        </Link>
       )}
     </div>
   );

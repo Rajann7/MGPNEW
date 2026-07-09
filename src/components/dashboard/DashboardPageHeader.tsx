@@ -10,6 +10,8 @@ export function DashboardPageHeader({
   actionHref,
   /** Hide the button below `sm` — used when a compact "+" already sits in the mobile back header. */
   hideActionOnMobile,
+  /** Tighter bottom margin at `sm+` — used inside a wrapping bordered panel. */
+  dense,
 }: {
   title: string;
   count: number;
@@ -18,9 +20,16 @@ export function DashboardPageHeader({
   actionLabel: string;
   actionHref: string;
   hideActionOnMobile?: boolean;
+  dense?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between mb-6 gap-3">
+    <div
+      className={
+        dense
+          ? "flex items-center justify-between mb-6 sm:mb-3 gap-3"
+          : "flex items-center justify-between mb-6 gap-3"
+      }
+    >
       <div className="min-w-0">
         <h1 className="text-xl font-bold text-zinc-900 truncate">{title}</h1>
         <p className="text-sm text-zinc-500 mt-0.5">

@@ -179,21 +179,21 @@ export function EntityRowActions({
   ];
 
   return (
-    <div className="flex items-center justify-end gap-2 w-full sm:w-auto sm:shrink-0">
+    <div className="flex items-center gap-2 shrink-0">
       {errorMsg && (
         <p className="text-xs text-red-600 hidden sm:block" role="alert">
           {errorMsg}
         </p>
       )}
 
-      {/* Desktop: inline pill buttons */}
+      {/* Desktop: inline buttons */}
       <div className="hidden sm:flex items-center gap-1.5">
         {items.map((item) =>
           item.href ? (
             <Link
               key={item.key}
               href={item.href}
-              className="px-3.5 py-1.5 text-xs font-medium text-ink-soft border border-border rounded-full hover:bg-ink/5 dark:hover:bg-white/10 transition-colors"
+              className="px-3 py-[7px] text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-transparent border border-zinc-300 dark:border-white/15 rounded-[10px] hover:bg-zinc-50 dark:hover:bg-white/10 transition-colors"
             >
               {item.label}
             </Link>
@@ -204,12 +204,12 @@ export function EntityRowActions({
               disabled={isPending}
               onClick={item.onClick}
               className={cn(
-                "px-3.5 py-1.5 text-xs font-medium rounded-full transition-colors disabled:opacity-60",
+                "px-3 py-[7px] text-xs font-medium rounded-[10px] transition-colors disabled:opacity-60",
                 item.filled
                   ? "bg-brand text-white hover:bg-brand-hover"
                   : item.danger
-                    ? "text-red-600 border border-red-200 hover:bg-red-50 dark:hover:bg-red-500/10"
-                    : "text-ink-soft border border-border hover:bg-ink/5 dark:hover:bg-white/10"
+                    ? "text-red-600 bg-white dark:bg-transparent border border-red-200 hover:bg-red-50 dark:hover:bg-red-500/10"
+                    : "text-zinc-700 dark:text-zinc-300 bg-white dark:bg-transparent border border-zinc-300 dark:border-white/15 hover:bg-zinc-50 dark:hover:bg-white/10"
               )}
             >
               {item.label}

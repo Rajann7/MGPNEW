@@ -75,46 +75,57 @@ export default async function OwnerRequirementsPage({
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"
     >
-      <DashboardPageHeader
-        title="My Requirements"
-        count={result.success ? result.data.total : 0}
-        itemLabel="requirement"
-        actionLabel="Post Requirement"
-        actionHref="/dashboard/owner/requirements/new"
-        hideActionOnMobile
-      />
+      <div className="sm:bg-surface sm:border sm:border-border sm:rounded-2xl sm:overflow-hidden">
+        <div className="sm:px-5 sm:pt-4">
+          <DashboardPageHeader
+            title="My Requirements"
+            count={result.success ? result.data.total : 0}
+            itemLabel="requirement"
+            actionLabel="Post Requirement"
+            actionHref="/dashboard/owner/requirements/new"
+            hideActionOnMobile
+            dense
+          />
+        </div>
 
-      {!result.success && (
-        <Alert tone="danger">
-          Failed to load requirements. Please refresh.
-        </Alert>
-      )}
+        {!result.success && (
+          <Alert tone="danger">
+            Failed to load requirements. Please refresh.
+          </Alert>
+        )}
 
-      {result.success && allItems.length > 0 && (
-        <StatusTabs tabs={tabs} activeKey={activeTab} baseHref={BASE_HREF} />
-      )}
+        {result.success && allItems.length > 0 && (
+          <div className="sm:px-5">
+            <StatusTabs tabs={tabs} activeKey={activeTab} baseHref={BASE_HREF} />
+          </div>
+        )}
 
-      {result.success && allItems.length === 0 && (
-        <EmptyState
-          icon={ClipboardList}
-          tone="brand"
-          title="No requirements posted"
-          description="Tell brokers and builders what you're looking for — they'll send proposals to you."
-          actionLabel="Post Requirement"
-          actionHref="/dashboard/owner/requirements/new"
-        />
-      )}
+        {result.success && allItems.length === 0 && (
+          <div className="sm:px-5 sm:pb-5">
+            <EmptyState
+              icon={ClipboardList}
+              tone="brand"
+              dashed
+              title="No requirements posted"
+              description="Tell brokers and builders what you're looking for — they'll send proposals to you."
+              actionLabel="Post Requirement"
+              actionHref="/dashboard/owner/requirements/new"
+            />
+          </div>
+        )}
 
-      {result.success && allItems.length > 0 && items.length === 0 && (
-        <EmptyState
-          icon={ClipboardList}
-          title={`No ${activeTab} requirements`}
-          description="Try a different filter to see more of your requirements."
-        />
-      )}
+        {result.success && allItems.length > 0 && items.length === 0 && (
+          <div className="sm:px-5 sm:pb-5">
+            <EmptyState
+              icon={ClipboardList}
+              title={`No ${activeTab} requirements`}
+              description="Try a different filter to see more of your requirements."
+            />
+          </div>
+        )}
 
-      {items.length > 0 && (
-        <div className="space-y-3">
+        {items.length > 0 && (
+        <div className="space-y-3 sm:px-5 sm:pb-5 sm:pt-1">
           {items.map((req) => {
             const status = (req.status ?? "draft") as EntityStatus;
             const isPaused = status === "paused";
@@ -161,7 +172,8 @@ export default async function OwnerRequirementsPage({
             );
           })}
         </div>
-      )}
+        )}
+      </div>
     </DashboardShellV2>
   );
 }
