@@ -1,23 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
+import { Phone, ShieldCheck, X } from "lucide-react";
 import {
   createInquiry,
   type InquiryFormInput,
   type MyInquiryStatus,
 } from "@/lib/actions/leads";
-import { saveItem, unsaveItem } from "@/lib/actions/saved";
 import { CrmStageBadge } from "@/components/leads/CrmStageBadge";
 import { INTEREST_TYPES } from "@/lib/leads/inquiry-config";
-import type {
-  LeadTargetType,
-  LeadSource,
-  SavedItemType,
-  CrmStage,
-} from "@/types";
+import type { LeadTargetType, LeadSource, CrmStage } from "@/types";
 
 export interface DetailViewer {
   isLoggedIn: boolean;
@@ -27,13 +22,25 @@ export interface DetailViewer {
   mobileMasked: string | null;
 }
 
+/** Real, public-safe info about who posted this listing. Name/verified are
+ * omitted (never faked) when the underlying data isn't available. */
+export interface PosterInfo {
+  name: string | null;
+  roleLabel: string; // "Owner" | "Broker" | "Builder"
+  verified: boolean;
+}
+
 interface Props {
   viewer: DetailViewer;
   entityLabel: string; // e.g. "property", "project"
   currentPath: string;
   targetType: LeadTargetType;
   targetId: string;
-  initiallySaved?: boolean;
+  poster: PosterInfo;
+  /** The poster's real phone number, already resolved server-side against the
+   * listing's own contact_visibility setting for this viewer. Null means the
+   * rule doesn't allow a direct show for this viewer — never a fake number. */
+  phone?: string | null;
   /** The viewer's existing inquiry on this listing (server-fetched), if any. */
   existingInquiry?: MyInquiryStatus | null;
 }
@@ -49,7 +56,8 @@ export function DetailCTABar({
   currentPath,
   targetType,
   targetId,
-  initiallySaved = false,
+  poster,
+  phone = null,
   existingInquiry = null,
 }: Props) {
   const router = useRouter();
@@ -62,8 +70,7 @@ export function DetailCTABar({
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(
     null
   );
-  const [saved, setSaved] = useState(initiallySaved);
-  const [isPending, startTransition] = useTransition();
+  const [revealNotice, setRevealNotice] = useState(false);
 
   const inquiry =
     existingInquiry ??
@@ -76,117 +83,182 @@ export function DetailCTABar({
         }
       : null);
   const isRestrictedRole = viewer.isLoggedIn && viewer.publicRole !== "owner";
+  const initial = (poster.name?.charAt(0) ?? poster.roleLabel.charAt(0)).toUpperCase();
 
-  function handleSaveClick() {
-    // Guest → open the login popup in place (returns to this page after auth).
+  function handleRevealClick() {
     if (!viewer.isLoggedIn) {
       openAuth(currentPath);
       return;
     }
-    startTransition(async () => {
-      const itemType = targetType as SavedItemType;
-      const result = saved
-        ? await unsaveItem(itemType, targetId)
-        : await saveItem(itemType, targetId);
-      if (result.success) setSaved(!saved);
-    });
+    // No real contact-reveal server action exists yet — never fake a phone
+    // number. Show an honest, dismissible "Setup Required" note instead.
+    setRevealNotice(true);
   }
 
+  function openEnquireOrGate() {
+    if (!viewer.isLoggedIn) {
+      openAuth(currentPath);
+      return;
+    }
+    if (!isRestrictedRole && !inquiry) setFormOpen(true);
+  }
+
+  const enquireButton = (extraClass: string) => (
+    <button
+      type="button"
+      onClick={openEnquireOrGate}
+      aria-label={`Send an enquiry about this ${entityLabel}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-hover ${extraClass}`}
+    >
+      Enquire Now
+    </button>
+  );
+
+  const inquiryStatus = inquiry ? (
+    <div className="flex flex-1 items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5">
+      <svg
+        className="w-4 h-4 text-emerald-600 shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+        aria-hidden="true"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+      </svg>
+      <span className="text-sm font-medium text-emerald-800">Enquiry sent</span>
+      <CrmStageBadge stage={inquiry.crmStage} />
+      <Link
+        href={`/dashboard/leads/${inquiry.leadId}`}
+        className="text-xs font-medium text-brand hover:underline ml-auto"
+      >
+        View
+      </Link>
+    </div>
+  ) : null;
+
   return (
-    <div className="sticky bottom-0 z-20 -mx-4 sm:mx-0 mt-6 border-t border-zinc-100 bg-white/95 backdrop-blur px-4 py-3 sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:mt-8">
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Primary enquiry zone */}
-        {!viewer.isLoggedIn ? (
-          <button
-            type="button"
-            onClick={() => openAuth(currentPath)}
-            aria-label={`Send an enquiry about this ${entityLabel}`}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-brand text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow-sm hover:bg-brand-hover transition-colors"
-          >
-            Send Enquiry
-          </button>
-        ) : isRestrictedRole ? (
-          <div className="flex-1 sm:flex-none rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5">
-            <p className="text-xs text-zinc-500">
-              Enquiries can be sent from{" "}
-              <span className="font-medium text-zinc-700">Owner</span> accounts
-              only. Broker and builder accounts cannot send enquiries.
+    <>
+      {/* ── Desktop sidebar contact card (lg+) ── */}
+      <div className="hidden rounded-2xl border border-zinc-100 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] lg:block">
+        <div className="flex items-center gap-3">
+          <span className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
+            {initial}
+            {poster.verified && (
+              <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white bg-emerald-500">
+                <ShieldCheck className="h-2.5 w-2.5 text-white" />
+              </span>
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-zinc-900">
+              {poster.name ?? poster.roleLabel}
             </p>
-          </div>
-        ) : inquiry ? (
-          <div className="flex-1 sm:flex-none flex items-center gap-2.5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2.5">
-            <svg
-              className="w-4 h-4 text-emerald-600 shrink-0"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M4.5 12.75l6 6 9-13.5"
-              />
-            </svg>
-            <span className="text-sm font-medium text-emerald-800">
-              Enquiry sent
+            <span className="mt-0.5 inline-flex items-center rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
+              {poster.roleLabel}
             </span>
-            <CrmStageBadge stage={inquiry.crmStage} />
-            <Link
-              href={`/dashboard/leads/${inquiry.leadId}`}
-              className="text-xs font-medium text-brand hover:underline ml-auto"
-            >
-              View
-            </Link>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setFormOpen(true)}
-            aria-label={`Send an enquiry about this ${entityLabel}`}
-            className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 bg-brand text-white font-semibold text-sm px-5 py-2.5 rounded-lg shadow-sm hover:bg-brand-hover transition-colors"
+        </div>
+
+        {phone ? (
+          // The listing's own contact_visibility rule allows a direct show
+          // for this viewer — the real number, not a masked placeholder.
+          <a
+            href={`tel:${phone}`}
+            className="mt-3.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
           >
-            Send Enquiry
-          </button>
+            <Phone className="h-4 w-4" />
+            {phone}
+          </a>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleRevealClick}
+              className="mt-3.5 w-full rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+            >
+              Reveal number
+            </button>
+            {revealNotice && (
+              <p className="mt-1.5 text-[11px] text-zinc-400">
+                {viewer.isLoggedIn
+                  ? "This owner shares their number only after approving your enquiry. Use Enquire Now to request it."
+                  : "Log in and send an enquiry to request this owner's number."}
+              </p>
+            )}
+          </>
         )}
 
-        {/* Save / shortlist */}
-        {viewer.isLoggedIn ? (
-          <button
-            type="button"
-            onClick={handleSaveClick}
-            disabled={isPending}
-            aria-label={saved ? "Unsave" : "Save"}
-            className={`inline-flex items-center justify-center w-11 h-11 rounded-lg border transition-colors ${
-              saved
-                ? "border-brand bg-brand/10 text-brand"
-                : "border-zinc-200 text-zinc-600 hover:bg-zinc-50"
-            }`}
-          >
-            <BookmarkIcon filled={saved} />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => openAuth(currentPath)}
-            aria-label="Save"
-            className="inline-flex items-center justify-center w-11 h-11 rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition-colors"
-          >
-            <BookmarkIcon filled={false} />
-          </button>
+        <div className="mt-3">
+          {inquiryStatus ?? (isRestrictedRole ? null : enquireButton("w-full"))}
+        </div>
+        {isRestrictedRole && !inquiry && (
+          <p className="mt-2 text-[11px] text-zinc-500">
+            Enquiries can be sent from Owner accounts only.
+          </p>
+        )}
+        {!viewer.isLoggedIn && (
+          <p className="mt-2 text-[11px] text-zinc-400">
+            Login required to send an enquiry or view contact details.
+          </p>
         )}
       </div>
 
+      {/* ── Mobile sticky bottom bar (<lg) — pinned to viewport bottom ──
+          z-50: must sit above CompareTray (z-40, DetailShell-mounted) so a
+          leftover "compare" selection never blocks the primary Call/Enquire
+          actions on this screen (real bug: tray intercepted all clicks on
+          this bar when any items were in the visitor's compare list). */}
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-100 bg-white/95 px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden">
+        {inquiryStatus ?? (
+          <div className="flex items-center gap-2.5">
+            {phone ? (
+              <a
+                href={`tel:${phone}`}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+              >
+                <Phone className="h-4 w-4" />
+                Call
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRevealClick}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+              >
+                <Phone className="h-4 w-4" />
+                Call
+              </button>
+            )}
+            {isRestrictedRole ? (
+              <div className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-center">
+                <p className="text-xs text-zinc-500">Owner accounts only</p>
+              </div>
+            ) : (
+              enquireButton("flex-1")
+            )}
+          </div>
+        )}
+        {!phone && revealNotice && (
+          <p className="mt-1.5 text-center text-[11px] text-zinc-400">
+            {viewer.isLoggedIn
+              ? "Send an enquiry to request this owner's number."
+              : "Log in and send an enquiry to request this owner's number."}
+          </p>
+        )}
+      </div>
+      {/* Spacer so page content isn't hidden behind the fixed mobile bar. */}
+      <div className="h-[68px] lg:hidden" aria-hidden="true" />
+
       {notice && (
         <p
-          className={`mt-2 text-[11px] text-center sm:text-left ${notice.ok ? "text-emerald-600" : "text-red-500"}`}
+          className={`mt-2 text-[11px] text-center lg:text-left ${notice.ok ? "text-emerald-600" : "text-red-500"}`}
         >
           {notice.text}
         </p>
       )}
       {!viewer.isLoggedIn && (
-        <p className="mt-2 text-[11px] text-zinc-400 text-center sm:text-left">
+        <p className="mt-2 text-[11px] text-zinc-400 text-center lg:text-left lg:hidden">
           Login required to send an enquiry or view contact details.
         </p>
       )}
@@ -217,7 +289,7 @@ export function DetailCTABar({
           }}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -251,6 +323,16 @@ function EnquiryFormModal({
   const [message, setMessage] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Lock background scroll while the modal is open — without this the page
+  // behind the overlay stays scrollable too, which is what made the sheet
+  // look cut off / cramped against the viewport edge.
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   const source: LeadSource = `${targetType}_detail_inquiry` as LeadSource;
 
@@ -318,11 +400,26 @@ function EnquiryFormModal({
       />
       <form
         onSubmit={submit}
-        className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white p-5 shadow-xl sm:max-w-md sm:rounded-2xl"
+        className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white shadow-xl sm:max-h-[90vh] sm:max-w-md sm:rounded-2xl"
       >
-        <h2 className="text-base font-semibold text-zinc-900">Send enquiry</h2>
+        {/* mobile grab handle */}
+        <div className="flex justify-center pt-2.5 pb-1 sm:hidden">
+          <span className="h-1 w-9 rounded-full bg-zinc-200" />
+        </div>
+        <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4">
+          <h2 className="text-base font-semibold text-zinc-900">Send enquiry</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div className="space-y-3">
           <div>
             <label
               htmlFor="enquiry-name"
@@ -434,8 +531,9 @@ function EnquiryFormModal({
             {err}
           </p>
         )}
+        </div>
 
-        <div className="mt-4 flex gap-2">
+        <div className="flex flex-shrink-0 gap-2 border-t border-zinc-100 bg-white px-5 py-4">
           <button
             type="button"
             onClick={onClose}
@@ -453,24 +551,5 @@ function EnquiryFormModal({
         </div>
       </form>
     </div>
-  );
-}
-
-function BookmarkIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg
-      className="w-5 h-5"
-      fill={filled ? "currentColor" : "none"}
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0111.186 0z"
-      />
-    </svg>
   );
 }

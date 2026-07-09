@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { expandSearchTerms } from "@/lib/search/config";
 
 // ============================================================
@@ -418,11 +419,46 @@ export async function getPublicPropertyBySlug(slug: string) {
   const { data } = await supabase
     .from("public_properties_view")
     .select(
-      "id, title, slug, description, purpose, category, property_type, price, rent_amount, deposit_amount, price_negotiable, area_value, area_unit, built_up_area, carpet_area, plot_area, bedrooms, bathrooms, balconies, floor_number, total_floors, furnishing_status, property_age, possession_status, available_from, facing, parking, amenities, city_text, locality_text, building_name, landmark, pin_code, approx_latitude, approx_longitude, cover_media_id, media_count, status, published_at, poster_role, owner_profile_id"
+      "id, title, slug, description, purpose, category, property_type, price, rent_amount, deposit_amount, price_negotiable, area_value, area_unit, built_up_area, carpet_area, plot_area, bedrooms, bathrooms, balconies, floor_number, total_floors, furnishing_status, property_age, possession_status, available_from, facing, parking, amenities, city_text, locality_text, building_name, landmark, pin_code, approx_latitude, approx_longitude, cover_media_id, media_count, status, published_at, poster_role, owner_profile_id, contact_visibility"
     )
     .eq("slug", slug)
     .maybeSingle();
   return data;
+}
+
+/**
+ * Resolves the poster's real mobile number for direct display on the detail
+ * page, honoring the listing's own contact_visibility choice — never a fake
+ * or placeholder number. Returns null whenever the rule doesn't allow a
+ * direct reveal (those cases keep using the existing lead-based reveal flow
+ * instead, they are not treated as "no number").
+ *   - hidden               -> never shown here
+ *   - public                -> shown to everyone, including guests
+ *   - show_after_login      -> shown once the viewer is logged in
+ *   - show_to_verified_users-> shown once the viewer is a verified user
+ *   - show_after_approval   -> not shown here (needs the lead approval flow)
+ */
+export async function getPublicListingDirectPhone(
+  ownerProfileId: string,
+  contactVisibility: string | null | undefined,
+  viewer: { isLoggedIn: boolean; isVerified: boolean }
+): Promise<string | null> {
+  const visibility = contactVisibility ?? "show_after_login";
+  const eligible =
+    visibility === "public" ||
+    (visibility === "show_after_login" && viewer.isLoggedIn) ||
+    (visibility === "show_to_verified_users" &&
+      viewer.isLoggedIn &&
+      viewer.isVerified);
+  if (!eligible) return null;
+
+  const admin = createServiceClient();
+  const { data } = await admin
+    .from("profiles")
+    .select("mobile")
+    .eq("id", ownerProfileId)
+    .maybeSingle();
+  return data?.mobile ?? null;
 }
 
 export async function getPublicProjectBySlug(slug: string) {

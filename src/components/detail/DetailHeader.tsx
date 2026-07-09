@@ -25,10 +25,15 @@ export function DetailHeader({
   profile,
   title,
   actions,
+  showCityPill = true,
 }: {
   profile: Profile | null;
   title: string;
   actions?: React.ReactNode;
+  /** The property detail screen (d-prop) desktop header omits the city pill —
+   * brand + search + avatar only. Defaults to true so other detail screens
+   * (e.g. project detail) keep their existing chrome unchanged. */
+  showCityPill?: boolean;
 }) {
   const router = useRouter();
   const { openAuth } = useAuthModal();
@@ -60,12 +65,16 @@ export function DetailHeader({
                 My Gujarat Property
               </span>
             </Link>
-            <span className="h-6 w-px bg-border" aria-hidden="true" />
-            <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1.5 text-[13px] font-medium text-ink-soft">
-              <MapPin className="h-3.5 w-3.5 text-brand" />
-              {cityName}
-              <ChevronDown className="h-3 w-3 text-ink-muted" />
-            </span>
+            {showCityPill && (
+              <>
+                <span className="h-6 w-px bg-border" aria-hidden="true" />
+                <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-surface-muted px-3 py-1.5 text-[13px] font-medium text-ink-soft">
+                  <MapPin className="h-3.5 w-3.5 text-brand" />
+                  {cityName}
+                  <ChevronDown className="h-3 w-3 text-ink-muted" />
+                </span>
+              </>
+            )}
           </div>
 
           <label className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-border bg-surface-subtle px-3.5 py-2.5">

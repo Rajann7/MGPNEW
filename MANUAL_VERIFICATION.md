@@ -4191,3 +4191,21 @@ Commands: `eslint` (3 forms + project) PASS · `tsc --noEmit` PASS · `npm run b
 Not automatable this pass (harness limit, not defects): logged-in *interactive* wizard walk-through + full 320–1366 responsive matrix on the authenticated forms — protected routes need an owner/builder session and the split-OTP widget can't be driven programmatically. Runtime RLS was live-probed in the prior same-day PASS entry above (guest=0 rows, verified-broker=1, anon insert denied).
 
 RESULT: **PASS** (corroborated). Can start Prompt 05: **YES**. Next: prompts/05_PUBLIC_SEARCH_DETAIL_PROFILE_SEO.md
+
+## T04-01 — Property detail page ported to Batch 4 design [2026-07-09] — RESULT: PASS (with documented deferrals)
+
+Scope: `/property/[slug]` markup replaced to match design Batch 4 (`d-prop` main page, `d-report`/`d-gallery` for report modal + fullscreen gallery). Data-fetching/server actions unchanged.
+
+Automated: `npm run lint` PASS (0 errors) · `npx tsc --noEmit` PASS (0 errors) · `npm run build` PASS (all 40 routes compiled, incl. `/property/[slug]`).
+
+Live (Claude Preview MCP, dev server :3000, real published property + a nonexistent slug):
+- 1366px: sidebar contact card renders (avatar+initial, role pill, honest "Setup Required" reveal note, Enquire Now), key-facts chip row, 3-col amenities icon grid, location map-placeholder + address tiles side by side, overflow "⋮" menu opens (Share/Save/Report listing), Report → controlled `ReportModal` opens and correctly shows the login-gated prompt for a guest.
+- 768px / 390px / 320px: no horizontal scroll (`scrollWidth - innerWidth` ⇐ 0 at all three), mobile contextual back-header (no city pill), mobile sticky Call/Enquire bar renders above the fold at page bottom, no overlap with content.
+- Unavailable slug (`/property/does-not-exist-xyz`): generic "This listing is not available right now" + "Back to Search" renders, no moderation reason leaked.
+- Console: no new errors introduced (pre-existing `SeoJsonLd` `<script>` hydration warning, unrelated to this change, left as-is).
+
+Not verified this pass (no test listing had `media_count > 0` in the seeded dataset): the "View all N photos" fullscreen-gallery keyboard/thumbnail/swipe flow was **not** exercised live — its code (`DetailGallery.tsx` / `FullscreenGallery.tsx`) predates this session and was reviewed, not rewritten, so this is a read-verification, not a live click-through.
+
+Deferred / SETUP_REQUIRED (documented, not faked): real contact-reveal server action (Call/Reveal number show an honest note instead); poster display-name/verification enrichment on `public_properties_view`; "Similar in locality" block on the unavailable-property state (kept generic per CLAUDE.md §38 — no safe locality lookup for a possibly-hidden row was built this pass).
+
+RESULT: PASS for what was rebuilt and verified; PARTIAL on the two items above (no live click-through gallery test with real photos, no phone-reveal wiring) — both pre-existing gaps unrelated to core correctness, not blocking.

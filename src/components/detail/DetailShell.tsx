@@ -16,11 +16,19 @@ export function DetailShell({
   profile,
   title,
   headerActions,
+  showCityPill = true,
+  hideCompareTray = false,
   children,
 }: {
   profile: Profile | null;
   title: string;
   headerActions?: React.ReactNode;
+  showCityPill?: boolean;
+  /** Property/project detail screens already dropped the per-card compare
+   * icon (it doesn't make sense while viewing a single listing) — the tray
+   * itself is also suppressed there so a leftover compare selection can
+   * never sit on top of / behind this screen's own sticky Call/Enquire bar. */
+  hideCompareTray?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -28,13 +36,18 @@ export function DetailShell({
       <AuthModalProvider>
         <CompareProvider>
           <div className="flex min-h-full flex-col">
-            <DetailHeader profile={profile} title={title} actions={headerActions} />
+            <DetailHeader
+              profile={profile}
+              title={title}
+              actions={headerActions}
+              showCityPill={showCityPill}
+            />
             <main id="main-content" className="flex-1 bg-white">
               {children}
             </main>
             {/* No footer — Batch 4 detail screens do not show one. */}
           </div>
-          <CompareTray />
+          {!hideCompareTray && <CompareTray />}
         </CompareProvider>
       </AuthModalProvider>
     </CityProvider>

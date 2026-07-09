@@ -1,7 +1,42 @@
 import { labelize } from "@/lib/search/format";
+import {
+  Waves,
+  Dumbbell,
+  Baby,
+  Trees,
+  ShieldCheck,
+  Zap,
+  Car,
+  ArrowUpDown,
+  Gamepad2,
+  Building2,
+  DoorOpen,
+  Fence,
+  Sparkles,
+  BedDouble,
+  Bath,
+  Ruler,
+  Layers,
+  Sofa,
+  Compass,
+  CalendarClock,
+  type LucideIcon,
+} from "lucide-react";
 
-/** A labelled key-fact row (design Batch 4 · Screen 1/2 spec strip).
- * Each item is hidden when its value is null/empty — real data only, no fake fills. */
+const KEY_FACT_ICONS: Record<string, LucideIcon> = {
+  Bedrooms: BedDouble,
+  Bathrooms: Bath,
+  Area: Ruler,
+  Floor: Layers,
+  Furnishing: Sofa,
+  Facing: Compass,
+  Parking: Car,
+  Possession: CalendarClock,
+};
+
+/** Key-facts chip row (design Batch 4 · d-prop), rendered directly under the
+ * address line. Each chip is built only from a real, non-null field — no
+ * hardcoded sample values (CLAUDE.md §3A "design lists are samples"). */
 export function KeyFacts({
   items,
 }: {
@@ -10,22 +45,59 @@ export function KeyFacts({
   const shown = items.filter((i) => i.value != null && String(i.value).trim());
   if (shown.length === 0) return null;
   return (
-    <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-2xl border border-zinc-100 bg-zinc-50/60 p-4 sm:grid-cols-3">
-      {shown.map((i) => (
-        <div key={i.label}>
-          <dt className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
-            {i.label}
-          </dt>
-          <dd className="mt-0.5 text-sm font-semibold text-zinc-900">
+    <ul className="mt-3 flex flex-wrap gap-2">
+      {shown.map((i) => {
+        const Icon = KEY_FACT_ICONS[i.label];
+        return (
+          <li
+            key={i.label}
+            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700"
+          >
+            {Icon && <Icon className="h-3.5 w-3.5 text-brand" aria-hidden="true" />}
             {i.value}
-          </dd>
-        </div>
-      ))}
-    </div>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
-/** Amenities chips (design Batch 4). Renders real amenity values only; hidden when empty. */
+/**
+ * Amenity → icon lookup. Covers the canonical amenity strings used across
+ * property/project/requirement forms (src/components/forms/ProjectForm.tsx,
+ * RequirementForm.tsx) plus common real-estate amenities. Any amenity not
+ * explicitly mapped still renders with a sensible default icon — no amenity
+ * is ever dropped (CLAUDE.md "complete real option lists" rule).
+ */
+const AMENITY_ICON_MAP: Record<string, LucideIcon> = {
+  "swimming pool": Waves,
+  pool: Waves,
+  gymnasium: Dumbbell,
+  gym: Dumbbell,
+  "children's play area": Baby,
+  "childrens play area": Baby,
+  "play area": Baby,
+  "landscaped garden": Trees,
+  garden: Trees,
+  "24x7 security": ShieldCheck,
+  security: ShieldCheck,
+  "gated society": ShieldCheck,
+  "power backup": Zap,
+  "covered parking": Car,
+  parking: Car,
+  lift: ArrowUpDown,
+  elevator: ArrowUpDown,
+  "indoor games": Gamepad2,
+  clubhouse: Building2,
+  balcony: DoorOpen,
+  fencing: Fence,
+};
+
+function amenityIcon(label: string): LucideIcon {
+  return AMENITY_ICON_MAP[label.trim().toLowerCase()] ?? Sparkles;
+}
+
+/** Amenities as a 3-column icon+label grid (design Batch 4). Real values only. */
 export function AmenitiesSection({
   amenities,
 }: {
@@ -35,33 +107,33 @@ export function AmenitiesSection({
   if (list.length === 0) return null;
   return (
     <section className="mt-6">
-      <h2 className="mb-2 text-sm font-semibold text-zinc-900">Amenities</h2>
-      <ul className="flex flex-wrap gap-2">
-        {list.map((a) => (
-          <li
-            key={a}
-            className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-700"
-          >
-            <svg
-              className="h-3.5 w-3.5 text-brand"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
+      <h2 className="mb-3 text-sm font-semibold text-zinc-900">Amenities</h2>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {list.map((a) => {
+          const Icon = amenityIcon(a);
+          return (
+            <div
+              key={a}
+              className="flex items-center gap-2.5 rounded-xl border border-zinc-100 bg-zinc-50/60 px-3 py-2.5"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-            {labelize(a)}
-          </li>
-        ))}
-      </ul>
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                <Icon className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="min-w-0 truncate text-xs font-medium text-zinc-700">
+                {labelize(a)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
 
-/** Location section with honest Maps-provider "Setup Required" fallback (design Batch 4).
- * Never renders a fake/broken map embed — shows the real address as the fallback. */
+/** Location section: no embedded map (removed per product decision) — the
+ * real address is shown and tapping/clicking it opens the visitor's own
+ * device maps app (Google Maps universal link, works on iOS/Android/desktop)
+ * pointed at the real address text. No fake/broken embed is ever rendered. */
 export function LocationSection({
   parts,
 }: {
@@ -69,17 +141,23 @@ export function LocationSection({
 }) {
   const address = parts.filter((p) => p && String(p).trim()).join(", ");
   if (!address) return null;
+  const mapsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
   return (
     <section className="mt-6">
       <h2 className="mb-2 text-sm font-semibold text-zinc-900">Location</h2>
-      <div className="overflow-hidden rounded-2xl border border-zinc-100">
-        <div className="flex flex-col items-center justify-center gap-1 bg-zinc-50 px-4 py-8 text-center text-zinc-400">
+      <a
+        href={mapsHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-3 rounded-2xl border border-zinc-100 bg-white px-4 py-3.5 transition-colors hover:border-brand/40 hover:bg-brand-soft/40"
+      >
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
           <svg
-            className="h-8 w-8"
+            className="h-5 w-5"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth={1.5}
+            strokeWidth={1.75}
             aria-hidden="true"
           >
             <path
@@ -93,15 +171,14 @@ export function LocationSection({
               d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
             />
           </svg>
-          <p className="text-xs font-medium text-zinc-500">Map: Setup Required</p>
-          <p className="text-[11px]">
-            Maps provider not configured — showing address only.
-          </p>
-        </div>
-        <p className="border-t border-zinc-100 bg-white px-4 py-3 text-sm text-zinc-700">
-          {address}
-        </p>
-      </div>
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm text-zinc-700">{address}</span>
+          <span className="mt-0.5 block text-xs font-medium text-brand">
+            Open in Maps →
+          </span>
+        </span>
+      </a>
     </section>
   );
 }

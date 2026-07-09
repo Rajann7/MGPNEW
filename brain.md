@@ -3386,3 +3386,18 @@ New migration: supabase/migrations/20260708090000_recently_viewed_delete_policy.
 
 ## 2026-07-08 (cont.5) — T02 CLOSED under provider-gated rule (§5.5)
 Suspended account (screen 12) verified live: (1) render at /unauthorized?reason=account_restricted matches Batch 2 screen 12 (0 overflow 320–1440); (2) blocking — login-time (verifyOtpAndLogin rejects suspended → /login, dashboard blocked) AND mid-session (active login → suspend via temp dev fixture → navigate → requireRole redirects to /unauthorized?reason=account_restricted → SuspendedState shown, dashboard blocked). Temp fixture (testowner profile, keyed by mobile 9000000011 — email is null) suspended then **restored to active** via try/finally (confirmed). OTP send/verify/session already verified via approved DEV_ONLY dev_mock. Per §5.5, production external SMS gateway = provider ACTIVATION (separate), not a migration blocker. **T02 gates: VISUAL/FUNCTIONAL/RESPONSIVE/REGRESSION = PASS → T02 FINAL: COMPLETE.** Docs updated: T02_VERIFY, T02 contract, SCREEN_MANIFEST, TARGET_REGISTRY, API_PROVIDER_STATUS. Now starting T04.
+
+## 2026-07-09 — T04-01 continued: property detail 1:1 port to Batch 4 (d-prop)
+
+Property detail page (`/property/[slug]`) markup replaced to match Batch 4 design exactly (chip key-facts, icon amenities grid, map+address location tiles, sidebar contact card / mobile sticky Call+Enquire bar, "⋮" overflow menu with Share/Save/Report). Gallery + fullscreen gallery were already done from an earlier pass and verified working. Data fetching/server actions unchanged.
+
+**Files touched:** `src/app/property/[slug]/page.tsx`, `src/components/detail/DetailSections.tsx`, `DetailHeader.tsx`, `DetailShell.tsx`, `DetailCTABar.tsx`, `DetailOverflowMenu.tsx` (rewired to reuse `ReportModal` controlled mode instead of duplicating report UI), `ReportModal.tsx` (added controlled `open`/`onOpenChange` props). Removed dead `ShareButton.tsx` (folded into `DetailOverflowMenu`).
+
+**Pending for next session:**
+- Real contact-reveal server action (Call / Reveal number are currently honest `SETUP_REQUIRED` notes — no fake phone number shown).
+- Poster display-name + verification-status enrichment on `public_properties_view` (currently only `poster_role`/`owner_profile_id` are selected; contact card shows role only, no name/verified badge — never faked).
+- Amenities collection isn't wired in `PropertyForm.tsx` step 5 yet (icon-lookup grid is ready and complete once real amenity strings start flowing).
+- `UnavailableEntityState` "Similar in locality" block from the design was intentionally **not** added — deriving locality for a slug whose row may be hidden/removed without leaking moderation state needs a dedicated safe lookup; left as the existing generic message + "Back to Search" per CLAUDE.md §38 (would need explicit approval + a new safe query path).
+- Project/broker/builder detail pages (T04-02+) still use the pre-Batch-4 `DetailCTABar` sidebar/mobile-bar shape now (their `poster` prop was already wired by the same pass) — worth a quick visual re-check next session since this pass changed `DetailCTABar`'s public API (`poster` now required).
+
+**Next:** continue T04 (project/broker/builder detail screens) — not started this pass beyond confirming `DetailCTABar`/`DetailShell` prop compatibility.

@@ -13,6 +13,10 @@ interface Props {
   currentPath: string;
   /** Noun shown in the trigger/labels, e.g. "listing" (default) or "profile". */
   entityNoun?: string;
+  /** Controlled mode: when provided, hides the internal trigger button and
+   * uses this open state instead (e.g. opened from the overflow menu). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const ERR: Record<string, string> = {
@@ -33,8 +37,16 @@ export function ReportModal({
   isLoggedIn,
   currentPath,
   entityNoun = "listing",
+  open: controlledOpen,
+  onOpenChange,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (onOpenChange) onOpenChange(v);
+    if (!isControlled) setInternalOpen(v);
+  };
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -75,14 +87,16 @@ export function ReportModal({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-700"
-      >
-        <Flag className="h-3.5 w-3.5" />
-        Report this {entityNoun}
-      </button>
+      {!isControlled && (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-700"
+        >
+          <Flag className="h-3.5 w-3.5" />
+          Report this {entityNoun}
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-[300] flex items-end justify-center sm:items-center">

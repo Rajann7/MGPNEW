@@ -7,6 +7,7 @@ import {
   getPublicProjectBySlug,
   getPublicBuilderLinkByProfileId,
   getSimilarProjects,
+  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
 import { isItemSaved, trackRecentlyViewed } from "@/lib/actions/saved";
 import { getMyInquiryForTarget } from "@/lib/actions/leads";
@@ -14,8 +15,7 @@ import { maskMobile } from "@/lib/leads/inquiry-config";
 import { Breadcrumbs } from "@/components/detail/Breadcrumbs";
 import { DetailGallery } from "@/components/detail/DetailGallery";
 import { DetailCTABar } from "@/components/detail/DetailCTABar";
-import { ReportModal } from "@/components/detail/ReportModal";
-import { ShareButton } from "@/components/detail/ShareButton";
+import { DetailOverflowMenu } from "@/components/detail/DetailOverflowMenu";
 import {
   KeyFacts,
   AmenitiesSection,
@@ -80,6 +80,17 @@ export default async function ProjectDetailPage({ params }: Props) {
     getSimilarProjects({ excludeId: project.id, city: project.city_text }),
   ]);
   if (profile) void trackRecentlyViewed("project", project.id);
+
+  // Projects have no contact_visibility column — product rule (per
+  // src/lib/actions/contact.ts decideAutoApproval): builder contact is
+  // always visible to any logged-in viewer, so we resolve it the same way.
+  const directPhone = project.builder_profile_id
+    ? await getPublicListingDirectPhone(
+        project.builder_profile_id,
+        "show_after_login",
+        { isLoggedIn: Boolean(profile), isVerified: true }
+      )
+    : null;
 
   const possession = project.possession_date
     ? new Date(project.possession_date).toLocaleDateString("en-IN", {
@@ -162,7 +173,15 @@ export default async function ProjectDetailPage({ params }: Props) {
             <span className="text-xl font-bold text-zinc-900">
               {formatProjectPrice(project)}
             </span>
-            <ShareButton title={project.project_name} />
+            <DetailOverflowMenu
+              title={project.project_name}
+              currentPath={`/project/${slug}`}
+              targetType="project"
+              targetId={project.id}
+              isLoggedIn={Boolean(profile)}
+              initiallySaved={saved}
+              entityNoun="project"
+            />
           </div>
           {builder?.public_slug && (
             <Link
@@ -195,7 +214,16 @@ export default async function ProjectDetailPage({ params }: Props) {
             currentPath={`/project/${slug}`}
             targetType="project"
             targetId={project.id}
-            initiallySaved={saved}
+            poster={{
+              name: builder
+                ? builder.company_name || builder.display_name || null
+                : null,
+              roleLabel: "Builder",
+              // No real builder-verification signal is exposed on this join
+              // yet — never fake the verified badge.
+              verified: false,
+            }}
+            phone={directPhone}
             existingInquiry={existingInquiry}
           />
         </div>
@@ -258,15 +286,6 @@ export default async function ProjectDetailPage({ params }: Props) {
             </div>
           </section>
         )}
-
-        <div className="mt-8 border-t border-zinc-100 pt-4">
-          <ReportModal
-            targetType="project"
-            targetId={project.id}
-            isLoggedIn={Boolean(profile)}
-            currentPath={`/project/${slug}`}
-          />
-        </div>
       </div>
     </DetailShell>
   );

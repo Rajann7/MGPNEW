@@ -5,6 +5,7 @@ import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicPropertyBySlug,
   getSimilarProperties,
+  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
 import { isItemSaved, trackRecentlyViewed } from "@/lib/actions/saved";
 import { getMyInquiryForTarget } from "@/lib/actions/leads";
@@ -12,8 +13,7 @@ import { maskMobile } from "@/lib/leads/inquiry-config";
 import { Breadcrumbs } from "@/components/detail/Breadcrumbs";
 import { DetailGallery } from "@/components/detail/DetailGallery";
 import { DetailCTABar } from "@/components/detail/DetailCTABar";
-import { ReportModal } from "@/components/detail/ReportModal";
-import { ShareButton } from "@/components/detail/ShareButton";
+import { DetailOverflowMenu } from "@/components/detail/DetailOverflowMenu";
 import {
   KeyFacts,
   AmenitiesSection,
@@ -80,15 +80,31 @@ export default async function PropertyDetailPage({ params }: Props) {
   ]);
   if (profile) void trackRecentlyViewed("property", property.id);
 
+  const directPhone = property.owner_profile_id
+    ? await getPublicListingDirectPhone(
+        property.owner_profile_id,
+        property.contact_visibility,
+        {
+          isLoggedIn: Boolean(profile),
+          isVerified: profile?.verification_status === "verified",
+        }
+      )
+    : null;
+
   const floorFact =
     property.floor_number != null
       ? property.total_floors != null
-        ? `${property.floor_number} of ${property.total_floors}`
-        : `${property.floor_number}`
+        ? `${property.floor_number} of ${property.total_floors} floors`
+        : `Floor ${property.floor_number}`
       : null;
   const keyFacts = [
     { label: "Bedrooms", value: property.bedrooms ? `${property.bedrooms} BHK` : null },
-    { label: "Bathrooms", value: property.bathrooms ? `${property.bathrooms}` : null },
+    {
+      label: "Bathrooms",
+      value: property.bathrooms
+        ? `${property.bathrooms} Bath${property.bathrooms > 1 ? "s" : ""}`
+        : null,
+    },
     {
       label: "Area",
       value:
@@ -109,8 +125,22 @@ export default async function PropertyDetailPage({ params }: Props) {
     },
   ];
 
+  const posterInfo = {
+    // Poster's name/verification aren't joined into the public property view
+    // yet — never fake them; the role label alone is real (poster_role is on
+    // the row).
+    name: null,
+    roleLabel: labelize(property.poster_role ?? "owner"),
+    verified: false,
+  };
+
   return (
-    <DetailShell profile={profile} title={property.title}>
+    <DetailShell
+      profile={profile}
+      title={property.title}
+      showCityPill={false}
+      hideCompareTray
+    >
       <SeoJsonLd
         id="property-breadcrumb-jsonld"
         data={breadcrumbJsonLd([
@@ -119,7 +149,7 @@ export default async function PropertyDetailPage({ params }: Props) {
           { name: property.title, path: `/property/${slug}` },
         ])}
       />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
         <Breadcrumbs
           items={[
             { name: "Home", href: "/" },
@@ -128,98 +158,122 @@ export default async function PropertyDetailPage({ params }: Props) {
           ]}
         />
 
-        <div className="mt-3">
-          <DetailGallery mediaCount={property.media_count ?? 0} />
-        </div>
+        <div className="mt-3 lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-8">
+          <div className="min-w-0">
+            <DetailGallery mediaCount={property.media_count ?? 0} />
 
-        <div className="mt-5 flex flex-col gap-1.5">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-2 py-0.5 rounded-md bg-brand-soft text-brand text-xs font-medium capitalize">
-              {property.purpose === "sell" ? "Buy" : labelize(property.purpose)}
-            </span>
-            <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 text-xs font-medium">
-              {labelize(property.property_type)}
-            </span>
-            {property.price_negotiable && (
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 text-xs font-medium">
-                Negotiable
-              </span>
+            <div className="mt-5 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md bg-brand-soft text-brand text-xs font-medium capitalize">
+                  {property.purpose === "sell" ? "Buy" : labelize(property.purpose)}
+                </span>
+                <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 text-xs font-medium">
+                  {labelize(property.property_type)}
+                </span>
+                {property.price_negotiable && (
+                  <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 text-xs font-medium">
+                    Negotiable
+                  </span>
+                )}
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold text-zinc-900">
+                {property.title}
+              </h1>
+              <p className="flex items-center gap-1 text-sm text-zinc-500">
+                <svg
+                  className="h-3.5 w-3.5 flex-shrink-0 text-zinc-400"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+                  />
+                </svg>
+                {location}
+              </p>
+              <div className="mt-1.5 flex items-center justify-between gap-3">
+                <span className="text-2xl font-extrabold tracking-tight text-brand sm:text-[28px]">
+                  {formatPropertyPrice(property)}
+                </span>
+                <DetailOverflowMenu
+                  title={property.title}
+                  currentPath={`/property/${slug}`}
+                  targetType="property"
+                  targetId={property.id}
+                  isLoggedIn={Boolean(profile)}
+                  initiallySaved={saved}
+                />
+              </div>
+            </div>
+
+            <KeyFacts items={keyFacts} />
+
+            {property.description && (
+              <section className="mt-6">
+                <h2 className="mb-2 text-sm font-semibold text-zinc-900">
+                  Description
+                </h2>
+                <p className="whitespace-pre-line text-sm text-zinc-600">
+                  {property.description}
+                </p>
+              </section>
+            )}
+
+            <AmenitiesSection amenities={property.amenities} />
+
+            <LocationSection
+              parts={[
+                property.building_name,
+                property.landmark,
+                property.locality_text,
+                property.city_text,
+                property.pin_code,
+              ]}
+            />
+
+            {similar.length > 0 && (
+              <section className="mt-8">
+                <h2 className="mb-3 text-sm font-semibold text-zinc-900">
+                  Similar properties
+                </h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {similar.map((p) => (
+                    <PropertyResultCard key={p.id} property={p} showCompare={false} />
+                  ))}
+                </div>
+              </section>
             )}
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-zinc-900">
-            {property.title}
-          </h1>
-          <p className="text-sm text-zinc-500">{location}</p>
-          <div className="mt-1 flex items-center justify-between gap-3">
-            <span className="text-xl font-bold text-zinc-900">
-              {formatPropertyPrice(property)}
-            </span>
-            <ShareButton title={property.title} />
+
+          {/* Sidebar contact card on lg+; DetailCTABar also renders the
+              mobile sticky Call/Enquire bar internally (hidden on lg+). */}
+          <div className="mt-5 lg:sticky lg:top-20 lg:mt-0">
+            <DetailCTABar
+              viewer={{
+                isLoggedIn: Boolean(profile),
+                publicRole: profile?.public_role ?? null,
+                fullName: profile?.full_name ?? null,
+                mobileMasked: maskMobile(profile?.mobile),
+              }}
+              entityLabel="property"
+              currentPath={`/property/${slug}`}
+              targetType="property"
+              targetId={property.id}
+              existingInquiry={existingInquiry}
+              poster={posterInfo}
+              phone={directPhone}
+            />
           </div>
-        </div>
-
-        <KeyFacts items={keyFacts} />
-
-        <div className="mt-5">
-          <DetailCTABar
-            viewer={{
-              isLoggedIn: Boolean(profile),
-              publicRole: profile?.public_role ?? null,
-              fullName: profile?.full_name ?? null,
-              mobileMasked: maskMobile(profile?.mobile),
-            }}
-            entityLabel="property"
-            currentPath={`/property/${slug}`}
-            targetType="property"
-            targetId={property.id}
-            initiallySaved={saved}
-            existingInquiry={existingInquiry}
-          />
-        </div>
-
-        {property.description && (
-          <section className="mt-6">
-            <h2 className="mb-2 text-sm font-semibold text-zinc-900">
-              Description
-            </h2>
-            <p className="whitespace-pre-line text-sm text-zinc-600">
-              {property.description}
-            </p>
-          </section>
-        )}
-
-        <AmenitiesSection amenities={property.amenities} />
-
-        <LocationSection
-          parts={[
-            property.building_name,
-            property.landmark,
-            property.locality_text,
-            property.city_text,
-            property.pin_code,
-          ]}
-        />
-
-        {similar.length > 0 && (
-          <section className="mt-8">
-            <h2 className="mb-3 text-sm font-semibold text-zinc-900">
-              Similar properties
-            </h2>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {similar.map((p) => (
-                <PropertyResultCard key={p.id} property={p} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        <div className="mt-8 border-t border-zinc-100 pt-4">
-          <ReportModal
-            targetType="property"
-            targetId={property.id}
-            isLoggedIn={Boolean(profile)}
-            currentPath={`/property/${slug}`}
-          />
         </div>
       </div>
     </DetailShell>
