@@ -27,6 +27,16 @@ export function StatTiles({
   );
 }
 
+/** Privacy notice for the minimal owner public profile (design Batch 4 ·
+ * Screen 6) — states plainly that no phone/email is exposed publicly. */
+export function PrivacyNoticeBanner({ message }: { message: string }) {
+  return (
+    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-xs leading-relaxed text-amber-800">
+      {message}
+    </div>
+  );
+}
+
 /** Service-area chips derived from the profile's real listings — never fabricated. */
 export function AreaChips({ areas }: { areas: string[] }) {
   const list = areas.filter(Boolean);

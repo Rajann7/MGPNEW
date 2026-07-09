@@ -5,12 +5,14 @@ import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicBrokerBySlug,
   getPublicPropertiesByProfile,
+  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
 import { Breadcrumbs } from "@/components/detail/Breadcrumbs";
 import { PublicProfileHeader } from "@/components/profile/PublicProfileHeader";
 import { ProfileContactButton } from "@/components/profile/ProfileContactButton";
 import { StatTiles, AreaChips } from "@/components/profile/ProfileBlocks";
 import { ReportModal } from "@/components/detail/ReportModal";
+import { ClaimProfileCard } from "@/components/profile/ClaimProfileCard";
 import { PropertyResultCard } from "@/components/search/PropertyResultCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SeoJsonLd } from "@/components/detail/SeoJsonLd";
@@ -56,6 +58,15 @@ export default async function BrokerProfilePage({ params }: Props) {
   const properties = await getPublicPropertiesByProfile(broker.profile_id);
   const name = broker.agency_name || broker.display_name || "Broker";
 
+  // Brokers have no single listing's contact_visibility to key off — same
+  // "show after login" default already used on project/builder profile
+  // contact, per src/lib/actions/contact.ts decideAutoApproval convention.
+  const directPhone = await getPublicListingDirectPhone(
+    broker.profile_id,
+    "show_after_login",
+    { isLoggedIn: Boolean(profile), isVerified: true }
+  );
+
   // Service areas = distinct real localities/cities from this broker's live listings.
   const areas = Array.from(
     new Set(
@@ -71,7 +82,7 @@ export default async function BrokerProfilePage({ params }: Props) {
   ];
 
   return (
-    <DetailShell profile={profile} title={name}>
+    <DetailShell profile={profile} title={name} showCityPill={false} hideCompareTray>
       <SeoJsonLd
         id="broker-breadcrumb-jsonld"
         data={breadcrumbJsonLd([
@@ -80,7 +91,7 @@ export default async function BrokerProfilePage({ params }: Props) {
           { name, path: `/broker/${slug}` },
         ])}
       />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-6">
         <Breadcrumbs
           items={[
             { name: "Home", href: "/" },
@@ -100,6 +111,7 @@ export default async function BrokerProfilePage({ params }: Props) {
             label="Contact broker"
             currentPath={`/broker/${slug}`}
             isLoggedIn={Boolean(profile)}
+            phone={directPhone}
           />
         </div>
 
@@ -124,6 +136,15 @@ export default async function BrokerProfilePage({ params }: Props) {
             </div>
           )}
         </div>
+
+        <ClaimProfileCard
+          targetType="broker_profile"
+          targetProfileId={broker.profile_id}
+          companyName={name}
+          isLoggedIn={Boolean(profile)}
+          currentPath={`/broker/${slug}`}
+          isOwnProfile={profile?.id === broker.profile_id}
+        />
 
         <div className="mt-8 border-t border-zinc-100 pt-4">
           <ReportModal

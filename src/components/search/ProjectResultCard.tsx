@@ -8,7 +8,15 @@ import {
 import { CompareButton } from "@/components/compare/CompareButton";
 
 /** Search result card — visual language ported from the old project's PropertyCard. */
-export function ProjectResultCard({ project }: { project: PublicProjectCard }) {
+export function ProjectResultCard({
+  project,
+  showCompare = true,
+}: {
+  project: PublicProjectCard;
+  /** The compare icon doesn't make sense on a single profile's own project
+   * grid (builder microsite) — only on multi-listing search results. */
+  showCompare?: boolean;
+}) {
   if (!project.slug) return null;
 
   const facts = [
@@ -25,17 +33,19 @@ export function ProjectResultCard({ project }: { project: PublicProjectCard }) {
       draggable={false}
     >
       <div className="relative aspect-[16/10] bg-surface-muted flex items-center justify-center">
-        <CompareButton
-          item={{
-            id: project.id,
-            kind: "project",
-            slug: project.slug,
-            title: project.project_name,
-            price: formatProjectPrice(project),
-            location: locationLabel(project.city_text, project.locality_text),
-            facts,
-          }}
-        />
+        {showCompare && (
+          <CompareButton
+            item={{
+              id: project.id,
+              kind: "project",
+              slug: project.slug,
+              title: project.project_name,
+              price: formatProjectPrice(project),
+              location: locationLabel(project.city_text, project.locality_text),
+              facts,
+            }}
+          />
+        )}
         <svg
           className="h-8 w-8 text-ink-muted"
           viewBox="0 0 24 24"

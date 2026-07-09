@@ -5,6 +5,7 @@ import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicBuilderBySlug,
   getPublicProjectsByBuilder,
+  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
 import { Breadcrumbs } from "@/components/detail/Breadcrumbs";
 import { PublicProfileHeader } from "@/components/profile/PublicProfileHeader";
@@ -12,6 +13,7 @@ import { ProfileContactButton } from "@/components/profile/ProfileContactButton"
 import { StatTiles } from "@/components/profile/ProfileBlocks";
 import { BuilderProjectTabs } from "@/components/profile/BuilderProjectTabs";
 import { ReportModal } from "@/components/detail/ReportModal";
+import { ClaimProfileCard } from "@/components/profile/ClaimProfileCard";
 import { SeoJsonLd } from "@/components/detail/SeoJsonLd";
 import { labelize } from "@/lib/search/format";
 import {
@@ -56,6 +58,12 @@ export default async function BuilderProfilePage({ params }: Props) {
   const projects = await getPublicProjectsByBuilder(builder.profile_id);
   const name = builder.company_name || builder.display_name || "Builder";
 
+  const directPhone = await getPublicListingDirectPhone(
+    builder.profile_id,
+    "show_after_login",
+    { isLoggedIn: Boolean(profile), isVerified: true }
+  );
+
   const completed = projects.filter(
     (p) => p.construction_status === "completed" || p.construction_status === "ready_to_move"
   );
@@ -74,7 +82,7 @@ export default async function BuilderProfilePage({ params }: Props) {
   ];
 
   return (
-    <DetailShell profile={profile} title={name}>
+    <DetailShell profile={profile} title={name} showCityPill={false} hideCompareTray>
       <SeoJsonLd
         id="builder-breadcrumb-jsonld"
         data={breadcrumbJsonLd([
@@ -83,7 +91,7 @@ export default async function BuilderProfilePage({ params }: Props) {
           { name, path: `/builder/${slug}` },
         ])}
       />
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-5xl mx-auto px-2.5 sm:px-6 py-6">
         <Breadcrumbs
           items={[
             { name: "Home", href: "/" },
@@ -110,6 +118,7 @@ export default async function BuilderProfilePage({ params }: Props) {
             label="Contact builder"
             currentPath={`/builder/${slug}`}
             isLoggedIn={Boolean(profile)}
+            phone={directPhone}
           />
         </div>
 
@@ -123,6 +132,15 @@ export default async function BuilderProfilePage({ params }: Props) {
         )}
 
         <BuilderProjectTabs active={active} completed={completed} about={null} />
+
+        <ClaimProfileCard
+          targetType="builder_profile"
+          targetProfileId={builder.profile_id}
+          companyName={name}
+          isLoggedIn={Boolean(profile)}
+          currentPath={`/builder/${slug}`}
+          isOwnProfile={profile?.id === builder.profile_id}
+        />
 
         <div className="mt-8 border-t border-zinc-100 pt-4">
           <ReportModal

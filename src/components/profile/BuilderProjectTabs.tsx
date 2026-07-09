@@ -17,9 +17,17 @@ export function BuilderProjectTabs({
   about: string | null;
 }) {
   const tabs = [
-    { key: "active", label: `Active projects (${active.length})` },
-    { key: "completed", label: `Completed (${completed.length})` },
-    { key: "about", label: "About" },
+    {
+      key: "active",
+      shortLabel: `Active (${active.length})`,
+      label: `Active projects (${active.length})`,
+    },
+    {
+      key: "completed",
+      shortLabel: `Completed (${completed.length})`,
+      label: `Completed (${completed.length})`,
+    },
+    { key: "about", shortLabel: "About", label: "About" },
   ] as const;
   const [tab, setTab] = useState<(typeof tabs)[number]["key"]>("active");
 
@@ -29,7 +37,7 @@ export function BuilderProjectTabs({
     ) : (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((p) => (
-          <ProjectResultCard key={p.id} project={p} />
+          <ProjectResultCard key={p.id} project={p} showCompare={false} />
         ))}
       </div>
     );
@@ -39,7 +47,7 @@ export function BuilderProjectTabs({
       <div
         role="tablist"
         aria-label="Builder projects"
-        className="flex gap-1 overflow-x-auto border-b border-zinc-100"
+        className="flex justify-center gap-0.5 border-b border-zinc-100 sm:gap-1"
       >
         {tabs.map((t) => (
           <button
@@ -47,13 +55,14 @@ export function BuilderProjectTabs({
             role="tab"
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
-            className={`whitespace-nowrap px-3.5 py-2 text-sm font-medium transition-colors ${
+            className={`whitespace-nowrap px-2 py-2 text-xs font-medium transition-colors sm:px-3.5 sm:text-sm ${
               tab === t.key
                 ? "border-b-2 border-brand text-brand"
                 : "text-zinc-500 hover:text-zinc-800"
             }`}
           >
-            {t.label}
+            <span className="sm:hidden">{t.shortLabel}</span>
+            <span className="hidden sm:inline">{t.label}</span>
           </button>
         ))}
       </div>

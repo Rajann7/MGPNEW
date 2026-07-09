@@ -21,7 +21,15 @@ export function FormField({
           </span>
         )}
       </label>
-      {children}
+      <div
+        className={
+          error
+            ? "[&_.form-input]:border-red-400 [&_.form-select]:border-red-400 [&_.form-input]:focus:border-red-500 [&_.form-select]:focus:border-red-500"
+            : undefined
+        }
+      >
+        {children}
+      </div>
       {hint && !error && <p className="mt-1 text-xs text-zinc-400">{hint}</p>}
       {error && (
         <p className="mt-1 text-xs text-red-600" role="alert">

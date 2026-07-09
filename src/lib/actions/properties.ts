@@ -410,3 +410,32 @@ export async function getMyProperties(
 
   return { success: true, data: { items: data ?? [], total: count ?? 0 } };
 }
+
+/** Most recent unsubmitted draft for the current user, full row — powers
+ * the wizard's "Continue where you left off" re-entry card (design Batch 5
+ * · 5A). Real, DB-backed — no fake "steps done" count is fabricated; the
+ * card computes completeness from real filled fields client-side. */
+export async function getMyLatestPropertyDraft(): Promise<
+  ActionResult<Partial<Property> | null>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("owner_profile_id", profile.id)
+    .eq("status", "draft")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMyLatestPropertyDraft] DB error:", error.code);
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+
+  return { success: true, data: data ?? null };
+}

@@ -485,6 +485,20 @@ export async function getPublicBrokerBySlug(slug: string) {
   return data;
 }
 
+/** Public-safe owner profile — only returns a row when the owner has opted
+ * into semi_public/public visibility (owner_profiles.privacy_level). Private
+ * owners (the default) get null here, which the page turns into a real 404 —
+ * "minimal by default" is enforced at the data layer, not just the UI. */
+export async function getPublicOwnerByProfileId(profileId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("public_owner_profiles_view")
+    .select("profile_id, display_name, avatar_media_id, city_id, verification_status, created_at")
+    .eq("profile_id", profileId)
+    .maybeSingle();
+  return data;
+}
+
 export async function getPublicBuilderBySlug(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase

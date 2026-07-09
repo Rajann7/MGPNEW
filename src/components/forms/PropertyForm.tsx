@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   createPropertyDraft,
   updatePropertyDraft,
@@ -12,13 +13,41 @@ import {
   PROPERTY_PURPOSES,
   AREA_UNITS,
 } from "@/lib/validators/property";
-import { Stepper } from "@/components/ui/Stepper";
+import { WizardProgress } from "@/components/forms/WizardProgress";
+import { GUJARAT_CITIES } from "@/components/location/CityProvider";
 import { FormField, SummaryRow } from "@/components/ui/FormField";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { SuccessScreen } from "@/components/ui/SuccessScreen";
-import { ImageIcon, Eye } from "lucide-react";
+import { ImageIcon, Eye, ArrowLeft } from "lucide-react";
 import type { Property } from "@/types";
+
+/** Canonical property amenities master list (design Batch 5 · 5A step 5) —
+ * grouped like the wireframe (Basic / Safety / Lifestyle). Real, persisted
+ * checklist — the old step 5 hardcoded `amenities: []` and never actually
+ * collected this; ad-hoc list precedent already exists for projects
+ * (ProjectForm's PROJECT_AMENITIES). */
+const AMENITY_GROUPS: { group: string; items: string[] }[] = [
+  {
+    group: "Basic",
+    items: ["parking", "lift", "power_backup", "water_supply"],
+  },
+  {
+    group: "Safety",
+    items: ["24x7_security", "cctv", "fire_safety", "gated_society"],
+  },
+  {
+    group: "Lifestyle",
+    items: [
+      "swimming_pool",
+      "gymnasium",
+      "landscaped_garden",
+      "children_play_area",
+      "clubhouse",
+      "indoor_games",
+    ],
+  },
+];
 
 const PURPOSE_LABELS: Record<string, string> = {
   sell: "Sell",
@@ -84,6 +113,8 @@ const TYPE_LABELS: Record<string, string> = {
 interface Props {
   existing?: Partial<Property>;
   mode: "create" | "edit";
+  /** Where the mobile contextual header's back chevron returns to. */
+  dashboardHref: string;
 }
 
 // Post Property = 9 steps (design Batch 5 · 5A / docs/06). Step 9 "Submitted" is
@@ -116,7 +147,7 @@ function EditLink({ onEdit }: { onEdit: () => void }) {
   );
 }
 
-export function PropertyForm({ existing, mode }: Props) {
+export function PropertyForm({ existing, mode, dashboardHref }: Props) {
   const [step, setStep] = useState<Step>(1);
   const [isPending, startTransition] = useTransition();
 
@@ -147,6 +178,11 @@ export function PropertyForm({ existing, mode }: Props) {
     possession_status: existing?.possession_status ?? "",
     facing: existing?.facing ?? "",
     parking: existing?.parking ?? "",
+    property_age: existing?.property_age ?? "",
+    maintenance_amount: existing?.maintenance_amount?.toString() ?? "",
+    plot_area: existing?.plot_area?.toString() ?? "",
+    available_from: existing?.available_from ?? "",
+    amenities: existing?.amenities ?? ([] as string[]),
     // Location
     city_text: existing?.city_text ?? "",
     locality_text: existing?.locality_text ?? "",
@@ -164,14 +200,35 @@ export function PropertyForm({ existing, mode }: Props) {
   const [savedId, setSavedId] = useState<string | null>(existing?.id ?? null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  // Additional Details — free-form key/value extras (design's "extra field
+  // section"), persisted to the real `extra_attributes` jsonb column
+  // (previously hardcoded to `{}` and never actually collected).
+  const [extraDetails, setExtraDetails] = useState<
+    { key: string; value: string }[]
+  >(
+    existing?.extra_attributes && typeof existing.extra_attributes === "object"
+      ? Object.entries(existing.extra_attributes as Record<string, string>).map(
+          ([key, value]) => ({ key, value: String(value) })
+        )
+      : []
+  );
+
   const availableTypes = PROPERTY_TYPES_BY_CATEGORY[form.category] ?? [];
+
+  // Property-type/purpose-aware field visibility (design Batch 5 · 5A —
+  // fields shown must match what's actually meaningful for the selected
+  // category/type/purpose combination, not a one-size-fits-all form).
+  const isLand = form.category === "land_plot";
+  const isBusinessSale = form.category === "business";
+  const isPgRoom = form.category === "pg_hostel_room";
   const showPriceField = ["sell", "business_sale"].includes(form.purpose);
   const showRentField = ["rent", "lease", "pg"].includes(form.purpose);
-  const showBedrooms = ["residential", "pg_hostel_room"].includes(
-    form.category
-  );
-  const showFloors = !["land_plot"].includes(form.category);
-  const showPlotArea = ["land_plot", "residential"].includes(form.category);
+  const showBedrooms = form.category === "residential" || isPgRoom;
+  const showFloors = !isLand && !isBusinessSale;
+  const showBuiltCarpetArea = !isLand && !isBusinessSale;
+  const showPlotArea = isLand;
+  const showFurnishingParkingFacing = !isLand && !isBusinessSale;
+  const showPossessionAge = !isBusinessSale;
 
   function setField<K extends keyof typeof form>(
     key: K,
@@ -216,8 +273,25 @@ export function PropertyForm({ existing, mode }: Props) {
       facing: form.facing || undefined,
       parking: (form.parking || undefined) as
         "none" | "open" | "covered" | "both" | undefined,
-      amenities: [],
-      extra_attributes: {},
+      property_age: (form.property_age || undefined) as
+        | "new_construction"
+        | "under_1_year"
+        | "1_to_3_years"
+        | "3_to_5_years"
+        | "5_to_10_years"
+        | "above_10_years"
+        | undefined,
+      maintenance_amount: form.maintenance_amount
+        ? parseFloat(form.maintenance_amount)
+        : undefined,
+      plot_area: form.plot_area ? parseFloat(form.plot_area) : undefined,
+      available_from: form.available_from || undefined,
+      amenities: form.amenities,
+      extra_attributes: Object.fromEntries(
+        extraDetails
+          .filter((d) => d.key.trim() && d.value.trim())
+          .map((d) => [d.key.trim(), d.value.trim()])
+      ),
       city_text: form.city_text || undefined,
       locality_text: form.locality_text || undefined,
       building_name: form.building_name || undefined,
@@ -259,24 +333,50 @@ export function PropertyForm({ existing, mode }: Props) {
 
   async function handleNext() {
     setServerError(null);
-    // Client-side step validation (Basics → Type → Location gates)
+    // Client-side step validation — every required field is checked before
+    // Continue is allowed to proceed, matching what the server will enforce
+    // (design Batch 5: "N fields need attention" banner + red borders).
+    const stepErrors: Record<string, string[]> = {};
     if (step === 1) {
       if (!form.title.trim() || form.title.length < 5) {
-        setFieldErrors({ title: ["Title must be at least 5 characters"] });
-        return;
+        stepErrors.title = ["Title must be at least 5 characters"];
       }
     }
     if (step === 2) {
       if (!form.property_type) {
-        setFieldErrors({ property_type: ["Please select a property type"] });
-        return;
+        stepErrors.property_type = ["Please select a property type"];
+      }
+    }
+    if (step === 3) {
+      if (showPriceField && (!form.price || parseFloat(form.price) <= 0)) {
+        stepErrors.price = ["Sale price is required"];
+      }
+      if (
+        showRentField &&
+        (!form.rent_amount || parseFloat(form.rent_amount) <= 0)
+      ) {
+        stepErrors.rent_amount = ["Monthly rent / lease is required"];
       }
     }
     if (step === 4) {
       if (!form.city_text.trim()) {
-        setFieldErrors({ city_text: ["City is required"] });
-        return;
+        stepErrors.city_text = ["City is required"];
       }
+    }
+    if (Object.keys(stepErrors).length > 0) {
+      setFieldErrors(stepErrors);
+      return;
+    }
+
+    // The server draft schema requires `property_type` (step 2's own field),
+    // so persisting on the step-1→2 transition would always fail before the
+    // user ever reaches the field that satisfies it — a real, pre-existing
+    // bug (silently blocked step 1 with no visible feedback before this
+    // fix). Step 1 just advances locally; the first real save happens once
+    // property_type is known, from step 2 onward.
+    if (step === 1) {
+      setStep(2);
+      return;
     }
 
     startTransition(async () => {
@@ -324,9 +424,74 @@ export function PropertyForm({ existing, mode }: Props) {
     );
   }
 
+  const errorCount = Object.keys(fieldErrors).length;
+  const errorFieldLabels: Record<string, string> = {
+    title: "Listing title",
+    property_type: "Property type",
+    city_text: "City",
+    price: "Sale price",
+    rent_amount: "Monthly rent",
+    carpet_area: "Carpet area",
+  };
+
   return (
-    <div className="max-w-2xl mx-auto">
-      <Stepper steps={STEPS} current={step} />
+    <div className="mx-auto max-w-2xl pb-20 sm:pb-0">
+      {/* Mobile contextual header (design Batch 5 shell) — the desktop
+       * breadcrumb bar lives in WizardShell instead, hidden at this width. */}
+      <div className="-mx-4 mb-4 flex h-14 items-center justify-between border-b border-zinc-100 bg-white px-4 sm:hidden">
+        {step > 1 ? (
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Back"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        ) : (
+          <Link
+            href={dashboardHref}
+            aria-label="Back to dashboard"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        )}
+        <span className="truncate text-sm font-semibold text-zinc-900">
+          Post a Property
+        </span>
+        {savedId ? (
+          <button
+            type="button"
+            onClick={() =>
+              startTransition(async () => {
+                await saveDraft();
+              })
+            }
+            disabled={isPending}
+            className="text-xs font-medium text-brand disabled:opacity-50"
+          >
+            Save Draft
+          </button>
+        ) : (
+          <span className="w-[64px]" aria-hidden="true" />
+        )}
+      </div>
+
+      <WizardProgress steps={STEPS.slice(0, LAST_INPUT_STEP)} current={step} />
+
+      {errorCount > 0 && (
+        <Alert tone="danger" className="mb-4">
+          <strong>
+            {errorCount} field{errorCount > 1 ? "s" : ""} need
+            {errorCount > 1 ? "" : "s"} attention
+          </strong>{" "}
+          —{" "}
+          {Object.keys(fieldErrors)
+            .map((k) => errorFieldLabels[k] ?? k)
+            .join(", ")}
+        </Alert>
+      )}
 
       {serverError && (
         <Alert tone="danger" className="mb-4">
@@ -515,6 +680,17 @@ export function PropertyForm({ existing, mode }: Props) {
               <span className="text-sm text-zinc-700">Price is negotiable</span>
             </label>
 
+            <FormField label="Maintenance / Society Charges (₹/month)">
+              <input
+                type="number"
+                value={form.maintenance_amount}
+                onChange={(e) => setField("maintenance_amount", e.target.value)}
+                min="0"
+                placeholder="Optional"
+                className="form-input"
+              />
+            </FormField>
+
             {/* Area */}
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Total Area">
@@ -548,6 +724,19 @@ export function PropertyForm({ existing, mode }: Props) {
             </div>
 
             {showPlotArea && (
+              <FormField label="Plot Area (sq ft)">
+                <input
+                  type="number"
+                  value={form.plot_area}
+                  onChange={(e) => setField("plot_area", e.target.value)}
+                  min="0"
+                  placeholder="Total plot area"
+                  className="form-input"
+                />
+              </FormField>
+            )}
+
+            {showBuiltCarpetArea && (
               <div className="grid grid-cols-2 gap-4">
                 <FormField label="Built-up Area (sq ft)">
                   <input
@@ -655,15 +844,19 @@ export function PropertyForm({ existing, mode }: Props) {
             </p>
 
             <FormField label="City" required error={fieldErrors.city_text?.[0]}>
-              <input
-                type="text"
+              <select
                 value={form.city_text}
                 onChange={(e) => setField("city_text", e.target.value)}
-                placeholder="e.g. Ahmedabad"
-                maxLength={100}
-                className="form-input"
+                className="form-select"
                 aria-required="true"
-              />
+              >
+                <option value="">Select city…</option>
+                {GUJARAT_CITIES.map((c) => (
+                  <option key={c.slug} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Locality / Area">
@@ -739,80 +932,203 @@ export function PropertyForm({ existing, mode }: Props) {
           <div className="space-y-5">
             <h2 className="text-lg font-bold text-zinc-900">Amenities</h2>
 
+            {showFurnishingParkingFacing && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Furnishing">
+                  <select
+                    value={form.furnishing_status}
+                    onChange={(e) =>
+                      setField("furnishing_status", e.target.value)
+                    }
+                    className="form-select"
+                  >
+                    <option value="">Any</option>
+                    <option value="unfurnished">Unfurnished</option>
+                    <option value="semi_furnished">Semi-Furnished</option>
+                    <option value="fully_furnished">Fully Furnished</option>
+                  </select>
+                </FormField>
+                <FormField label="Parking">
+                  <select
+                    value={form.parking}
+                    onChange={(e) => setField("parking", e.target.value)}
+                    className="form-select"
+                  >
+                    <option value="">—</option>
+                    <option value="none">None</option>
+                    <option value="open">Open</option>
+                    <option value="covered">Covered</option>
+                    <option value="both">Both</option>
+                  </select>
+                </FormField>
+              </div>
+            )}
+
+            {showPossessionAge && (
+              <div className="grid grid-cols-2 gap-4">
+                <FormField label="Possession Status">
+                  <select
+                    value={form.possession_status}
+                    onChange={(e) => setField("possession_status", e.target.value)}
+                    className="form-select"
+                  >
+                    <option value="">—</option>
+                    <option value="ready_to_move">Ready to Move</option>
+                    <option value="under_construction">Under Construction</option>
+                    <option value="on_request">On Request</option>
+                  </select>
+                </FormField>
+                <FormField label="Property Age">
+                  <select
+                    value={form.property_age}
+                    onChange={(e) => setField("property_age", e.target.value)}
+                    className="form-select"
+                  >
+                    <option value="">—</option>
+                    <option value="new_construction">New Construction</option>
+                    <option value="under_1_year">Under 1 Year</option>
+                    <option value="1_to_3_years">1–3 Years</option>
+                    <option value="3_to_5_years">3–5 Years</option>
+                    <option value="5_to_10_years">5–10 Years</option>
+                    <option value="above_10_years">Above 10 Years</option>
+                  </select>
+                </FormField>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
-              <FormField label="Furnishing">
-                <select
-                  value={form.furnishing_status}
-                  onChange={(e) =>
-                    setField("furnishing_status", e.target.value)
-                  }
-                  className="form-select"
-                >
-                  <option value="">Any</option>
-                  <option value="unfurnished">Unfurnished</option>
-                  <option value="semi_furnished">Semi-Furnished</option>
-                  <option value="fully_furnished">Fully Furnished</option>
-                </select>
-              </FormField>
-              <FormField label="Parking">
-                <select
-                  value={form.parking}
-                  onChange={(e) => setField("parking", e.target.value)}
-                  className="form-select"
-                >
-                  <option value="">—</option>
-                  <option value="none">None</option>
-                  <option value="open">Open</option>
-                  <option value="covered">Covered</option>
-                  <option value="both">Both</option>
-                </select>
+              {showFurnishingParkingFacing && (
+                <FormField label="Facing">
+                  <select
+                    value={form.facing}
+                    onChange={(e) => setField("facing", e.target.value)}
+                    className="form-select"
+                  >
+                    <option value="">Any</option>
+                    {[
+                      "north",
+                      "south",
+                      "east",
+                      "west",
+                      "north_east",
+                      "north_west",
+                      "south_east",
+                      "south_west",
+                    ].map((f) => (
+                      <option key={f} value={f}>
+                        {f
+                          .replace(/_/g, " ")
+                          .replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              )}
+              <FormField label="Available From">
+                <input
+                  type="date"
+                  value={form.available_from}
+                  onChange={(e) => setField("available_from", e.target.value)}
+                  className="form-input"
+                />
               </FormField>
             </div>
 
-            <FormField label="Possession Status">
-              <select
-                value={form.possession_status}
-                onChange={(e) => setField("possession_status", e.target.value)}
-                className="form-select"
-              >
-                <option value="">—</option>
-                <option value="ready_to_move">Ready to Move</option>
-                <option value="under_construction">Under Construction</option>
-                <option value="on_request">On Request</option>
-              </select>
-            </FormField>
-
-            <FormField label="Facing">
-              <select
-                value={form.facing}
-                onChange={(e) => setField("facing", e.target.value)}
-                className="form-select"
-              >
-                <option value="">Any</option>
-                {[
-                  "north",
-                  "south",
-                  "east",
-                  "west",
-                  "north_east",
-                  "north_west",
-                  "south_east",
-                  "south_west",
-                ].map((f) => (
-                  <option key={f} value={f}>
-                    {f
-                      .replace(/_/g, " ")
-                      .replace(/\b\w/g, (c) => c.toUpperCase())}
-                  </option>
+            <FormField label="Amenities">
+              <div className="space-y-3">
+                {AMENITY_GROUPS.map((g) => (
+                  <div key={g.group}>
+                    <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                      {g.group}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {g.items.map((a) => {
+                        const selected = form.amenities.includes(a);
+                        return (
+                          <button
+                            key={a}
+                            type="button"
+                            onClick={() =>
+                              setField(
+                                "amenities",
+                                selected
+                                  ? form.amenities.filter((x) => x !== a)
+                                  : [...form.amenities, a]
+                              )
+                            }
+                            aria-pressed={selected}
+                            className={[
+                              "rounded-full border px-3 py-1.5 text-xs font-medium capitalize transition-all",
+                              selected
+                                ? "border-brand bg-brand-soft text-brand"
+                                : "border-zinc-200 bg-white text-zinc-600 hover:border-brand/40",
+                            ].join(" ")}
+                          >
+                            {a.replace(/_/g, " ")}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                 ))}
-              </select>
+              </div>
             </FormField>
 
-            <Alert tone="info">
-              A full amenity checklist (lift, security, power backup, clubhouse…)
-              arrives with the media phase. Furnishing, parking and facing above
-              are saved with your listing now.
-            </Alert>
+            <FormField label="Additional Details" hint="Anything else worth mentioning — e.g. Wash Rooms: 2, Water Source: Borewell.">
+              <div className="space-y-2">
+                {extraDetails.map((d, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={d.key}
+                      onChange={(e) =>
+                        setExtraDetails((prev) =>
+                          prev.map((x, xi) =>
+                            xi === i ? { ...x, key: e.target.value } : x
+                          )
+                        )
+                      }
+                      placeholder="Label (e.g. Wash Rooms)"
+                      maxLength={60}
+                      className="form-input flex-1"
+                    />
+                    <input
+                      type="text"
+                      value={d.value}
+                      onChange={(e) =>
+                        setExtraDetails((prev) =>
+                          prev.map((x, xi) =>
+                            xi === i ? { ...x, value: e.target.value } : x
+                          )
+                        )
+                      }
+                      placeholder="Value"
+                      maxLength={100}
+                      className="form-input flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExtraDetails((prev) => prev.filter((_, xi) => xi !== i))
+                      }
+                      aria-label="Remove detail"
+                      className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-red-500"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExtraDetails((prev) => [...prev, { key: "", value: "" }])
+                  }
+                  className="text-xs font-medium text-brand hover:text-brand-hover"
+                >
+                  + Add detail
+                </button>
+              </div>
+            </FormField>
           </div>
         )}
 
@@ -995,8 +1311,10 @@ export function PropertyForm({ existing, mode }: Props) {
           </div>
         )}
 
-        {/* Navigation */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-zinc-100">
+        {/* Navigation — sticky above the dashboard's own bottom tab bar on
+         * mobile (design Batch 5 sticky footer: Back / Save Draft / Continue),
+         * static in normal flow on desktop. */}
+        <div className="sticky bottom-16 z-10 -mx-6 mt-8 border-t border-zinc-100 bg-white/95 px-6 pb-4 pt-4 backdrop-blur sm:static sm:-mx-8 sm:bg-white sm:px-8 sm:pb-0 sm:pt-6 sm:backdrop-blur-none flex items-center justify-between">
           {step > 1 ? (
             <Button
               type="button"
