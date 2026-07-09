@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import type { EntityStatus } from "@/types";
 import { EntityRowActions } from "./EntityRowActions";
 import { cn } from "@/lib/cn";
@@ -73,10 +74,28 @@ function PropertyThumbnail({ dimmed }: { dimmed?: boolean }) {
   );
 }
 
+/** Requirement type icon in a brand-soft circle — dims to zinc when closed/paused. */
+function RequirementIcon({ icon: Icon, dimmed }: { icon: LucideIcon; dimmed?: boolean }) {
+  return (
+    <span
+      className={cn(
+        "w-11 h-11 rounded-xl flex items-center justify-center shrink-0",
+        dimmed ? "bg-ink/5 dark:bg-white/5" : "bg-brand-soft"
+      )}
+    >
+      <Icon
+        className={cn("w-5 h-5", dimmed ? "text-ink-muted" : "text-brand")}
+        strokeWidth={2}
+        aria-hidden="true"
+      />
+    </span>
+  );
+}
+
 /**
  * Shared property/requirement row (desktop) / card (mobile) — Batch 6 ·
  * Screens 2A/2C (My Properties) and 3A/3B (My Requirements). Pixel-matched
- * to the reference design: 96×72 thumbnail, dot-status pill, one
+ * to the reference design: thumbnail/type-icon, dot-status pill, one
  * "·"-separated meta line (real fields only), pill-radius (10px) actions.
  */
 export function OwnerEntityCard({
@@ -85,6 +104,7 @@ export function OwnerEntityCard({
   status,
   title,
   metaParts,
+  requirementIcon,
   viewHref,
   editHref,
   proposalsHref,
@@ -95,6 +115,8 @@ export function OwnerEntityCard({
   relatedCount,
   pauseLabel,
   resumeLabel,
+  pauseDanger,
+  resumeFilled,
 }: {
   kind: "property" | "requirement";
   entityId: string;
@@ -102,6 +124,8 @@ export function OwnerEntityCard({
   title: string;
   /** Real fields only, joined with " · " — e.g. [price, location, "37 leads", "expires in 41 days"]. */
   metaParts: (string | null | undefined)[];
+  /** Requirements only — icon by purpose (e.g. Search for buy, KeyRound for rent). */
+  requirementIcon?: LucideIcon;
   viewHref?: string;
   editHref?: string;
   proposalsHref?: string;
@@ -112,6 +136,10 @@ export function OwnerEntityCard({
   relatedCount?: number;
   pauseLabel?: string;
   resumeLabel?: string;
+  /** Style the "pause"-side action as danger red (requirements' "Close"). */
+  pauseDanger?: boolean;
+  /** Style the "resume"-side action as solid filled (properties' "Resume"). Requirements' "Reopen" stays outline. */
+  resumeFilled?: boolean;
 }) {
   const meta = metaParts.filter(Boolean).join(" · ");
 
@@ -123,6 +151,9 @@ export function OwnerEntityCard({
       )}
     >
       {kind === "property" && <PropertyThumbnail dimmed={isPaused} />}
+      {kind === "requirement" && requirementIcon && (
+        <RequirementIcon icon={requirementIcon} dimmed={isPaused} />
+      )}
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2.5 flex-wrap">
           <h3
@@ -151,6 +182,8 @@ export function OwnerEntityCard({
         entityLabel={entityLabel}
         pauseLabel={pauseLabel}
         resumeLabel={resumeLabel}
+        pauseDanger={pauseDanger}
+        resumeFilled={resumeFilled}
       />
     </div>
   );

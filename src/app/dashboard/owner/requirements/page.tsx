@@ -1,65 +1,39 @@
 import { Metadata } from "next";
-import { ClipboardList } from "lucide-react";
+import { Search, KeyRound, FileText } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { getMyRequirements } from "@/lib/actions/requirements";
 import { getProposalCountsByRequirement } from "@/lib/actions/proposals";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
-import { StatusTabs, type StatusTab } from "@/components/dashboard/StatusTabs";
 import { OwnerEntityCard } from "@/components/dashboard/OwnerEntityCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
-import type { EntityStatus } from "@/types";
+import type { EntityStatus, RequirementPurpose } from "@/types";
 
 export const metadata: Metadata = {
   title: "My Requirements",
   robots: { index: false, follow: false },
 };
 
-const BASE_HREF = "/dashboard/owner/requirements";
-
-function matchesTab(status: EntityStatus, tab: string) {
-  if (tab === "all") return true;
-  if (tab === "active") return status === "published";
-  if (tab === "closed") return status === "paused";
-  return false;
+/** Purpose icon — matches the reference design (Search for buy/business, KeyRound for rent/lease/pg). */
+function requirementIconFor(purpose: RequirementPurpose | null | undefined) {
+  return purpose === "rent" || purpose === "lease" || purpose === "pg"
+    ? KeyRound
+    : Search;
 }
 
-export default async function OwnerRequirementsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ status?: string }>;
-}) {
-  const [profile, params] = await Promise.all([
-    requireRole("owner"),
-    searchParams,
-  ]);
-  const activeTab = params.status ?? "all";
+export default async function OwnerRequirementsPage() {
+  const profile = await requireRole("owner");
 
   const [result, proposalCountsResult] = await Promise.all([
     getMyRequirements(1, 100),
     getProposalCountsByRequirement(),
   ]);
-  const allItems = result.success ? result.data.items : [];
+  const items = result.success ? result.data.items : [];
   const proposalCounts = proposalCountsResult.success
     ? proposalCountsResult.data
     : {};
-
-  const tabs: StatusTab[] = [
-    { key: "all", label: "All", count: allItems.length },
-    ...(["active", "closed"] as const).map((key) => ({
-      key,
-      label: key.charAt(0).toUpperCase() + key.slice(1),
-      count: allItems.filter((r) =>
-        matchesTab((r.status ?? "draft") as EntityStatus, key)
-      ).length,
-    })),
-  ];
-
-  const items = allItems.filter((r) =>
-    matchesTab((r.status ?? "draft") as EntityStatus, activeTab)
-  );
 
   return (
     <DashboardShellV2
@@ -76,7 +50,7 @@ export default async function OwnerRequirementsPage({
       userRole="Owner"
     >
       <div className="sm:bg-surface sm:border sm:border-border sm:rounded-2xl sm:overflow-hidden">
-        <div className="sm:px-5 sm:pt-4">
+        <div className="sm:px-5 sm:py-4 sm:border-b sm:border-border">
           <DashboardPageHeader
             title="My Requirements"
             count={result.success ? result.data.total : 0}
@@ -94,18 +68,14 @@ export default async function OwnerRequirementsPage({
           </Alert>
         )}
 
-        {result.success && allItems.length > 0 && (
-          <div className="sm:px-5">
-            <StatusTabs tabs={tabs} activeKey={activeTab} baseHref={BASE_HREF} />
-          </div>
-        )}
-
-        {result.success && allItems.length === 0 && (
-          <div className="sm:px-5 sm:pb-5">
+        {result.success && items.length === 0 && (
+          <div className="sm:px-5 sm:pb-5 sm:pt-4">
             <EmptyState
-              icon={ClipboardList}
+              icon={FileText}
               tone="brand"
               dashed
+              compact
+              hideActionIcon
               title="No requirements posted"
               description="Tell brokers and builders what you're looking for — they'll send proposals to you."
               actionLabel="Post Requirement"
@@ -114,64 +84,59 @@ export default async function OwnerRequirementsPage({
           </div>
         )}
 
-        {result.success && allItems.length > 0 && items.length === 0 && (
-          <div className="sm:px-5 sm:pb-5">
-            <EmptyState
-              icon={ClipboardList}
-              title={`No ${activeTab} requirements`}
-              description="Try a different filter to see more of your requirements."
-            />
-          </div>
-        )}
-
         {items.length > 0 && (
-        <div className="space-y-3 sm:px-5 sm:pb-5 sm:pt-1">
-          {items.map((req) => {
-            const status = (req.status ?? "draft") as EntityStatus;
-            const isPaused = status === "paused";
-            const proposalCount = proposalCounts[req.id!] ?? 0;
-            const budgetText = req.budget_max
-              ? `₹${Number(req.budget_min ?? 0).toLocaleString("en-IN")}–₹${Number(req.budget_max).toLocaleString("en-IN")}`
-              : req.rent_max
-                ? `₹${Number(req.rent_min ?? 0).toLocaleString("en-IN")}–₹${Number(req.rent_max).toLocaleString("en-IN")}/mo`
-                : undefined;
-            const closedNote =
-              isPaused && req.updated_at
-                ? `closed ${new Date(req.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
-                : undefined;
+          <div className="space-y-3 sm:px-5 sm:pb-5 sm:pt-4">
+            {items.map((req) => {
+              const status = (req.status ?? "draft") as EntityStatus;
+              const isPaused = status === "paused";
+              const proposalCount = proposalCounts[req.id!] ?? 0;
+              const budgetText = req.budget_max
+                ? `₹${Number(req.budget_min ?? 0).toLocaleString("en-IN")}–₹${Number(req.budget_max).toLocaleString("en-IN")}`
+                : req.rent_max
+                  ? `₹${Number(req.rent_min ?? 0).toLocaleString("en-IN")}–₹${Number(req.rent_max).toLocaleString("en-IN")}/mo`
+                  : undefined;
+              const closedNote =
+                isPaused && req.updated_at
+                  ? `closed ${new Date(req.updated_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}`
+                  : undefined;
 
-            return (
-              <OwnerEntityCard
-                key={req.id}
-                kind="requirement"
-                entityId={req.id!}
-                status={status}
-                title={req.title ?? "Untitled"}
-                metaParts={[
-                  budgetText,
-                  req.city_text ?? undefined,
-                  isPaused ? closedNote : req.possession_timeline,
-                  status === "published" || status === "paused"
-                    ? `${proposalCount} ${proposalCount === 1 ? "proposal" : "proposals"} received`
-                    : undefined,
-                ]}
-                relatedCount={proposalCount}
-                proposalsHref={
-                  status === "published" || status === "paused"
-                    ? `/dashboard/owner/requirements/${req.id}/proposals`
-                    : undefined
-                }
-                editHref={`/dashboard/owner/requirements/${req.id}/edit`}
-                showPauseResume={["published", "paused"].includes(status)}
-                isPaused={isPaused}
-                showDelete={false}
-                entityLabel="requirement"
-                pauseLabel="Close"
-                resumeLabel="Reopen"
-              />
-            );
-          })}
-        </div>
+              return (
+                <OwnerEntityCard
+                  key={req.id}
+                  kind="requirement"
+                  entityId={req.id!}
+                  status={status}
+                  title={req.title ?? "Untitled"}
+                  requirementIcon={requirementIconFor(req.purpose)}
+                  metaParts={[
+                    budgetText,
+                    isPaused ? closedNote : req.city_text ?? undefined,
+                    !isPaused ? req.possession_timeline : undefined,
+                    `${proposalCount} ${proposalCount === 1 ? "proposal" : "proposals"} received`,
+                  ]}
+                  relatedCount={proposalCount}
+                  proposalsHref={
+                    !isPaused
+                      ? `/dashboard/owner/requirements/${req.id}/proposals`
+                      : undefined
+                  }
+                  editHref={
+                    !isPaused
+                      ? `/dashboard/owner/requirements/${req.id}/edit`
+                      : undefined
+                  }
+                  showPauseResume={["published", "paused"].includes(status)}
+                  isPaused={isPaused}
+                  showDelete={false}
+                  entityLabel="requirement"
+                  pauseLabel="Close"
+                  resumeLabel="Reopen"
+                  pauseDanger
+                  resumeFilled={false}
+                />
+              );
+            })}
+          </div>
         )}
       </div>
     </DashboardShellV2>

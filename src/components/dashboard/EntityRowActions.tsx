@@ -61,6 +61,8 @@ export function EntityRowActions({
   /** "Close"/"Reopen" instead of "Pause"/"Resume" wording (requirements). */
   pauseLabel = "Pause",
   resumeLabel = "Resume",
+  pauseDanger = false,
+  resumeFilled = true,
 }: {
   kind: EntityKind;
   entityId: string;
@@ -78,6 +80,10 @@ export function EntityRowActions({
   entityLabel?: string;
   pauseLabel?: string;
   resumeLabel?: string;
+  /** Style the "pause" state as danger red (requirements' "Close"). */
+  pauseDanger?: boolean;
+  /** Style the "resume" state as solid filled (default; requirements' "Reopen" passes false). */
+  resumeFilled?: boolean;
 }) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -158,7 +164,8 @@ export function EntityRowActions({
             label: isPaused ? resumeLabel : pauseLabel,
             onClick: handlePauseResume,
             icon: isPaused ? Play : Pause,
-            filled: isPaused,
+            filled: isPaused && resumeFilled,
+            danger: !isPaused && pauseDanger,
           },
         ]
       : []),
