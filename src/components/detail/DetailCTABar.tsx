@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
@@ -384,7 +385,12 @@ function EnquiryFormModal({
     });
   }
 
-  return (
+  // Portaled to document.body: this modal must always cover the true
+  // viewport (fixed inset-0), never a nested ancestor's box. Rendering it in
+  // place inside the deep sidebar/grid tree let an ancestor's stacking
+  // context override its coordinates, cropping the modal's own header row
+  // under the sticky site header (real bug).
+  return createPortal(
     <div
       className="fixed inset-0 z-[300] flex items-end justify-center sm:items-center"
       role="dialog"
@@ -550,6 +556,7 @@ function EnquiryFormModal({
           </button>
         </div>
       </form>
-    </div>
+    </div>,
+    document.body
   );
 }

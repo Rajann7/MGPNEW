@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { MoreVertical, Share2, Bookmark, Flag } from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import { saveItem, unsaveItem } from "@/lib/actions/saved";
@@ -38,12 +39,35 @@ export function DetailOverflowMenu({
   const [copied, setCopied] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const menuRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState<{ top: number; right: number } | null>(
+    null
+  );
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // The trigger can sit inside an `overflow-hidden` ancestor (e.g. the
+  // project hero band), which clips a normally-positioned absolute dropdown.
+  // Portal the panel to document.body instead, anchored to the button's real
+  // screen position — never clipped, regardless of where it's triggered from.
+  function toggle() {
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen((o) => !o);
+  }
 
   useEffect(() => {
     if (!open) return;
     function onClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        !buttonRef.current?.contains(target) &&
+        !dropdownRef.current?.contains(target)
+      ) {
         setOpen(false);
       }
     }
@@ -86,10 +110,11 @@ export function DetailOverflowMenu({
   }
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative">
       <button
+        ref={buttonRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-label="More options"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -98,51 +123,58 @@ export function DetailOverflowMenu({
         <MoreVertical className="h-4.5 w-4.5" />
       </button>
 
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-11 z-20 w-48 overflow-hidden rounded-xl border border-zinc-100 bg-white py-1 shadow-lg"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleShare}
-            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50"
+      {open &&
+        coords &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            role="menu"
+            style={{ top: coords.top, right: coords.right }}
+            className="fixed z-[200] w-48 overflow-hidden rounded-xl border border-zinc-100 bg-white py-1 shadow-lg"
           >
-            <Share2 className="h-4 w-4 text-zinc-400" />
-            {copied ? "Link copied" : "Share"}
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleSave}
-            disabled={isPending}
-            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50"
-          >
-            <Bookmark
-              className="h-4 w-4 text-zinc-400"
-              fill={saved ? "currentColor" : "none"}
-            />
-            {saved ? "Saved" : "Save"}
-          </button>
-          <div className="my-1 border-t border-zinc-100" />
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              setReportOpen(true);
-            }}
-            className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-600 hover:bg-red-50"
-          >
-            <Flag className="h-4 w-4" />
-            Report {entityNoun}
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleShare}
+              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50"
+            >
+              <Share2 className="h-4 w-4 text-zinc-400" />
+              {copied ? "Link copied" : "Share"}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleSave}
+              disabled={isPending}
+              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-zinc-700 hover:bg-zinc-50"
+            >
+              <Bookmark
+                className="h-4 w-4 text-zinc-400"
+                fill={saved ? "currentColor" : "none"}
+              />
+              {saved ? "Saved" : "Save"}
+            </button>
+            <div className="my-1 border-t border-zinc-100" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                setReportOpen(true);
+              }}
+              className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-sm text-red-600 hover:bg-red-50"
+            >
+              <Flag className="h-4 w-4" />
+              Report {entityNoun}
+            </button>
+          </div>,
+          document.body
+        )}
 
       <ReportModal
-        targetType={targetType as "property" | "project" | "requirement" | "user"}
+        targetType={
+          targetType as "property" | "project" | "requirement" | "user"
+        }
         targetId={targetId}
         isLoggedIn={isLoggedIn}
         currentPath={currentPath}

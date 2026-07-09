@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
 
 /**
@@ -51,7 +52,7 @@ export function FullscreenGallery({
     touchStartX.current = null;
   }
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -149,6 +150,7 @@ export function FullscreenGallery({
           ))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

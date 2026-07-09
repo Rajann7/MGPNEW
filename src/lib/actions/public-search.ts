@@ -466,7 +466,7 @@ export async function getPublicProjectBySlug(slug: string) {
   const { data } = await supabase
     .from("public_projects_view")
     .select(
-      "id, project_name, slug, short_description, project_type, category, purpose, price_min, price_max, price_visible, total_area_value, total_area_unit, total_towers, total_wings, total_floors, total_units, unit_configurations, construction_status, possession_date, launch_date, phase_name, rera_registered, rera_number, rera_status, rera_disclaimer_required, amenities, city_text, locality_text, landmark, pin_code, approx_latitude, approx_longitude, cover_media_id, media_count, virtual_tour_url, published_at, builder_profile_id"
+      "id, project_name, slug, short_description, project_type, category, purpose, price_min, price_max, price_visible, total_area_value, total_area_unit, total_towers, total_wings, total_floors, total_units, available_units, unit_configurations, construction_status, possession_date, launch_date, phase_name, rera_registered, rera_number, rera_status, rera_disclaimer_required, amenities, city_text, locality_text, landmark, pin_code, approx_latitude, approx_longitude, cover_media_id, media_count, virtual_tour_url, published_at, builder_profile_id"
     )
     .eq("slug", slug)
     .maybeSingle();
