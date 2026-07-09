@@ -11,9 +11,14 @@ import {
   Play,
   Trash2,
   FileText,
+  RotateCcw,
 } from "lucide-react";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { pauseResumeProperty, softDeleteProperty } from "@/lib/actions/properties";
+import {
+  pauseResumeProperty,
+  softDeleteProperty,
+  relistProperty,
+} from "@/lib/actions/properties";
 import {
   pauseResumeRequirement,
   softDeleteRequirement,
@@ -57,6 +62,7 @@ export function EntityRowActions({
   showPauseResume,
   isPaused,
   showDelete,
+  showRelist = false,
   entityLabel = "listing",
   /** "Close"/"Reopen" instead of "Pause"/"Resume" wording (requirements). */
   pauseLabel = "Pause",
@@ -77,6 +83,8 @@ export function EntityRowActions({
   showPauseResume: boolean;
   isPaused: boolean;
   showDelete: boolean;
+  /** Properties only — "Relist" for expired listings (sends back for real re-approval). */
+  showRelist?: boolean;
   entityLabel?: string;
   pauseLabel?: string;
   resumeLabel?: string;
@@ -112,6 +120,19 @@ export function EntityRowActions({
       );
       if (!result.success) {
         setErrorMsg("Couldn't update status. Please try again.");
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function handleRelist() {
+    setMenuOpen(false);
+    setErrorMsg(null);
+    startTransition(async () => {
+      const result = await relistProperty(entityId);
+      if (!result.success) {
+        setErrorMsg("Couldn't relist right now. Please try again.");
         return;
       }
       router.refresh();
@@ -166,6 +187,17 @@ export function EntityRowActions({
             icon: isPaused ? Play : Pause,
             filled: isPaused && resumeFilled,
             danger: !isPaused && pauseDanger,
+          },
+        ]
+      : []),
+    ...(showRelist
+      ? [
+          {
+            key: "relist",
+            label: "Relist",
+            onClick: handleRelist,
+            icon: RotateCcw,
+            filled: true,
           },
         ]
       : []),

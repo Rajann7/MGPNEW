@@ -19,6 +19,16 @@ export const metadata: Metadata = {
 
 const BASE_HREF = "/dashboard/owner/properties";
 
+/** Mirrors canEditProperty's EDITABLE_STATUSES (src/lib/permissions/entity-permissions.ts). */
+const EDITABLE_STATUSES: EntityStatus[] = [
+  "draft",
+  "submitted",
+  "need_changes",
+  "rejected",
+  "published",
+  "paused",
+];
+
 const STATUS_GROUPS: Record<string, EntityStatus[]> = {
   live: ["published"],
   pending: ["submitted", "under_review"],
@@ -187,10 +197,15 @@ export default async function OwnerPropertiesPage({
                     ? `/property/${property.slug}`
                     : undefined
                 }
-                editHref={`/dashboard/owner/properties/${property.id}/edit`}
+                editHref={
+                  EDITABLE_STATUSES.includes(status)
+                    ? `/dashboard/owner/properties/${property.id}/edit`
+                    : undefined
+                }
                 showPauseResume={["published", "paused"].includes(status)}
                 isPaused={isPaused}
                 showDelete={status !== "under_review"}
+                showRelist={status === "expired"}
                 entityLabel="listing"
               />
             );

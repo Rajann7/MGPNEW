@@ -111,6 +111,7 @@ export function OwnerEntityCard({
   showPauseResume,
   isPaused,
   showDelete,
+  showRelist,
   entityLabel,
   relatedCount,
   pauseLabel,
@@ -132,6 +133,8 @@ export function OwnerEntityCard({
   showPauseResume: boolean;
   isPaused: boolean;
   showDelete: boolean;
+  /** Properties only — "Relist" for expired listings. */
+  showRelist?: boolean;
   entityLabel: string;
   relatedCount?: number;
   pauseLabel?: string;
@@ -179,6 +182,7 @@ export function OwnerEntityCard({
         showPauseResume={showPauseResume}
         isPaused={isPaused}
         showDelete={showDelete}
+        showRelist={showRelist}
         entityLabel={entityLabel}
         pauseLabel={pauseLabel}
         resumeLabel={resumeLabel}

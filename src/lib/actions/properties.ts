@@ -259,6 +259,10 @@ export async function submitPropertyForApproval(
     .update({
       status: "submitted",
       approval_status: "pending",
+      // A resubmit (edit after publish) must re-hide the listing while
+      // pending re-review — admin approval is what flips this back to
+      // "public" (src/lib/actions/admin/moderation.ts).
+      visibility_status: "private",
       submitted_at: new Date().toISOString(),
       // Apply latest form data
       title: parsed.data.title,
@@ -328,6 +332,46 @@ export async function pauseResumeProperty(
       status: newStatus,
       visibility_status: newVisibility,
       paused_at: action === "pause" ? new Date().toISOString() : null,
+    })
+    .eq("id", propertyId);
+
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+  return { success: true, data: null };
+}
+
+// ============================================================
+// Relist an expired property
+// ============================================================
+
+/** Sends an expired listing back through real re-approval — never an instant fake republish. */
+export async function relistProperty(
+  propertyId: string
+): Promise<ActionResult<null>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchErr } = await supabase
+    .from("properties")
+    .select("id, owner_profile_id, status, deleted_at")
+    .eq("id", propertyId)
+    .single();
+
+  if (fetchErr || !existing)
+    return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (existing.owner_profile_id !== profile.id)
+    return { success: false, error: "FORBIDDEN" };
+  if (existing.status !== "expired")
+    return { success: false, error: "INVALID_STATUS_TRANSITION" };
+
+  const { error } = await supabase
+    .from("properties")
+    .update({
+      status: "submitted",
+      approval_status: "pending",
+      visibility_status: "private",
+      submitted_at: new Date().toISOString(),
+      expires_at: null,
     })
     .eq("id", propertyId);
 
@@ -438,4 +482,30 @@ export async function getMyLatestPropertyDraft(): Promise<
   }
 
   return { success: true, data: data ?? null };
+}
+
+/** Ownership-checked full-row fetch — powers the real Edit page (any editable status, not just drafts). */
+export async function getMyPropertyById(
+  propertyId: string
+): Promise<ActionResult<Partial<Property>>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("properties")
+    .select("*")
+    .eq("id", propertyId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMyPropertyById] DB error:", error.code);
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+  if (!data) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (data.owner_profile_id !== profile.id)
+    return { success: false, error: "FORBIDDEN" };
+
+  return { success: true, data };
 }

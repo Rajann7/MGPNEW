@@ -230,6 +230,9 @@ export async function submitRequirementForApproval(
     .update({
       status: "submitted",
       approval_status: "pending",
+      // Resubmitting a published/paused requirement re-hides it while
+      // pending re-review — admin approval flips it back to "public".
+      visibility_status: "private",
       submitted_at: new Date().toISOString(),
       title: parsed.data.title,
       city_text: parsed.data.city_text ?? null,
@@ -362,6 +365,32 @@ export async function getMyRequirementSummary(
     return { success: false, error: "FORBIDDEN" };
 
   return { success: true, data: { id: data.id, title: data.title } };
+}
+
+/** Ownership-checked full-row fetch — powers the real Edit page (any editable status, not just drafts). */
+export async function getMyRequirementById(
+  requirementId: string
+): Promise<ActionResult<Partial<Requirement>>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("requirements")
+    .select("*")
+    .eq("id", requirementId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMyRequirementById] DB error:", error.code);
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+  if (!data) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (data.created_by_profile_id !== profile.id)
+    return { success: false, error: "FORBIDDEN" };
+
+  return { success: true, data };
 }
 
 export async function getMyRequirements(

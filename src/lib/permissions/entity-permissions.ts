@@ -37,6 +37,15 @@ export function canCreateRequirement(profile: Profile | null): boolean {
 // Entity Edit Permissions
 // ============================================================
 
+const EDITABLE_STATUSES: EntityStatus[] = [
+  "draft",
+  "submitted",
+  "need_changes",
+  "rejected",
+  "published",
+  "paused",
+];
+
 export function canEditProperty(
   profile: Profile | null,
   property: Pick<Property, "owner_profile_id" | "status" | "deleted_at">
@@ -44,8 +53,10 @@ export function canEditProperty(
   if (!profile) return false;
   if (property.deleted_at) return false;
   if (property.owner_profile_id !== profile.id) return false;
-  // Can edit if draft, need_changes, or submitted (before under_review)
-  return ["draft", "submitted", "need_changes"].includes(property.status);
+  // Editing a rejected/published/paused listing routes it back through
+  // approval on resubmit (rule: "edit after approval requires approval
+  // again") — locked only while under_review, expired, or deleted.
+  return EDITABLE_STATUSES.includes(property.status);
 }
 
 export function canEditProject(
@@ -68,14 +79,20 @@ export function canEditRequirement(
   if (!profile) return false;
   if (requirement.deleted_at) return false;
   if (requirement.created_by_profile_id !== profile.id) return false;
-  return ["draft", "submitted", "need_changes"].includes(requirement.status);
+  return EDITABLE_STATUSES.includes(requirement.status);
 }
 
 // ============================================================
 // Submit for Approval
 // ============================================================
 
-const SUBMITTABLE_STATUSES: EntityStatus[] = ["draft", "need_changes"];
+const SUBMITTABLE_STATUSES: EntityStatus[] = [
+  "draft",
+  "need_changes",
+  "rejected",
+  "published",
+  "paused",
+];
 
 export function canSubmitForApproval(
   profile: Profile | null,
