@@ -8,6 +8,8 @@ export function DashboardPageHeader({
   itemLabelPlural,
   actionLabel,
   actionHref,
+  /** Hide the button below `sm` — used when a compact "+" already sits in the mobile back header. */
+  hideActionOnMobile,
 }: {
   title: string;
   count: number;
@@ -15,6 +17,7 @@ export function DashboardPageHeader({
   itemLabelPlural?: string;
   actionLabel: string;
   actionHref: string;
+  hideActionOnMobile?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between mb-6 gap-3">
@@ -25,10 +28,12 @@ export function DashboardPageHeader({
           {count === 1 ? itemLabel : (itemLabelPlural ?? `${itemLabel}s`)}
         </p>
       </div>
-      <Button href={actionHref} className="shrink-0">
-        <Plus className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
-        {actionLabel}
-      </Button>
+      <div className={hideActionOnMobile ? "hidden sm:block shrink-0" : "shrink-0"}>
+        <Button href={actionHref}>
+          <Plus className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
+          {actionLabel}
+        </Button>
+      </div>
     </div>
   );
 }

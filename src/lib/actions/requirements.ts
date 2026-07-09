@@ -342,6 +342,28 @@ export async function softDeleteRequirement(
 // Get own requirements (paginated)
 // ============================================================
 
+/** Ownership-checked single-requirement summary — powers the "View Proposals" page header. */
+export async function getMyRequirementSummary(
+  requirementId: string
+): Promise<ActionResult<{ id: string; title: string }>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("requirements")
+    .select("id, title, created_by_profile_id, deleted_at")
+    .eq("id", requirementId)
+    .maybeSingle();
+
+  if (error || !data || data.deleted_at)
+    return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (data.created_by_profile_id !== profile.id)
+    return { success: false, error: "FORBIDDEN" };
+
+  return { success: true, data: { id: data.id, title: data.title } };
+}
+
 export async function getMyRequirements(
   page = 1,
   limit = 20
@@ -355,7 +377,7 @@ export async function getMyRequirements(
   const { data, error, count } = await supabase
     .from("requirements")
     .select(
-      "id, title, slug, purpose, category, budget_min, budget_max, rent_min, rent_max, city_text, status, approval_status, visibility_status, submitted_at, published_at, created_at, updated_at",
+      "id, title, slug, purpose, category, budget_min, budget_max, rent_min, rent_max, city_text, possession_timeline, status, approval_status, visibility_status, admin_review_note, rejection_reason, submitted_at, published_at, expires_at, created_at, updated_at",
       { count: "exact" }
     )
     .eq("created_by_profile_id", profile.id)

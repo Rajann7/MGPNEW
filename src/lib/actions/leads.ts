@@ -698,3 +698,33 @@ export async function getLeadCounts(): Promise<
     },
   };
 }
+
+// ============================================================
+// getLeadCountsByTarget — real per-listing lead counts (owner property/
+// requirement cards) — never fabricated
+// ============================================================
+
+export async function getLeadCountsByTarget(
+  targetType: LeadTargetType,
+  targetIds: string[]
+): Promise<ActionResult<Record<string, number>>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+  if (targetIds.length === 0) return { success: true, data: {} };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("leads")
+    .select("target_id")
+    .eq("target_type", targetType)
+    .eq("receiver_profile_id", profile.id)
+    .in("target_id", targetIds);
+
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    counts[row.target_id] = (counts[row.target_id] ?? 0) + 1;
+  }
+  return { success: true, data: counts };
+}

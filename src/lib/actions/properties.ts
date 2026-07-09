@@ -395,7 +395,7 @@ export async function getMyProperties(
   const { data, error, count } = await supabase
     .from("properties")
     .select(
-      "id, title, slug, purpose, category, property_type, price, rent_amount, city_text, locality_text, status, approval_status, visibility_status, submitted_at, published_at, created_at, updated_at",
+      "id, title, slug, purpose, category, property_type, price, rent_amount, city_text, locality_text, status, approval_status, visibility_status, admin_review_note, rejection_reason, submitted_at, published_at, expires_at, created_at, updated_at",
       { count: "exact" }
     )
     .eq("owner_profile_id", profile!.id)

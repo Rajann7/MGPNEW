@@ -1,6 +1,7 @@
 import { DashboardSidebar, type SidebarNavItem } from "./DashboardSidebar";
 import { DashboardTopbar } from "./DashboardTopbar";
 import { DashboardMobileHeader } from "./DashboardMobileHeader";
+import { DashboardMobileBackHeader } from "./DashboardMobileBackHeader";
 import {
   DashboardMobileTabBar,
   type MobileTabItem,
@@ -46,6 +47,8 @@ export function DashboardShellV2({
   userRole,
   userCity,
   mobileDrawerNav,
+  mobileBackHref,
+  mobileBackAction,
   children,
 }: {
   title: string;
@@ -63,6 +66,15 @@ export function DashboardShellV2({
    * existing plain topbar-on-mobile behavior unchanged.
    */
   mobileDrawerNav?: SidebarNavItem[];
+  /**
+   * Renders a contextual mobile-only header with a back button instead of
+   * the desktop breadcrumb topbar — required on every non-root dashboard
+   * screen (design system rule). Ignored if mobileDrawerNav is set (root
+   * screens use the hamburger header instead).
+   */
+  mobileBackHref?: string;
+  /** Compact "+" action shown in the mobile back header (e.g. Post Property). */
+  mobileBackAction?: { href: string; label: string };
   children: React.ReactNode;
 }) {
   return (
@@ -79,7 +91,7 @@ export function DashboardShellV2({
         stays a plain server component.
       */}
       <div className="lg:pl-[var(--mgp-sidebar-w,220px)] transition-[padding] duration-200">
-        {mobileDrawerNav && (
+        {mobileDrawerNav ? (
           <DashboardMobileHeader
             title={title}
             navItems={toDrawerItems(mobileDrawerNav)}
@@ -87,12 +99,21 @@ export function DashboardShellV2({
             userRole={userRole}
             userCity={userCity}
           />
+        ) : (
+          mobileBackHref && (
+            <DashboardMobileBackHeader
+              title={title}
+              backHref={mobileBackHref}
+              actionHref={mobileBackAction?.href}
+              actionLabel={mobileBackAction?.label}
+            />
+          )
         )}
         <DashboardTopbar
           title={title}
           breadcrumb={breadcrumb ?? [title]}
           userName={userName}
-          desktopOnly={!!mobileDrawerNav}
+          desktopOnly={!!mobileDrawerNav || !!mobileBackHref}
         />
         <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
           {children}

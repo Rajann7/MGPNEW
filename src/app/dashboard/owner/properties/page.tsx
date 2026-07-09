@@ -2,10 +2,12 @@ import { Metadata } from "next";
 import { Home } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { getMyProperties } from "@/lib/actions/properties";
+import { getLeadCountsByTarget } from "@/lib/actions/leads";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
-import { EntityListCard } from "@/components/dashboard/EntityListCard";
+import { StatusTabs, type StatusTab } from "@/components/dashboard/StatusTabs";
+import { OwnerEntityCard } from "@/components/dashboard/OwnerEntityCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
 import type { EntityStatus } from "@/types";
@@ -15,16 +17,87 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function OwnerPropertiesPage() {
-  const profile = await requireRole("owner");
-  const result = await getMyProperties(1, 20);
+const BASE_HREF = "/dashboard/owner/properties";
 
-  const items = result.success ? result.data.items : [];
-  const total = result.success ? result.data.total : 0;
+const STATUS_GROUPS: Record<string, EntityStatus[]> = {
+  live: ["published"],
+  pending: ["submitted", "under_review"],
+  rejected: ["rejected"],
+  paused: ["paused"],
+  expired: ["expired"],
+};
+
+function matchesTab(status: EntityStatus, tab: string) {
+  if (tab === "all") return true;
+  return (STATUS_GROUPS[tab] ?? []).includes(status);
+}
+
+/** Real, honest status note — never a fabricated number. */
+function statusNote(
+  status: EntityStatus,
+  expiresAt: string | null | undefined,
+  rejectionReason: string | null | undefined
+): string | undefined {
+  if (status === "published" && expiresAt) {
+    const days = Math.ceil(
+      (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+    return days > 0 ? `expires in ${days} day${days === 1 ? "" : "s"}` : undefined;
+  }
+  if (status === "submitted" || status === "under_review")
+    return "under review, typically 24 hrs";
+  if (status === "paused") return "hidden from search while paused";
+  if (status === "rejected") return rejectionReason ?? "rejected — edit and resubmit";
+  if (status === "expired") return "expired — repost to make it live again";
+  return undefined;
+}
+
+export default async function OwnerPropertiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const [profile, params] = await Promise.all([
+    requireRole("owner"),
+    searchParams,
+  ]);
+  const activeTab = params.status ?? "all";
+
+  const result = await getMyProperties(1, 100);
+  const allItems = result.success ? result.data.items : [];
+
+  const leadCountsResult = await getLeadCountsByTarget(
+    "property",
+    allItems.map((p) => p.id!).filter(Boolean)
+  );
+  const leadCounts = leadCountsResult.success ? leadCountsResult.data : {};
+
+  const tabs: StatusTab[] = [
+    { key: "all", label: "All", count: allItems.length },
+    ...(["live", "pending", "rejected", "paused", "expired"] as const).map(
+      (key) => ({
+        key,
+        label: key.charAt(0).toUpperCase() + key.slice(1),
+        count: allItems.filter((p) =>
+          matchesTab((p.status ?? "draft") as EntityStatus, key)
+        ).length,
+      })
+    ),
+  ];
+
+  const items = allItems.filter((p) =>
+    matchesTab((p.status ?? "draft") as EntityStatus, activeTab)
+  );
 
   return (
     <DashboardShellV2
       title="My Properties"
+      breadcrumb={["Dashboard", "My Properties"]}
+      mobileBackHref="/dashboard/owner"
+      mobileBackAction={{
+        href: "/dashboard/owner/properties/new",
+        label: "Post Property",
+      }}
       navItems={getOwnerNav("/dashboard/owner/properties")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/properties")}
       userName={profile.display_name ?? profile.full_name}
@@ -32,49 +105,85 @@ export default async function OwnerPropertiesPage() {
     >
       <DashboardPageHeader
         title="My Properties"
-        count={total}
+        count={result.success ? result.data.total : 0}
         itemLabel="property"
         itemLabelPlural="properties"
         actionLabel="Post Property"
         actionHref="/dashboard/owner/properties/new"
+        hideActionOnMobile
       />
 
       {!result.success && (
         <Alert tone="danger">Failed to load properties. Please refresh.</Alert>
       )}
 
-      {result.success && items.length === 0 && (
+      {result.success && allItems.length > 0 && (
+        <StatusTabs tabs={tabs} activeKey={activeTab} baseHref={BASE_HREF} />
+      )}
+
+      {result.success && allItems.length === 0 && (
         <EmptyState
           icon={Home}
-          title="No properties yet"
-          description="Post your first property to get started."
+          tone="brand"
+          title="You haven't posted a property yet"
+          description="Posting is free and takes about 5 minutes."
           actionLabel="Post Property"
           actionHref="/dashboard/owner/properties/new"
         />
       )}
 
+      {result.success && allItems.length > 0 && items.length === 0 && (
+        <EmptyState
+          icon={Home}
+          title={`No ${activeTab} properties`}
+          description="Try a different filter to see more of your listings."
+        />
+      )}
+
       {items.length > 0 && (
         <div className="space-y-3">
-          {items.map((property) => (
-            <EntityListCard
-              key={property.id}
-              status={(property.status ?? "draft") as EntityStatus}
-              purpose={property.purpose ?? undefined}
-              title={property.title ?? "Untitled Property"}
-              subtitle={[property.locality_text, property.city_text]
-                .filter(Boolean)
-                .join(", ")}
-              meta={
-                property.price
-                  ? `₹${Number(property.price).toLocaleString("en-IN")}`
-                  : property.rent_amount
-                    ? `₹${Number(property.rent_amount).toLocaleString("en-IN")}/mo`
+          {items.map((property) => {
+            const status = (property.status ?? "draft") as EntityStatus;
+            const isPaused = status === "paused";
+            const leadCount = leadCounts[property.id!] ?? 0;
+            const priceText = property.price
+              ? `₹${Number(property.price).toLocaleString("en-IN")}`
+              : property.rent_amount
+                ? `₹${Number(property.rent_amount).toLocaleString("en-IN")}/mo`
+                : undefined;
+            const location = [property.locality_text, property.city_text]
+              .filter(Boolean)
+              .join(", ");
+
+            return (
+              <OwnerEntityCard
+                key={property.id}
+                kind="property"
+                entityId={property.id!}
+                status={status}
+                title={property.title ?? "Untitled Property"}
+                metaParts={[
+                  priceText,
+                  location || undefined,
+                  leadCount > 0
+                    ? `${leadCount} ${leadCount === 1 ? "lead" : "leads"}`
+                    : undefined,
+                  statusNote(status, property.expires_at, property.rejection_reason),
+                ]}
+                relatedCount={leadCount}
+                viewHref={
+                  status !== "paused" && property.slug
+                    ? `/property/${property.slug}`
                     : undefined
-              }
-              createdAt={property.created_at!}
-              editHref={`/dashboard/owner/properties/${property.id}/edit`}
-            />
-          ))}
+                }
+                editHref={`/dashboard/owner/properties/${property.id}/edit`}
+                showPauseResume={["published", "paused"].includes(status)}
+                isPaused={isPaused}
+                showDelete={status !== "under_review"}
+                entityLabel="listing"
+              />
+            );
+          })}
         </div>
       )}
     </DashboardShellV2>
