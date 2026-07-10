@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import {
   createPropertyDraft,
   updatePropertyDraft,
+  autosavePropertyDraft,
   submitPropertyForApproval,
 } from "@/lib/actions/properties";
+import { WizardFooter } from "@/components/forms/wizard/WizardFooter";
+import { useWizardAutosave } from "@/components/forms/wizard/useWizardAutosave";
+import { MediaUploadStep } from "@/components/forms/wizard/MediaUploadStep";
 import {
   PROPERTY_CATEGORIES,
   PROPERTY_TYPES_BY_CATEGORY,
@@ -17,9 +21,8 @@ import { WizardProgress } from "@/components/forms/WizardProgress";
 import { GUJARAT_CITIES } from "@/components/location/CityProvider";
 import { FormField, SummaryRow } from "@/components/ui/FormField";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
 import { SuccessScreen } from "@/components/ui/SuccessScreen";
-import { ImageIcon, Eye, ArrowLeft } from "lucide-react";
+import { Eye, ArrowLeft } from "lucide-react";
 import type { Property } from "@/types";
 
 /** Canonical property amenities master list (design Batch 5 · 5A step 5) —
@@ -115,6 +118,9 @@ interface Props {
   mode: "create" | "edit";
   /** Where the mobile contextual header's back chevron returns to. */
   dashboardHref: string;
+  /** Poster's own verified Profile mobile (Batch 5 §106-107) — never an arbitrary/unverified number. */
+  profileMobile: string | null;
+  profileMobileVerified: boolean;
 }
 
 // Post Property = 9 steps (design Batch 5 · 5A / docs/06). Step 9 "Submitted" is
@@ -147,8 +153,19 @@ function EditLink({ onEdit }: { onEdit: () => void }) {
   );
 }
 
-export function PropertyForm({ existing, mode, dashboardHref }: Props) {
-  const [step, setStep] = useState<Step>(1);
+export function PropertyForm({
+  existing,
+  mode,
+  dashboardHref,
+  profileMobile,
+  profileMobileVerified,
+}: Props) {
+  // Resume the exact persisted wizard step (Batch 5 §38-39)
+  const initialStep = Math.min(
+    LAST_INPUT_STEP,
+    Math.max(1, existing?.current_step ?? 1)
+  ) as Step;
+  const [step, setStep] = useState<Step>(initialStep);
   const [isPending, startTransition] = useTransition();
 
   // Form state
@@ -193,12 +210,21 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
     // Contact
     contact_visibility: existing?.contact_visibility ?? "show_after_login",
     map_visibility: existing?.map_visibility ?? "hidden",
+    preferred_contact_time: existing?.preferred_contact_time ?? "anytime",
   });
 
   const [serverError, setServerError] = useState<string | null>(null);
+  const [serverErrorMeta, setServerErrorMeta] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [savedId, setSavedId] = useState<string | null>(existing?.id ?? null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  // Belt-and-suspenders duplicate-submit guard (Batch 5 §129): closes the
+  // race where a second real click lands before `isPending` re-renders.
+  // The server's conditional status transition is the real authority.
+  const submitInFlightRef = useRef(false);
 
   // Additional Details — free-form key/value extras (design's "extra field
   // section"), persisted to the real `extra_attributes` jsonb column
@@ -305,31 +331,78 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
         | "show_to_verified_users"
         | "public",
       map_visibility: form.map_visibility as "hidden" | "approximate" | "exact",
+      preferred_contact_time: form.preferred_contact_time as
+        | "anytime"
+        | "morning_9_1"
+        | "evening_5_9",
+      current_step: step,
     };
   }
+
+  // Last server timestamp we observed — optimistic-concurrency token so an
+  // older in-flight autosave can never clobber newer data (Batch 5 §37).
+  const baseUpdatedAtRef = useRef<string | null>(existing?.updated_at ?? null);
+  const savedIdRef = useRef<string | null>(existing?.id ?? null);
+
+  // Autosave only ever touches unsubmitted revisions — a published listing
+  // being edited (edit-after-approval) is saved solely on explicit actions.
+  const autosaveEligible =
+    mode === "create" ||
+    ["draft", "need_changes", "rejected"].includes(existing?.status ?? "");
 
   async function saveDraft() {
     setServerError(null);
     const payload = buildPayload();
 
-    if (mode === "create" && !savedId) {
-      const res = await createPropertyDraft(payload);
+    if (autosaveEligible) {
+      const res = await autosavePropertyDraft(
+        savedIdRef.current,
+        payload,
+        baseUpdatedAtRef.current
+      );
       if (!res.success) {
         setServerError(res.error);
         if ("fieldErrors" in res) setFieldErrors(res.fieldErrors ?? {});
         return false;
       }
+      savedIdRef.current = res.data.id;
       setSavedId(res.data.id);
-    } else if (savedId) {
-      const res = await updatePropertyDraft(savedId, payload);
+      if (res.data.conflict) {
+        setServerError("DRAFT_CONFLICT");
+        return false;
+      }
+      baseUpdatedAtRef.current = res.data.updated_at;
+      return true;
+    }
+
+    // Published/paused listing edit — explicit update only (no autosave)
+    if (savedIdRef.current) {
+      const res = await updatePropertyDraft(savedIdRef.current, payload);
       if (!res.success) {
         setServerError(res.error);
         if ("fieldErrors" in res) setFieldErrors(res.fieldErrors ?? {});
         return false;
       }
+      return true;
     }
+    const res = await createPropertyDraft(payload);
+    if (!res.success) {
+      setServerError(res.error);
+      if ("fieldErrors" in res) setFieldErrors(res.fieldErrors ?? {});
+      return false;
+    }
+    savedIdRef.current = res.data.id;
+    setSavedId(res.data.id);
     return true;
   }
+
+  // Debounced autosave — creates the server draft at the earliest valid
+  // point (step 1 title typed) and keeps it fresh as the user types (§34).
+  const { status: saveStatus, saveNow } = useWizardAutosave({
+    enabled: autosaveEligible && form.title.trim().length >= 5,
+    fingerprint: JSON.stringify({ form, extraDetails, step }),
+    save: saveDraft,
+  });
 
   async function handleNext() {
     setServerError(null);
@@ -340,6 +413,9 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
     if (step === 1) {
       if (!form.title.trim() || form.title.length < 5) {
         stepErrors.title = ["Title must be at least 5 characters"];
+      }
+      if (!form.description.trim() || form.description.trim().length < 30) {
+        stepErrors.description = ["Description must be at least 30 characters"];
       }
     }
     if (step === 2) {
@@ -368,17 +444,10 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
       return;
     }
 
-    // The server draft schema requires `property_type` (step 2's own field),
-    // so persisting on the step-1→2 transition would always fail before the
-    // user ever reaches the field that satisfies it — a real, pre-existing
-    // bug (silently blocked step 1 with no visible feedback before this
-    // fix). Step 1 just advances locally; the first real save happens once
-    // property_type is known, from step 2 onward.
-    if (step === 1) {
-      setStep(2);
-      return;
-    }
-
+    // `PropertyDraftSchema` accepts a null purpose/category/property_type
+    // while status="draft" (Batch 5 §16-18) — so Step 1 now persists a real
+    // server draft on title alone instead of only advancing locally, closing
+    // the "type Step 1 → close tab → lose it" gap the old workaround left.
     startTransition(async () => {
       const saved = await saveDraft();
       if (saved) setStep((s) => Math.min(LAST_INPUT_STEP, s + 1) as Step);
@@ -398,13 +467,17 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
   }
 
   async function handleSubmitForApproval() {
-    if (!savedId) return;
+    if (!savedId || submitInFlightRef.current) return;
+    submitInFlightRef.current = true;
     setServerError(null);
+    setServerErrorMeta(null);
     startTransition(async () => {
       const payload = buildPayload();
       const res = await submitPropertyForApproval(savedId, payload);
+      submitInFlightRef.current = false;
       if (!res.success) {
         setServerError(res.error);
+        setServerErrorMeta(res.meta ?? null);
         if ("fieldErrors" in res) setFieldErrors(res.fieldErrors ?? {});
         return;
       }
@@ -427,6 +500,7 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
   const errorCount = Object.keys(fieldErrors).length;
   const errorFieldLabels: Record<string, string> = {
     title: "Listing title",
+    description: "Description",
     property_type: "Property type",
     city_text: "City",
     price: "Sale price",
@@ -435,10 +509,13 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl pb-20 sm:pb-0">
-      {/* Mobile contextual header (design Batch 5 shell) — the desktop
-       * breadcrumb bar lives in WizardShell instead, hidden at this width. */}
-      <div className="-mx-4 mb-4 flex h-14 items-center justify-between border-b border-zinc-100 bg-white px-4 sm:hidden">
+    <div className="mx-auto max-w-2xl pb-20 lg:pb-0">
+      {/* Mobile/tablet contextual header (design Batch 5 shell) — the
+       * DashboardShellV2 sidebar/topbar only appear at `lg` (1024px), so this
+       * header must stay visible through tablet too, not just below `sm`
+       * (640px) — a real gap caught live: 640-1023px showed no header at
+       * all. */}
+      <div className="-mx-4 mb-4 flex h-14 items-center justify-between border-b border-zinc-100 bg-white px-4 lg:hidden">
         {step > 1 ? (
           <button
             type="button"
@@ -501,7 +578,37 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
               ? "Please log in to continue."
               : serverError === "VALIDATION_ERROR"
                 ? "Please fix the errors below."
-                : "Something went wrong. Please try again."}
+                : serverError === "MEDIA_REQUIRED"
+                  ? `Add at least ${serverErrorMeta?.photosRequired ?? 3} photos before submitting — you have ${serverErrorMeta?.photoCount ?? 0} so far. Go to the Media step to add more.`
+                  : serverError === "LIMIT_EXCEEDED"
+                    ? `You've used ${serverErrorMeta?.used ?? "all"}${serverErrorMeta?.limit != null ? ` of ${serverErrorMeta.limit}` : ""} listings on your ${serverErrorMeta?.planName ?? "current"} plan. Upgrade your plan to post more.`
+                    : serverError === "SUBSCRIPTION_REQUIRED"
+                      ? "Your plan doesn't include posting properties. Upgrade to continue."
+                      : serverError === "STRUCTURE_LOCKED"
+                        ? "Some values can't be changed right now."
+                        : serverError === "DRAFT_CONFLICT"
+                          ? "This draft was updated somewhere else (another tab?). Reload to continue from the latest version."
+                          : "Something went wrong. Please try again."}
+          {serverError === "LIMIT_EXCEEDED" && (
+            <>
+              {" "}
+              <a href="/pricing" className="font-semibold underline">
+                View plans
+              </a>
+            </>
+          )}
+          {serverError === "DRAFT_CONFLICT" && (
+            <>
+              {" "}
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="font-semibold underline"
+              >
+                Reload
+              </button>
+            </>
+          )}
         </Alert>
       )}
 
@@ -527,7 +634,12 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
               />
             </FormField>
 
-            <FormField label="Description">
+            <FormField
+              label="Description"
+              required
+              error={fieldErrors.description?.[0]}
+              hint="Min 30 characters"
+            >
               <textarea
                 value={form.description}
                 onChange={(e) => setField("description", e.target.value)}
@@ -535,8 +647,16 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
                 maxLength={5000}
                 placeholder="Describe the property, key features, surroundings…"
                 className="form-input resize-none"
+                aria-required="true"
               />
-              <p className="text-xs text-zinc-400 mt-1">
+              <p
+                className={
+                  form.description.trim().length > 0 &&
+                  form.description.trim().length < 30
+                    ? "text-xs text-amber-600 mt-1"
+                    : "text-xs text-zinc-400 mt-1"
+                }
+              >
                 {form.description.length}/5000
               </p>
             </FormField>
@@ -1036,7 +1156,12 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
 
             <FormField label="Amenities">
               <div className="space-y-3">
-                {AMENITY_GROUPS.map((g) => (
+                {/* Type-aware amenity groups (Batch 5 §89): Lifestyle
+                 * amenities (garden, gym, kids' play area…) aren't
+                 * meaningful on Land/Plot or Business-sale listings. */}
+                {AMENITY_GROUPS.filter(
+                  (g) => !(g.group === "Lifestyle" && (isLand || isBusinessSale))
+                ).map((g) => (
                   <div key={g.group}>
                     <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
                       {g.group}
@@ -1132,32 +1257,13 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
           </div>
         )}
 
-        {/* STEP 6: Media placeholder */}
+        {/* STEP 6: Media (real Supabase Storage upload) */}
         {step === 6 && (
           <div className="space-y-5">
             <h2 className="text-lg font-bold text-zinc-900">
               Photos &amp; Media
             </h2>
-            <div className="border-2 border-dashed border-zinc-200 rounded-xl p-8 text-center bg-zinc-50">
-              <div className="w-12 h-12 bg-zinc-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <ImageIcon
-                  className="w-6 h-6 text-zinc-400"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                />
-              </div>
-              <p className="text-sm font-medium text-zinc-700 mb-1">
-                Photo upload coming soon
-              </p>
-              <p className="text-xs text-zinc-400">
-                Media storage (Cloudflare R2 + CDN) will be configured in a
-                future phase. You can submit your property now and add photos
-                later.
-              </p>
-              <span className="mt-3 inline-block text-xs bg-amber-50 text-amber-600 font-medium px-3 py-1 rounded-full">
-                SETUP_REQUIRED — Phase 12
-              </span>
-            </div>
+            <MediaUploadStep ownerType="property" ownerId={savedId} />
           </div>
         )}
 
@@ -1167,6 +1273,53 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
             <h2 className="text-lg font-bold text-zinc-900">
               Contact &amp; Visibility
             </h2>
+
+            <FormField label="Confirm Contact Number">
+              <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-zinc-50 px-3.5 py-2.5">
+                <span className="text-sm font-medium text-zinc-800">
+                  {profileMobile ? `+91 ${profileMobile}` : "No mobile on file"}
+                </span>
+                {profileMobileVerified ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">
+                    Verified
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-600">
+                    Not verified
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 text-xs text-zinc-400">
+                Your number stays hidden until you approve a reveal request.
+              </p>
+            </FormField>
+
+            <FormField label="Preferred Contact Time">
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { v: "anytime", label: "Anytime" },
+                    { v: "morning_9_1", label: "9 AM – 1 PM" },
+                    { v: "evening_5_9", label: "5 – 9 PM" },
+                  ] as const
+                ).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setField("preferred_contact_time", o.v)}
+                    aria-pressed={form.preferred_contact_time === o.v}
+                    className={[
+                      "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
+                      form.preferred_contact_time === o.v
+                        ? "border-brand bg-brand-soft text-brand"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-brand/40",
+                    ].join(" ")}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </FormField>
 
             <FormField label="Contact Visibility">
               <select
@@ -1311,57 +1464,19 @@ export function PropertyForm({ existing, mode, dashboardHref }: Props) {
           </div>
         )}
 
-        {/* Navigation — sticky above the dashboard's own bottom tab bar on
-         * mobile (design Batch 5 sticky footer: Back / Save Draft / Continue),
-         * static in normal flow on desktop. */}
-        <div className="sticky bottom-16 z-10 -mx-6 mt-8 border-t border-zinc-100 bg-white/95 px-6 pb-4 pt-4 backdrop-blur sm:static sm:-mx-8 sm:bg-white sm:px-8 sm:pb-0 sm:pt-6 sm:backdrop-blur-none flex items-center justify-between">
-          {step > 1 ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBack}
-              disabled={isPending}
-            >
-              ← Back
-            </Button>
-          ) : (
-            <div />
-          )}
-
-          <div className="flex items-center gap-3">
-            {savedId && step < LAST_INPUT_STEP && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  startTransition(async () => {
-                    await saveDraft();
-                  })
-                }
-                disabled={isPending}
-              >
-                Save Draft
-              </Button>
-            )}
-
-            {step < LAST_INPUT_STEP && (
-              <Button type="button" onClick={handleNext} loading={isPending}>
-                {isPending ? "Saving…" : "Continue →"}
-              </Button>
-            )}
-
-            {step === LAST_INPUT_STEP && (
-              <Button
-                type="button"
-                onClick={handleSubmitForApproval}
-                loading={isPending}
-                disabled={!savedId}
-              >
-                {isPending ? "Submitting…" : "Submit for Approval"}
-              </Button>
-            )}
-          </div>
-        </div>
+        <WizardFooter
+          step={step}
+          lastInputStep={LAST_INPUT_STEP}
+          isPending={isPending}
+          saveStatus={saveStatus}
+          canSaveDraft={!!savedId}
+          submitLabel="Submit for Approval"
+          onBack={handleBack}
+          onSaveDraft={() => startTransition(async () => { await saveNow(); })}
+          onContinue={handleNext}
+          onSubmit={handleSubmitForApproval}
+          backHref={dashboardHref}
+        />
       </div>
     </div>
   );

@@ -84,6 +84,9 @@ export async function createProjectDraft(
       pin_code: data.pin_code || null,
       map_visibility: data.map_visibility,
       virtual_tour_url: data.virtual_tour_url || null,
+      video_url: data.video_url || null,
+      preferred_contact_time: data.preferred_contact_time ?? null,
+      current_step: data.current_step ?? 1,
       status: "draft",
       approval_status: "draft",
       visibility_status: "private",
@@ -179,6 +182,9 @@ export async function updateProjectDraft(
       pin_code: data.pin_code || null,
       map_visibility: data.map_visibility,
       virtual_tour_url: data.virtual_tour_url || null,
+      video_url: data.video_url || null,
+      preferred_contact_time: data.preferred_contact_time ?? null,
+      ...(data.current_step ? { current_step: data.current_step } : {}),
     })
     .eq("id", projectId);
 
@@ -250,20 +256,31 @@ export async function submitProjectForApproval(
     };
   }
 
-  const { error } = await supabase
+  // Conditional transition — duplicate rapid submits match 0 rows and cannot
+  // double-transition or double-count usage (Batch 5 §129, §185, §334).
+  const { data: transitioned, error } = await supabase
     .from("projects")
     .update({
       status: "submitted",
       approval_status: "pending",
+      // Resubmit of a published/paused project re-hides it while pending
+      // re-review (edit-after-approval rule) — admin approval republishes.
+      visibility_status: "private",
       submitted_at: new Date().toISOString(),
       project_name: parsed.data.project_name,
       city_text: parsed.data.city_text ?? null,
     })
-    .eq("id", projectId);
+    .eq("id", projectId)
+    .eq("status", existing.status)
+    .select("id")
+    .maybeSingle();
 
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
+  if (!transitioned)
+    return { success: false, error: "INVALID_STATUS_TRANSITION" };
 
-  if (gate.reason === "ok")
+  // Only a first submission (from draft) consumes a post entitlement (§313).
+  if (gate.reason === "ok" && existing.status === "draft")
     await incrementUsage(
       profile.id,
       profile.public_role,
@@ -393,4 +410,55 @@ export async function getMyProjects(
   }
 
   return { success: true, data: { items: data ?? [], total: count ?? 0 } };
+}
+
+/** Most recent unsubmitted project draft — powers the Batch 5 draft resume
+ * card at the top of My Projects. Real row, real persisted current_step. */
+export async function getMyLatestProjectDraft(): Promise<
+  ActionResult<Partial<Project> | null>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("builder_profile_id", profile.id)
+    .eq("status", "draft")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMyLatestProjectDraft] DB error:", error.code);
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+  return { success: true, data: data ?? null };
+}
+
+/** Ownership-checked full-row fetch for the project edit route. */
+export async function getMyProjectById(
+  projectId: string
+): Promise<ActionResult<Partial<Project>>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("*")
+    .eq("id", projectId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMyProjectById] DB error:", error.code);
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+  if (!data) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (data.builder_profile_id !== profile.id)
+    return { success: false, error: "FORBIDDEN" };
+  return { success: true, data };
 }

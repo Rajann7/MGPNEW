@@ -11,6 +11,7 @@ export function EntityListCard({
   meta,
   createdAt,
   editHref,
+  extraActions,
 }: {
   status: EntityStatus;
   purpose?: string;
@@ -20,6 +21,7 @@ export function EntityListCard({
   meta?: string;
   createdAt: string;
   editHref: string;
+  extraActions?: React.ReactNode;
 }) {
   return (
     <div className="bg-white rounded-xl border border-zinc-200 p-4 hover:border-zinc-300 transition-colors">
@@ -53,6 +55,7 @@ export function EntityListCard({
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {extraActions}
           <Link
             href={editHref}
             className="px-3 py-1.5 text-xs font-medium text-zinc-600 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"

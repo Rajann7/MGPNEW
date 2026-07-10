@@ -1,11 +1,15 @@
 import { Metadata } from "next";
 import { Home } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getMyProperties } from "@/lib/actions/properties";
+import {
+  getMyProperties,
+  getMyLatestPropertyDraft,
+} from "@/lib/actions/properties";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import { getBrokerNav, getMobileTabs } from "@/components/dashboard/navConfig";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { EntityListCard } from "@/components/dashboard/EntityListCard";
+import { DraftResumeCard } from "@/components/forms/DraftResumeCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
 import type { EntityStatus } from "@/types";
@@ -17,9 +21,14 @@ export const metadata: Metadata = {
 
 export default async function BrokerPropertiesPage() {
   const profile = await requireRole("broker");
-  const result = await getMyProperties(1, 20);
+  const [result, draftResult] = await Promise.all([
+    getMyProperties(1, 20),
+    getMyLatestPropertyDraft(),
+  ]);
   const items = result.success ? result.data.items : [];
   const total = result.success ? result.data.total : 0;
+  const latestDraft =
+    draftResult.success && draftResult.data ? draftResult.data : null;
 
   return (
     <DashboardShellV2
@@ -29,6 +38,14 @@ export default async function BrokerPropertiesPage() {
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"
     >
+      {latestDraft && (
+        <DraftResumeCard
+          draft={latestDraft}
+          continueHref={`/dashboard/broker/properties/new?draft=${latestDraft.id}`}
+          startNewHref="/dashboard/broker/properties/new?fresh=1"
+        />
+      )}
+
       <DashboardPageHeader
         title="My Listings"
         count={total}

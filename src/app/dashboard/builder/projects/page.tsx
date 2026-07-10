@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
 import { getMyProjects } from "@/lib/actions/projects";
@@ -74,6 +75,14 @@ export default async function BuilderProjectsPage() {
               }
               createdAt={project.created_at!}
               editHref={`/dashboard/builder/projects/${project.id}/edit`}
+              extraActions={
+                <Link
+                  href={`/dashboard/builder/projects/${project.id}/units`}
+                  className="px-3 py-1.5 text-xs font-medium text-brand border border-brand/30 rounded-lg hover:bg-brand-soft transition-colors"
+                >
+                  Units
+                </Link>
+              }
             />
           ))}
         </div>

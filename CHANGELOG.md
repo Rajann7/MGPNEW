@@ -2573,3 +2573,43 @@ Replaced the property detail screen's markup/layout to match Batch 4 (`d-prop` +
 - `UnavailableEntityState.tsx` left generic (no moderation-reason leak, per CLAUDE.md §38) — the design's "Similar in locality" block was **not** added; deferred (see Pending Issues).
 - Checks: `npm run lint` PASS, `npx tsc --noEmit` PASS, `npm run build` PASS (all routes compile). Live-verified in-browser at 1366/768/390/320px: no horizontal scroll, sidebar contact card + mobile sticky bar render, overflow menu (Share/Save/Report) opens and Report modal respects the existing login gate, unavailable-slug state renders generically with no leaked reason.
 - **Deferred (SETUP_REQUIRED / PARTIAL):** real contact-reveal server action (Call/Reveal number show an honest "Setup Required" note instead of a fake number); poster display-name/verification enrichment on `public_properties_view`; amenities collection in the post-property wizard; "Similar in locality" block on the unavailable-property state (kept as the existing generic "Back to Search" CTA — deriving locality without leaking removed-listing data needs a dedicated lightweight lookup, not built this pass).
+
+## 2026-07-10 — Batch 5 posting-wizard continuation: media, unit inventory, wizard-footer parity
+
+Picked up an already-substantial in-progress Batch 5 build (backend `units.ts` + migration
+`20260710120000_batch5_wizard_drafts_units_quota.sql` + shared `WizardFooter`/`useWizardAutosave` all existed
+but were partly unwired/untested). This pass:
+- **Fixed real bugs found while continuing the build:** `PropertyForm.tsx` imported `WizardFooter` but rendered
+  a duplicate inline footer instead; `useWizardAutosave.ts` mutated a ref synchronously during render (moved to
+  `useEffect`); `units.ts`'s `requireOwnProject()` had no return-type annotation and failed `tsc --noEmit`
+  (error union widened to `string | undefined`, fixed with an explicit discriminated-union return type).
+- **Builder Project edit was a stub** ("Edit form coming in next phase", no `ProjectForm` rendered) while
+  Property/Requirement edit already had real CRUD — rebuilt `dashboard/builder/projects/[id]/edit/page.tsx` to
+  match the working pattern (`getMyProjectById` + `canEditProject` lock states + `ProjectForm mode="edit"`).
+- **Built the missing Design 5D Unit Inventory screen** — backend (`saveProjectWings`, idempotent
+  `generateWingUnits`, bounded `listProjectUnits`, `updateProjectUnit` with stale-version guard,
+  `bulkUpdateUnitStatus`/`bulkUpdateUnitPrice` with honest per-row skip reasons) was 100% ready with zero UI.
+  New route `dashboard/builder/projects/[id]/units` + `UnitInventoryClient.tsx`: wing editor (add/remove/Save
+  + per-wing Generate Units, locked once generated), desktop table + mobile accordion cards, select-all + sticky
+  bulk-action bar, unit edit modal/sheet with optimistic-concurrency version passed through. Linked from the My
+  Projects list (`EntityListCard` gained an `extraActions` slot).
+- **Ported ProjectForm and RequirementForm onto the shared `WizardFooter`/`useWizardAutosave`** — all three
+  posting wizards (Property/Project/Requirement) now share one footer component and one debounced-autosave hook
+  instead of three hand-rolled copies.
+- **Implemented real media upload — Supabase Storage, not Cloudflare R2** (user-approved deviation from
+  CLAUDE.md's default; R2 isn't connected yet, Supabase Storage is live). New migration
+  `20260710150000_media_supabase_storage.sql`: generic polymorphic `media` table (property/project/project_unit
+  owners) with entity-ownership RLS (not just "uploader = me" — re-verifies real listing ownership), two Storage
+  buckets (`media-public` public-read for photos/video, `media-private` for brochure PDFs — never a public URL,
+  per CLAUDE.md §21), folder-scoped `storage.objects` RLS keyed to the uploader's own auth uid. New
+  `src/lib/actions/media.ts` (upload-target issuance, register/list/delete/reorder/set-cover, signed URLs for
+  private files) and `src/components/forms/wizard/MediaUploadStep.tsx` (drag-free tap-to-upload, live progress,
+  cover selection, up/down reorder, brochure PDF slot) reused identically in the Property and Project wizards,
+  replacing both "Setup Required" placeholders.
+- Checks: `npx tsc --noEmit` PASS, `npx eslint .` PASS (0 errors; 1 pre-existing unrelated warning in
+  `public-search.ts`), `npm run build` PASS (40 routes, incl. the new Unit Inventory route).
+- **Not done this pass:** migration apply to the production DB was attempted but blocked by this session's
+  credential-leakage sandbox guard (couldn't source the DB password/access token into a shell command) — user
+  needs to run `supabase link --project-ref cekpewpegltqpbmlofmc && supabase db push` manually. No live browser
+  verification was possible (all touched routes are `requireRole()`-gated, mobile-OTP login isn't automatable
+  in this session) — verified via build/lint/typecheck only, per CLAUDE.md §31.

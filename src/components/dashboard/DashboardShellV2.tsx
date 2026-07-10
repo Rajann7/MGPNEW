@@ -49,6 +49,8 @@ export function DashboardShellV2({
   mobileDrawerNav,
   mobileBackHref,
   mobileBackAction,
+  hideMobileTabBar,
+  hideTopbarOnMobile,
   children,
 }: {
   title: string;
@@ -75,6 +77,18 @@ export function DashboardShellV2({
   mobileBackHref?: string;
   /** Compact "+" action shown in the mobile back header (e.g. Post Property). */
   mobileBackAction?: { href: string; label: string };
+  /**
+   * Omit the bottom tab bar entirely — for full-screen flows (posting
+   * wizards) whose own design shows no persistent dashboard nav on mobile
+   * (Batch 5 §13).
+   */
+  hideMobileTabBar?: boolean;
+  /**
+   * Hide DashboardTopbar below `lg` even when neither mobileDrawerNav nor
+   * mobileBackHref is set — for screens (posting wizards) that render their
+   * own compact mobile contextual header instead of using either built-in one.
+   */
+  hideTopbarOnMobile?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -113,13 +127,13 @@ export function DashboardShellV2({
           title={title}
           breadcrumb={breadcrumb ?? [title]}
           userName={userName}
-          desktopOnly={!!mobileDrawerNav || !!mobileBackHref}
+          desktopOnly={!!mobileDrawerNav || !!mobileBackHref || !!hideTopbarOnMobile}
         />
         <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
           {children}
         </main>
       </div>
-      <DashboardMobileTabBar items={mobileTabs} />
+      {!hideMobileTabBar && <DashboardMobileTabBar items={mobileTabs} />}
     </div>
   );
 }

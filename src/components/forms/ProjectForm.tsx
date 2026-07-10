@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ShieldCheck, ImageIcon, Check } from "lucide-react";
+import { ShieldCheck, Check } from "lucide-react";
 import {
   createProjectDraft,
   updateProjectDraft,
   submitProjectForApproval,
 } from "@/lib/actions/projects";
+import { MediaUploadStep } from "@/components/forms/wizard/MediaUploadStep";
+import { WizardFooter } from "@/components/forms/wizard/WizardFooter";
+import { useWizardAutosave } from "@/components/forms/wizard/useWizardAutosave";
 import {
   PROJECT_TYPES,
   PROJECT_CATEGORIES,
@@ -15,7 +18,6 @@ import {
 import { Stepper } from "@/components/ui/Stepper";
 import { FormField, SummaryRow } from "@/components/ui/FormField";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
 import { SuccessScreen } from "@/components/ui/SuccessScreen";
 import type { Project } from "@/types";
 
@@ -140,6 +142,7 @@ export function ProjectForm({ existing, mode }: Props) {
     pin_code: existing?.pin_code ?? "",
     map_visibility: existing?.map_visibility ?? "approximate",
     virtual_tour_url: existing?.virtual_tour_url ?? "",
+    video_url: existing?.video_url ?? "",
   });
   const [amenities, setAmenities] = useState<string[]>(
     (existing?.amenities as string[] | undefined) ?? []
@@ -208,6 +211,7 @@ export function ProjectForm({ existing, mode }: Props) {
       pin_code: form.pin_code || undefined,
       map_visibility: form.map_visibility as "hidden" | "approximate" | "exact",
       virtual_tour_url: form.virtual_tour_url || undefined,
+      video_url: form.video_url || undefined,
     };
   }
 
@@ -232,6 +236,17 @@ export function ProjectForm({ existing, mode }: Props) {
     }
     return true;
   }
+
+  const LAST_INPUT_STEP = 9 as const;
+  const autosaveEligible =
+    mode === "create" ||
+    ["draft", "need_changes", "rejected"].includes(existing?.status ?? "");
+
+  const { status: saveStatus, saveNow } = useWizardAutosave({
+    enabled: autosaveEligible && form.project_name.trim().length >= 3,
+    fingerprint: JSON.stringify({ form, amenities, step }),
+    save: saveDraft,
+  });
 
   async function handleNext() {
     setServerError(null);
@@ -705,23 +720,24 @@ export function ProjectForm({ existing, mode }: Props) {
           </div>
         )}
 
-        {/* STEP 7 · MEDIA (setup-required) */}
+        {/* STEP 7 · MEDIA (real Supabase Storage upload) */}
         {step === 7 && (
           <div className="space-y-5">
             <h2 className="text-lg font-bold text-zinc-900">Media</h2>
-            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-6 py-10 text-center">
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-soft">
-                <ImageIcon className="h-5 w-5 text-brand" />
-              </span>
-              <div className="text-sm font-semibold text-zinc-900">
-                Media upload — Setup required
-              </div>
-              <p className="max-w-sm text-[13px] text-zinc-500">
-                Renders, floor plans, one project video and the brochure PDF are
-                added once Cloudflare R2 storage is connected (Prompt 10). Nothing
-                is faked — no placeholder images are published.
-              </p>
-            </div>
+            <MediaUploadStep
+              ownerType="project"
+              ownerId={savedId}
+              allowBrochure
+            />
+            <FormField label="Project Video URL (optional)">
+              <input
+                type="url"
+                value={form.video_url}
+                onChange={(e) => setField("video_url", e.target.value)}
+                placeholder="https://…"
+                className="form-input"
+              />
+            </FormField>
             <FormField label="Virtual Tour / 360° URL (optional)">
               <input
                 type="url"
@@ -805,38 +821,19 @@ export function ProjectForm({ existing, mode }: Props) {
           </div>
         )}
 
-        {/* Navigation */}
-        <div className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-6">
-          {step > 1 ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBack}
-              disabled={isPending}
-            >
-              ← Back
-            </Button>
-          ) : (
-            <div />
-          )}
-          <div className="flex items-center gap-3">
-            {step < 9 && (
-              <Button type="button" onClick={handleNext} loading={isPending}>
-                {isPending ? "Saving…" : "Next →"}
-              </Button>
-            )}
-            {step === 9 && (
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                loading={isPending}
-                disabled={!savedId}
-              >
-                {isPending ? "Submitting…" : "Submit for approval"}
-              </Button>
-            )}
-          </div>
-        </div>
+        <WizardFooter
+          step={step}
+          lastInputStep={LAST_INPUT_STEP}
+          isPending={isPending}
+          saveStatus={saveStatus}
+          canSaveDraft={!!savedId}
+          submitLabel="Submit for approval"
+          onBack={handleBack}
+          onSaveDraft={() => startTransition(async () => { await saveNow(); })}
+          onContinue={handleNext}
+          onSubmit={handleSubmit}
+          backHref="/dashboard/builder/projects"
+        />
       </div>
 
       {step === 9 && (

@@ -14,8 +14,9 @@ import {
 import { Stepper } from "@/components/ui/Stepper";
 import { FormField, SummaryRow } from "@/components/ui/FormField";
 import { Alert } from "@/components/ui/Alert";
-import { Button } from "@/components/ui/Button";
 import { SuccessScreen } from "@/components/ui/SuccessScreen";
+import { WizardFooter } from "@/components/forms/wizard/WizardFooter";
+import { useWizardAutosave } from "@/components/forms/wizard/useWizardAutosave";
 import type { Requirement } from "@/types";
 
 const PURPOSE_LABELS: Record<string, string> = {
@@ -196,6 +197,23 @@ export function RequirementForm({ existing, mode, dashboardRole }: Props) {
     }
     return true;
   }
+
+  const LAST_INPUT_STEP = 7 as const;
+  const autosaveEligible =
+    mode === "create" ||
+    ["draft", "need_changes", "rejected"].includes(existing?.status ?? "");
+
+  const { status: saveStatus, saveNow } = useWizardAutosave({
+    enabled: autosaveEligible && form.title.trim().length >= 5,
+    fingerprint: JSON.stringify({
+      form,
+      amenities,
+      loanPreApproved,
+      brokerContact,
+      step,
+    }),
+    save: saveDraft,
+  });
 
   async function handleNext() {
     setServerError(null);
@@ -694,38 +712,19 @@ export function RequirementForm({ existing, mode, dashboardRole }: Props) {
           </div>
         )}
 
-        {/* Navigation */}
-        <div className="mt-8 flex items-center justify-between border-t border-zinc-100 pt-6">
-          {step > 1 ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleBack}
-              disabled={isPending}
-            >
-              ← Back
-            </Button>
-          ) : (
-            <div />
-          )}
-          <div className="flex items-center gap-3">
-            {step < 7 && (
-              <Button type="button" onClick={handleNext} loading={isPending}>
-                {isPending ? "Saving…" : "Next →"}
-              </Button>
-            )}
-            {step === 7 && (
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                loading={isPending}
-                disabled={!savedId}
-              >
-                {isPending ? "Submitting…" : "Submit requirement"}
-              </Button>
-            )}
-          </div>
-        </div>
+        <WizardFooter
+          step={step}
+          lastInputStep={LAST_INPUT_STEP}
+          isPending={isPending}
+          saveStatus={saveStatus}
+          canSaveDraft={!!savedId}
+          submitLabel="Submit requirement"
+          onBack={handleBack}
+          onSaveDraft={() => startTransition(async () => { await saveNow(); })}
+          onContinue={handleNext}
+          onSubmit={handleSubmit}
+          backHref={`/dashboard/${dashboardRole}/requirements`}
+        />
       </div>
 
       {step === 7 && (

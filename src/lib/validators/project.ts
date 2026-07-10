@@ -105,7 +105,36 @@ export const ProjectDraftSchema = z.object({
 
   // Media
   virtual_tour_url: z.string().url().optional().or(z.literal("")),
+  video_url: z.string().url().optional().or(z.literal("")),
+
+  // Contact (Batch 5 Contact step)
+  preferred_contact_time: z
+    .enum(["anytime", "morning_9_1", "evening_5_9"])
+    .nullable()
+    .optional(),
+
+  // Wizard step persistence (resume exact step — Batch 5 §38)
+  current_step: z.number().int().min(1).max(20).optional(),
 });
+
+/** One wing/tower row of the Batch 5 Step 4 structured wing editor. */
+export const ProjectWingSchema = z.object({
+  wing_name: z.string().min(1, "Wing name is required").max(50),
+  floors: z.number().int().min(1).max(200),
+  units_per_floor: z.number().int().min(1).max(50),
+});
+
+export const ProjectWingsSchema = z
+  .array(ProjectWingSchema)
+  .max(50)
+  .refine(
+    (wings) =>
+      new Set(wings.map((w) => w.wing_name.trim().toUpperCase())).size ===
+      wings.length,
+    { message: "Wing names must be unique" }
+  );
+
+export type ProjectWingInput = z.infer<typeof ProjectWingSchema>;
 
 export const ProjectSubmitSchema = ProjectDraftSchema.extend({
   project_name: z.string().min(3).max(200),

@@ -68,9 +68,41 @@ export const RequirementDraftSchema = z.object({
     .optional(),
   preferred_amenities: z.array(z.string()).default([]),
 
+  // Multi-select BHK preferences ([2,3]; 4 means "4+", stored as range
+  // bedrooms_min=4 / bedrooms_max=null — Batch 5 §211-212)
+  bedroom_options: z.array(z.number().int().min(0).max(10)).max(10).default([]),
+
   // Location
   city_text: z.string().max(100).optional(),
   preferred_localities_text: z.string().max(500).optional(),
+  // Structured multi-locality preferences — max 5, server-enforced,
+  // cross-city, no duplicates (Batch 5 §199-203)
+  preferred_locations: z
+    .array(
+      z.object({
+        city: z.string().min(1).max(100),
+        locality: z.string().min(1).max(100),
+      })
+    )
+    .max(5, "Up to 5 localities allowed")
+    .refine(
+      (locs) =>
+        new Set(
+          locs.map((l) => `${l.city.toLowerCase()}|${l.locality.toLowerCase()}`)
+        ).size === locs.length,
+      { message: "Duplicate locality" }
+    )
+    .default([]),
+
+  // Structured preferences (Batch 5 §209, §220-221)
+  loan_preapproved: z.boolean().default(false),
+  broker_contact_preference: z
+    .enum(["in_app_only", "calls_ok"])
+    .default("in_app_only"),
+  preferred_contact_time: z
+    .enum(["anytime", "morning_9_1", "evening_5_9"])
+    .nullable()
+    .optional(),
 
   // Privacy
   contact_visibility: z
@@ -82,6 +114,9 @@ export const RequirementDraftSchema = z.object({
       "public",
     ])
     .default("show_after_login"),
+
+  // Wizard step persistence (resume exact step — Batch 5 §38)
+  current_step: z.number().int().min(1).max(20).optional(),
 });
 
 export const RequirementSubmitSchema = RequirementDraftSchema.extend({

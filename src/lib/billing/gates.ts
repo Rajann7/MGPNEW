@@ -55,6 +55,41 @@ const FEATURE_BY_TARGET: Record<string, string> = {
   requirement: "requirement_posts_limit",
 };
 
+/** Table + owner-column for each posting target's live-state count. */
+const ENTITY_TABLE_BY_TARGET: Record<
+  "property" | "project" | "requirement",
+  { table: string; ownerColumn: string }
+> = {
+  property: { table: "properties", ownerColumn: "owner_profile_id" },
+  project: { table: "projects", ownerColumn: "builder_profile_id" },
+  requirement: { table: "requirements", ownerColumn: "created_by_profile_id" },
+};
+
+/**
+ * Real live count of the profile's currently-active postings (not deleted,
+ * not rejected/expired) for this target. Posting limits are a live-state
+ * meter (like active listings), not a lifetime event count — a mutable
+ * `usage_counters` ledger can drift from reality (e.g. listings created
+ * before gates were enabled, or via any path that didn't increment it),
+ * silently letting a user exceed their real limit. CLAUDE.md §"Do not use a
+ * generic counter if the feature is active listings... another live-state
+ * meter" — this counts the actual rows instead.
+ */
+async function getActiveEntityCount(
+  profileId: string,
+  target: "property" | "project" | "requirement"
+): Promise<number> {
+  const { table, ownerColumn } = ENTITY_TABLE_BY_TARGET[target];
+  const admin = createServiceClient();
+  const { count } = await admin
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq(ownerColumn, profileId)
+    .is("deleted_at", null)
+    .not("status", "in", "(rejected,expired)");
+  return count ?? 0;
+}
+
 /**
  * Gate a posting action (property/project/requirement submit).
  * Returns a GateResult; caller denies only when allowed === false.
@@ -85,7 +120,7 @@ export async function checkPostingGate(
     };
   }
 
-  const used = await getUsage(profileId, featureKey);
+  const used = await getActiveEntityCount(profileId, target);
   if (used >= limit) {
     return {
       allowed: false,
@@ -131,28 +166,39 @@ export async function incrementUsage(
 ): Promise<void> {
   const admin = createServiceClient();
   const periodStart = new Date().toISOString().slice(0, 10);
-  // Upsert then increment atomically-ish (unique on profile+feature+period).
-  const { data: existing } = await admin
-    .from("usage_counters")
-    .select("id, used_count")
-    .eq("profile_id", profileId)
-    .eq("feature_key", featureKey)
-    .eq("period_start", periodStart)
-    .maybeSingle();
-
-  if (existing) {
-    await admin
+  // Single atomic upsert via RPC (INSERT … ON CONFLICT DO UPDATE) — no
+  // read-then-write race under concurrent submissions (Batch 5 §310, §371).
+  const { error } = await admin.rpc("mgp_increment_usage", {
+    p_profile_id: profileId,
+    p_role: role,
+    p_feature_key: featureKey,
+    p_period_start: periodStart,
+  });
+  if (error) {
+    // Migration 20260710120000 not applied yet — fall back to the legacy
+    // upsert so usage is still recorded (racy but never silently dropped).
+    console.error("[incrementUsage] RPC failed, fallback:", error.code);
+    const { data: existing } = await admin
       .from("usage_counters")
-      .update({ used_count: existing.used_count + 1 })
-      .eq("id", existing.id);
-  } else {
-    await admin.from("usage_counters").insert({
-      profile_id: profileId,
-      role,
-      feature_key: featureKey,
-      period_start: periodStart,
-      used_count: 1,
-    });
+      .select("id, used_count")
+      .eq("profile_id", profileId)
+      .eq("feature_key", featureKey)
+      .eq("period_start", periodStart)
+      .maybeSingle();
+    if (existing) {
+      await admin
+        .from("usage_counters")
+        .update({ used_count: existing.used_count + 1 })
+        .eq("id", existing.id);
+    } else {
+      await admin.from("usage_counters").insert({
+        profile_id: profileId,
+        role,
+        feature_key: featureKey,
+        period_start: periodStart,
+        used_count: 1,
+      });
+    }
   }
 }
 

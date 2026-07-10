@@ -88,11 +88,21 @@ export const AREA_UNITS = [
   "hectare",
 ] as const;
 
+/** Structured preferred-contact-time windows (Batch 5 Contact step). */
+export const CONTACT_TIME_OPTIONS = [
+  "anytime",
+  "morning_9_1",
+  "evening_5_9",
+] as const;
+
+// Draft schema is intentionally less strict than submit: a draft can be
+// created after Step 1 (title only) — classification belongs to Step 2 and
+// must not block first-step persistence (Batch 5 §16-18).
 export const PropertyDraftSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(200),
-  purpose: z.enum(PROPERTY_PURPOSES),
-  category: z.enum(PROPERTY_CATEGORIES),
-  property_type: z.string().min(1, "Property type is required"),
+  purpose: z.enum(PROPERTY_PURPOSES).nullable().optional(),
+  category: z.enum(PROPERTY_CATEGORIES).nullable().optional(),
+  property_type: z.string().max(100).nullable().optional(),
   description: z.string().max(5000).optional(),
 
   // Pricing
@@ -175,6 +185,10 @@ export const PropertyDraftSchema = z.object({
     ])
     .default("show_after_login"),
   map_visibility: z.enum(["hidden", "approximate", "exact"]).default("hidden"),
+  preferred_contact_time: z.enum(CONTACT_TIME_OPTIONS).nullable().optional(),
+
+  // Wizard step persistence (resume exact step — Batch 5 §38)
+  current_step: z.number().int().min(1).max(20).optional(),
 });
 
 export const PropertySubmitSchema = PropertyDraftSchema.extend({
@@ -182,6 +196,9 @@ export const PropertySubmitSchema = PropertyDraftSchema.extend({
   purpose: z.enum(PROPERTY_PURPOSES),
   category: z.enum(PROPERTY_CATEGORIES),
   property_type: z.string().min(1),
+  // Batch 5 §61: draft can stay incomplete, but a real description of at
+  // least 30 characters is required to submit for review.
+  description: z.string().min(30, "Description must be at least 30 characters").max(5000),
   city_text: z.string().min(2, "City is required").max(100),
 })
   .refine(

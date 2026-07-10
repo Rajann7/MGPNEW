@@ -1,13 +1,17 @@
 import { Metadata } from "next";
 import { Home } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getMyProperties } from "@/lib/actions/properties";
+import {
+  getMyProperties,
+  getMyLatestPropertyDraft,
+} from "@/lib/actions/properties";
 import { getLeadCountsByTarget } from "@/lib/actions/leads";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { StatusTabs, type StatusTab } from "@/components/dashboard/StatusTabs";
 import { OwnerEntityCard } from "@/components/dashboard/OwnerEntityCard";
+import { DraftResumeCard } from "@/components/forms/DraftResumeCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
 import type { EntityStatus } from "@/types";
@@ -73,7 +77,12 @@ export default async function OwnerPropertiesPage({
   ]);
   const activeTab = params.status ?? "all";
 
-  const result = await getMyProperties(1, 100);
+  const [result, draftResult] = await Promise.all([
+    getMyProperties(1, 100),
+    getMyLatestPropertyDraft(),
+  ]);
+  const latestDraft =
+    draftResult.success && draftResult.data ? draftResult.data : null;
   const allItems = result.success ? result.data.items : [];
 
   const leadCountsResult = await getLeadCountsByTarget(
@@ -113,6 +122,14 @@ export default async function OwnerPropertiesPage({
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"
     >
+      {latestDraft && activeTab === "all" && (
+        <DraftResumeCard
+          draft={latestDraft}
+          continueHref={`/dashboard/owner/properties/new?draft=${latestDraft.id}`}
+          startNewHref="/dashboard/owner/properties/new?fresh=1"
+        />
+      )}
+
       <div className="sm:bg-surface sm:border sm:border-border sm:rounded-2xl sm:overflow-hidden">
         <div className="sm:px-5 sm:pt-4">
           <DashboardPageHeader

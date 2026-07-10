@@ -19,6 +19,7 @@
 -- 1. Base-table read policy: verified Broker/Builder only ---------------------
 drop policy if exists "requirements_public_read" on public.requirements;
 
+drop policy if exists "requirements_verified_pro_read" on public.requirements;
 create policy "requirements_verified_pro_read"
   on public.requirements
   for select

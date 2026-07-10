@@ -5,8 +5,8 @@ import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicPropertyBySlug,
   getSimilarProperties,
-  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
+import { getListingContactState } from "@/lib/actions/contact";
 import { isItemSaved, trackRecentlyViewed } from "@/lib/actions/saved";
 import { getMyInquiryForTarget } from "@/lib/actions/leads";
 import { maskMobile } from "@/lib/leads/inquiry-config";
@@ -80,16 +80,9 @@ export default async function PropertyDetailPage({ params }: Props) {
   ]);
   if (profile) void trackRecentlyViewed("property", property.id);
 
-  const directPhone = property.owner_profile_id
-    ? await getPublicListingDirectPhone(
-        property.owner_profile_id,
-        property.contact_visibility,
-        {
-          isLoggedIn: Boolean(profile),
-          isVerified: profile?.verification_status === "verified",
-        }
-      )
-    : null;
+  // Masked-until-reveal (Batch 4 §7/§44): only the masked value reaches the
+  // initial payload; the full number requires the explicit Reveal action.
+  const contactState = await getListingContactState("property", property.id);
 
   const floorFact =
     property.floor_number != null
@@ -126,12 +119,11 @@ export default async function PropertyDetailPage({ params }: Props) {
   ];
 
   const posterInfo = {
-    // Poster's name/verification aren't joined into the public property view
-    // yet — never fake them; the role label alone is real (poster_role is on
-    // the row).
-    name: null,
+    // Real public-safe poster identity from public_properties_view (§43) —
+    // display name / verified state are actual profile data, never invented.
+    name: property.poster_display_name ?? null,
     roleLabel: labelize(property.poster_role ?? "owner"),
-    verified: false,
+    verified: Boolean(property.poster_verified),
   };
 
   return (
@@ -271,7 +263,8 @@ export default async function PropertyDetailPage({ params }: Props) {
               targetId={property.id}
               existingInquiry={existingInquiry}
               poster={posterInfo}
-              phone={directPhone}
+              contact={contactState}
+              revealTargetType="property"
             />
           </div>
         </div>

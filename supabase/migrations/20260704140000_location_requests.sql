@@ -29,6 +29,7 @@ alter table public.location_requests enable row level security;
 
 -- Anyone (guest or logged-in) may submit a request. No read policy → the public
 -- can never SELECT these rows; staff read via service role only.
+drop policy if exists "location_requests_public_insert" on public.location_requests;
 create policy "location_requests_public_insert"
   on public.location_requests
   for insert

@@ -5,8 +5,8 @@ import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicBrokerBySlug,
   getPublicPropertiesByProfile,
-  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
+import { getListingContactState } from "@/lib/actions/contact";
 import { Breadcrumbs } from "@/components/detail/Breadcrumbs";
 import { PublicProfileHeader } from "@/components/profile/PublicProfileHeader";
 import { ProfileContactButton } from "@/components/profile/ProfileContactButton";
@@ -58,13 +58,11 @@ export default async function BrokerProfilePage({ params }: Props) {
   const properties = await getPublicPropertiesByProfile(broker.profile_id);
   const name = broker.agency_name || broker.display_name || "Broker";
 
-  // Brokers have no single listing's contact_visibility to key off — same
-  // "show after login" default already used on project/builder profile
-  // contact, per src/lib/actions/contact.ts decideAutoApproval convention.
-  const directPhone = await getPublicListingDirectPhone(
-    broker.profile_id,
-    "show_after_login",
-    { isLoggedIn: Boolean(profile), isVerified: true }
+  // Masked-until-reveal (Batch 4 §124/§132): the broker's number is never in
+  // the initial render — an explicit server-authorised Reveal is required.
+  const contactState = await getListingContactState(
+    "broker_profile",
+    broker.profile_id
   );
 
   // Service areas = distinct real localities/cities from this broker's live listings.
@@ -111,7 +109,9 @@ export default async function BrokerProfilePage({ params }: Props) {
             label="Contact broker"
             currentPath={`/broker/${slug}`}
             isLoggedIn={Boolean(profile)}
-            phone={directPhone}
+            targetType="broker_profile"
+            targetId={broker.profile_id}
+            contact={contactState}
           />
         </div>
 

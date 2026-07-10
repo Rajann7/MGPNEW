@@ -71,6 +71,7 @@ create table if not exists public.plans (
   updated_at            timestamptz not null default now()
 );
 
+drop trigger if exists plans_updated_at on public.plans;
 create trigger plans_updated_at
   before update on public.plans
   for each row execute function mgp_set_updated_at();
@@ -105,6 +106,7 @@ create table if not exists public.subscriptions (
   updated_at             timestamptz not null default now()
 );
 
+drop trigger if exists subscriptions_updated_at on public.subscriptions;
 create trigger subscriptions_updated_at
   before update on public.subscriptions
   for each row execute function mgp_set_updated_at();
@@ -146,6 +148,7 @@ create table if not exists public.usage_counters (
   unique (profile_id, feature_key, period_start)
 );
 
+drop trigger if exists usage_counters_updated_at on public.usage_counters;
 create trigger usage_counters_updated_at
   before update on public.usage_counters
   for each row execute function mgp_set_updated_at();
@@ -181,6 +184,7 @@ create table if not exists public.payment_orders (
   updated_at             timestamptz not null default now()
 );
 
+drop trigger if exists payment_orders_updated_at on public.payment_orders;
 create trigger payment_orders_updated_at
   before update on public.payment_orders
   for each row execute function mgp_set_updated_at();
@@ -236,6 +240,7 @@ create table if not exists public.payments (
   unique (provider, provider_payment_id)
 );
 
+drop trigger if exists payments_updated_at on public.payments;
 create trigger payments_updated_at
   before update on public.payments
   for each row execute function mgp_set_updated_at();
@@ -306,6 +311,7 @@ create table if not exists public.invoices (
   updated_at            timestamptz not null default now()
 );
 
+drop trigger if exists invoices_updated_at on public.invoices;
 create trigger invoices_updated_at
   before update on public.invoices
   for each row execute function mgp_set_updated_at();
@@ -345,6 +351,7 @@ create table if not exists public.gst_profiles (
   updated_at     timestamptz not null default now()
 );
 
+drop trigger if exists gst_profiles_updated_at on public.gst_profiles;
 create trigger gst_profiles_updated_at
   before update on public.gst_profiles
   for each row execute function mgp_set_updated_at();
@@ -371,6 +378,7 @@ create table if not exists public.coupons (
   updated_at         timestamptz not null default now()
 );
 
+drop trigger if exists coupons_updated_at on public.coupons;
 create trigger coupons_updated_at
   before update on public.coupons
   for each row execute function mgp_set_updated_at();
@@ -407,6 +415,7 @@ create table if not exists public.trials (
   unique (profile_id, role)
 );
 
+drop trigger if exists trials_updated_at on public.trials;
 create trigger trials_updated_at
   before update on public.trials
   for each row execute function mgp_set_updated_at();
@@ -433,6 +442,7 @@ create table if not exists public.add_ons (
   updated_at     timestamptz not null default now()
 );
 
+drop trigger if exists add_ons_updated_at on public.add_ons;
 create trigger add_ons_updated_at
   before update on public.add_ons
   for each row execute function mgp_set_updated_at();
@@ -450,6 +460,7 @@ create table if not exists public.add_on_purchases (
   updated_at     timestamptz not null default now()
 );
 
+drop trigger if exists add_on_purchases_updated_at on public.add_on_purchases;
 create trigger add_on_purchases_updated_at
   before update on public.add_on_purchases
   for each row execute function mgp_set_updated_at();
@@ -473,6 +484,7 @@ create table if not exists public.refunds (
   updated_at         timestamptz not null default now()
 );
 
+drop trigger if exists refunds_updated_at on public.refunds;
 create trigger refunds_updated_at
   before update on public.refunds
   for each row execute function mgp_set_updated_at();
@@ -492,6 +504,7 @@ create table if not exists public.credit_notes (
   updated_at         timestamptz not null default now()
 );
 
+drop trigger if exists credit_notes_updated_at on public.credit_notes;
 create trigger credit_notes_updated_at
   before update on public.credit_notes
   for each row execute function mgp_set_updated_at();
@@ -595,10 +608,12 @@ alter table public.billing_audit_logs       enable row level security;
 -- Internal/inactive plans are invisible to the anon key.
 -- ------------------------------------------------------------
 
+drop policy if exists "plans: public reads active public" on public.plans;
 create policy "plans: public reads active public"
   on public.plans for select
   using (is_active = true and is_public = true);
 
+drop policy if exists "add_ons: public reads active public" on public.add_ons;
 create policy "add_ons: public reads active public"
   on public.add_ons for select
   using (is_active = true and is_public = true);
@@ -613,26 +628,32 @@ create policy "add_ons: public reads active public"
 -- Own-user read policies (private billing data)
 -- ------------------------------------------------------------
 
+drop policy if exists "subscriptions: own read" on public.subscriptions;
 create policy "subscriptions: own read"
   on public.subscriptions for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "usage_counters: own read" on public.usage_counters;
 create policy "usage_counters: own read"
   on public.usage_counters for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "payment_orders: own read" on public.payment_orders;
 create policy "payment_orders: own read"
   on public.payment_orders for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "payments: own read" on public.payments;
 create policy "payments: own read"
   on public.payments for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "invoices: own read" on public.invoices;
 create policy "invoices: own read"
   on public.invoices for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "invoice_line_items: own read via invoice" on public.invoice_line_items;
 create policy "invoice_line_items: own read via invoice"
   on public.invoice_line_items for select
   using (
@@ -643,35 +664,43 @@ create policy "invoice_line_items: own read via invoice"
     )
   );
 
+drop policy if exists "gst_profiles: own read" on public.gst_profiles;
 create policy "gst_profiles: own read"
   on public.gst_profiles for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "gst_profiles: own upsert" on public.gst_profiles;
 create policy "gst_profiles: own upsert"
   on public.gst_profiles for insert
   with check (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "gst_profiles: own update" on public.gst_profiles;
 create policy "gst_profiles: own update"
   on public.gst_profiles for update
   using (profile_id = mgp_get_my_profile_id())
   with check (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "coupon_redemptions: own read" on public.coupon_redemptions;
 create policy "coupon_redemptions: own read"
   on public.coupon_redemptions for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "trials: own read" on public.trials;
 create policy "trials: own read"
   on public.trials for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "add_on_purchases: own read" on public.add_on_purchases;
 create policy "add_on_purchases: own read"
   on public.add_on_purchases for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "refunds: own read" on public.refunds;
 create policy "refunds: own read"
   on public.refunds for select
   using (profile_id = mgp_get_my_profile_id());
 
+drop policy if exists "credit_notes: own read" on public.credit_notes;
 create policy "credit_notes: own read"
   on public.credit_notes for select
   using (profile_id = mgp_get_my_profile_id());

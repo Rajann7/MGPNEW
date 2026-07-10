@@ -5,6 +5,9 @@ import { canEditProperty } from "@/lib/permissions/entity-permissions";
 import { getMyPropertyById } from "@/lib/actions/properties";
 import { PropertyForm } from "@/components/forms/PropertyForm";
 import { WizardShell } from "@/components/forms/WizardShell";
+import { EditReapprovalGate } from "@/components/forms/wizard/EditReapprovalGate";
+import { WizardMobileHeader } from "@/components/forms/wizard/WizardMobileHeader";
+import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 
@@ -18,6 +21,10 @@ const LOCKED_REASON: Record<string, string> = {
   expired: "This listing has expired. Use Relist from My Properties to send it back for approval.",
   deleted: "This listing has been deleted.",
 };
+
+// Editing any of these sends a previously-reviewed listing back through
+// re-approval (Batch 5 §45-49) — must be explicitly confirmed first.
+const REQUIRES_REAPPROVAL_CONFIRM = ["published", "paused", "rejected"];
 
 export default async function EditPropertyPage({
   params,
@@ -36,6 +43,14 @@ export default async function EditPropertyPage({
 
   const property = result.data;
 
+  const shellProps = {
+    title: "Edit Property",
+    navItems: getOwnerNav("/dashboard/owner/properties"),
+    mobileTabs: getMobileTabs("owner", "/dashboard/owner/properties"),
+    userName: profile.display_name ?? profile.full_name,
+    userRole: "Owner",
+  };
+
   if (
     !canEditProperty(profile, {
       owner_profile_id: property.owner_profile_id!,
@@ -44,11 +59,8 @@ export default async function EditPropertyPage({
     })
   ) {
     return (
-      <WizardShell
-        title="Edit Property"
-        dashboardHref="/dashboard/owner/properties"
-        dashboardLabel="My Properties"
-      >
+      <WizardShell {...shellProps}>
+        <WizardMobileHeader title="Edit Property" backHref="/dashboard/owner/properties" />
         <Alert tone="info">
           {LOCKED_REASON[property.status ?? ""] ??
             "This listing can't be edited right now."}
@@ -62,25 +74,32 @@ export default async function EditPropertyPage({
     );
   }
 
+  const needsConfirm = REQUIRES_REAPPROVAL_CONFIRM.includes(
+    property.status ?? ""
+  );
+
   return (
-    <WizardShell
-      title="Edit Property"
-      dashboardHref="/dashboard/owner/properties"
-      dashboardLabel="My Properties"
-    >
-      <div className="mb-6 hidden sm:block">
-        <h1 className="text-xl font-bold text-ink">Edit Property</h1>
-        <p className="text-sm text-ink-soft">
-          {["published", "paused", "rejected"].includes(property.status ?? "")
-            ? "Saving changes will send this listing back for admin approval."
-            : "Complete all steps and submit for admin approval."}
-        </p>
-      </div>
-      <PropertyForm
-        mode="edit"
-        existing={property}
-        dashboardHref="/dashboard/owner/properties"
-      />
+    <WizardShell {...shellProps}>
+      <EditReapprovalGate
+        requiresConfirmation={needsConfirm}
+        backHref="/dashboard/owner/properties"
+      >
+        <div className="mb-6 hidden lg:block">
+          <h1 className="text-xl font-bold text-ink">Edit Property</h1>
+          <p className="text-sm text-ink-soft">
+            {needsConfirm
+              ? "Saving changes will send this listing back for admin approval."
+              : "Complete all steps and submit for admin approval."}
+          </p>
+        </div>
+        <PropertyForm
+          mode="edit"
+          existing={property}
+          dashboardHref="/dashboard/owner/properties"
+          profileMobile={profile.mobile}
+          profileMobileVerified={profile.mobile_verified}
+        />
+      </EditReapprovalGate>
     </WizardShell>
   );
 }

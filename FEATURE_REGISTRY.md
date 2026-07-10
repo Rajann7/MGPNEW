@@ -2466,3 +2466,17 @@ Conflict resolutions locked in CLAUDE.md §3A: requirement approval; 9-step prop
 | Recently-viewed strip | `/` | NOT_STARTED | logged-in+history only; deferred Prompt 05 |
 | Header mega-menu | header | NOT_STARTED | Batch 1 add-on; existing header preserved |
 | Property/project photos | `/` cards | SETUP_REQUIRED | R2 media, Prompt 10 ("photo coming soon") |
+
+---
+
+## Batch 5 Posting Wizards — continuation [2026-07-10]
+
+| Feature | Route | Status | Notes |
+| --- | --- | --- | --- |
+| Property/Project/Requirement wizards on shared footer+autosave | `/dashboard/*/properties,projects,requirements/new` | DONE | `WizardFooter`+`useWizardAutosave` used by all 3 (was Property-only) |
+| Builder Project edit (real CRUD) | `/dashboard/builder/projects/[id]/edit` | DONE | was a stub; now matches Property/Requirement edit pattern |
+| Project Unit Inventory (5D) | `/dashboard/builder/projects/[id]/units` | DONE | wings CRUD, idempotent unit generation, bulk status/price, edit modal/sheet |
+| Media upload — Property photos | Property wizard step 6 | DONE | real Supabase Storage (not R2 — user-approved deviation), MIME/size/ownership validated |
+| Media upload — Project photos+brochure | Project wizard step 7 | DONE | photos public bucket; brochure PDF private bucket, signed-URL only, never public |
+| Media DB migration applied to production | n/a | BLOCKED | sandbox credential guard prevented `supabase db push`; user must run manually |
+| Wizard/units live browser verification | n/a | BLOCKED | all routes `requireRole()`-gated; mobile-OTP login not automatable this session |

@@ -4209,3 +4209,26 @@ Not verified this pass (no test listing had `media_count > 0` in the seeded data
 Deferred / SETUP_REQUIRED (documented, not faked): real contact-reveal server action (Call/Reveal number show an honest note instead); poster display-name/verification enrichment on `public_properties_view`; "Similar in locality" block on the unavailable-property state (kept generic per CLAUDE.md §38 — no safe locality lookup for a possibly-hidden row was built this pass).
 
 RESULT: PASS for what was rebuilt and verified; PARTIAL on the two items above (no live click-through gallery test with real photos, no phone-reveal wiring) — both pre-existing gaps unrelated to core correctness, not blocking.
+
+## Batch 5 posting wizards — continuation [2026-07-10] — RESULT: PARTIAL
+
+Scope: fixed duplicate/broken wizard-footer wiring, built the missing Unit Inventory (5D) screen, fixed the
+Builder Project edit stub, replaced Property/Project media placeholders with real Supabase Storage upload
+(user-approved deviation from CLAUDE.md's default Cloudflare R2 — R2 not connected).
+
+Automated: `npx tsc --noEmit` PASS (0 errors — was failing before this pass on a real `units.ts` typing bug) ·
+`npx eslint .` PASS (0 errors; 1 pre-existing unrelated warning in `public-search.ts`) · `npm run build` PASS
+(40/40 routes, incl. new `/dashboard/builder/projects/[id]/units`).
+
+Not automatable this pass: live browser walk-through of the Unit Inventory screen, the fixed Project edit page,
+and the new media upload flow — all are behind `requireRole()` and mobile-OTP login isn't automatable in this
+session (same harness limit as prior Prompt 04 entries above). Code-reviewed and build-verified only.
+
+Migration `20260710150000_media_supabase_storage.sql` (media table + `media-public`/`media-private` Storage
+buckets + RLS) and the earlier `20260710120000_batch5_wizard_drafts_units_quota.sql` are **NOT yet applied** to
+the linked production project (`cekpewpegltqpbmlofmc`) — attempted via `supabase db push` but this session's
+credential-leakage sandbox guard blocked sourcing the DB password into a shell command. User must run:
+`supabase link --project-ref cekpewpegltqpbmlofmc && supabase db push` manually, then live-verify.
+
+RESULT: PARTIAL — code complete and build-verified; DB migration apply + live browser verification both pending
+and require the user (DB credentials / an authenticated session respectively).

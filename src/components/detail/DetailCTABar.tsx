@@ -11,6 +11,11 @@ import {
   type InquiryFormInput,
   type MyInquiryStatus,
 } from "@/lib/actions/leads";
+import {
+  revealListingContact,
+  type ListingContactState,
+  type RevealTargetType,
+} from "@/lib/actions/contact";
 import { CrmStageBadge } from "@/components/leads/CrmStageBadge";
 import { INTEREST_TYPES } from "@/lib/leads/inquiry-config";
 import type { LeadTargetType, LeadSource, CrmStage } from "@/types";
@@ -38,10 +43,12 @@ interface Props {
   targetType: LeadTargetType;
   targetId: string;
   poster: PosterInfo;
-  /** The poster's real phone number, already resolved server-side against the
-   * listing's own contact_visibility setting for this viewer. Null means the
-   * rule doesn't allow a direct show for this viewer — never a fake number. */
-  phone?: string | null;
+  /** Masked-until-reveal contact state (Batch 4 §7/§44-46). The full number
+   * is present only when this viewer already completed an explicit reveal;
+   * otherwise only the masked display value reaches the client. */
+  contact: ListingContactState;
+  /** Target the explicit Reveal action is authorised against. */
+  revealTargetType: RevealTargetType;
   /** The viewer's existing inquiry on this listing (server-fetched), if any. */
   existingInquiry?: MyInquiryStatus | null;
 }
@@ -50,7 +57,8 @@ interface Props {
  * modal (name, contact number choice, interest, message). After sending, the
  * inquiry status is shown here and a second enquiry on the same listing is
  * blocked. Only Owner accounts can enquire — brokers/builders are restricted
- * (also enforced server-side). No fake sent states, no phone leak. */
+ * (also enforced server-side). No fake sent states, no phone leak: the full
+ * number only arrives from the explicit server-authorised Reveal action. */
 export function DetailCTABar({
   viewer,
   entityLabel,
@@ -58,7 +66,8 @@ export function DetailCTABar({
   targetType,
   targetId,
   poster,
-  phone = null,
+  contact,
+  revealTargetType,
   existingInquiry = null,
 }: Props) {
   const router = useRouter();
@@ -71,7 +80,11 @@ export function DetailCTABar({
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(
     null
   );
-  const [revealNotice, setRevealNotice] = useState(false);
+  const [revealedPhone, setRevealedPhone] = useState<string | null>(
+    contact.revealedPhone
+  );
+  const [revealNote, setRevealNote] = useState<string | null>(null);
+  const [revealPending, startReveal] = useTransition();
 
   const inquiry =
     existingInquiry ??
@@ -86,14 +99,62 @@ export function DetailCTABar({
   const isRestrictedRole = viewer.isLoggedIn && viewer.publicRole !== "owner";
   const initial = (poster.name?.charAt(0) ?? poster.roleLabel.charAt(0)).toUpperCase();
 
-  function handleRevealClick() {
+  function handleRevealClick(thenCall = false) {
     if (!viewer.isLoggedIn) {
       openAuth(currentPath);
       return;
     }
-    // No real contact-reveal server action exists yet — never fake a phone
-    // number. Show an honest, dismissible "Setup Required" note instead.
-    setRevealNotice(true);
+    if (revealedPhone || revealPending) return;
+    if (contact.policy === "hidden") {
+      setRevealNote(
+        "This poster shares their number only through an enquiry. Use Enquire Now instead."
+      );
+      return;
+    }
+    if (contact.policy === "needs_enquiry_approval") {
+      setRevealNote(
+        "This poster shares their number only after approving your enquiry. Send an enquiry to request it."
+      );
+      return;
+    }
+    if (contact.policy === "needs_verified") {
+      setRevealNote(
+        "This poster shares their number with verified members only."
+      );
+      return;
+    }
+    startReveal(async () => {
+      const result = await revealListingContact(revealTargetType, targetId);
+      if (result.success) {
+        setRevealedPhone(result.data.phone);
+        setRevealNote(null);
+        if (thenCall) window.location.href = `tel:${result.data.phone}`;
+        return;
+      }
+      switch (result.error) {
+        case "SELF_ACTION":
+          setRevealNote("This is your own listing.");
+          break;
+        case "NEEDS_ENQUIRY_APPROVAL":
+          setRevealNote(
+            "This poster shares their number only after approving your enquiry. Send an enquiry to request it."
+          );
+          break;
+        case "VERIFICATION_REQUIRED":
+          setRevealNote(
+            "This poster shares their number with verified members only."
+          );
+          break;
+        case "CONTACT_HIDDEN":
+        case "CONTACT_UNAVAILABLE":
+          setRevealNote(
+            "No direct number is available. Use Enquire Now instead."
+          );
+          break;
+        default:
+          setRevealNote("Could not reveal the number. Please try again.");
+      }
+    });
   }
 
   function openEnquireOrGate() {
@@ -161,31 +222,32 @@ export function DetailCTABar({
           </div>
         </div>
 
-        {phone ? (
-          // The listing's own contact_visibility rule allows a direct show
-          // for this viewer — the real number, not a masked placeholder.
+        {revealedPhone ? (
+          // Explicit reveal completed — the real number, never a placeholder.
           <a
-            href={`tel:${phone}`}
+            href={`tel:${revealedPhone}`}
             className="mt-3.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
           >
             <Phone className="h-4 w-4" />
-            {phone}
+            {revealedPhone}
           </a>
         ) : (
           <>
+            {contact.masked && (
+              <p className="mt-3.5 text-center text-sm font-medium tracking-wide text-zinc-500">
+                {contact.masked}
+              </p>
+            )}
             <button
               type="button"
-              onClick={handleRevealClick}
-              className="mt-3.5 w-full rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              onClick={() => handleRevealClick()}
+              disabled={revealPending}
+              className="mt-2 w-full rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
             >
-              Reveal number
+              {revealPending ? "Revealing…" : "Reveal number"}
             </button>
-            {revealNotice && (
-              <p className="mt-1.5 text-[11px] text-zinc-400">
-                {viewer.isLoggedIn
-                  ? "This owner shares their number only after approving your enquiry. Use Enquire Now to request it."
-                  : "Log in and send an enquiry to request this owner's number."}
-              </p>
+            {revealNote && (
+              <p className="mt-1.5 text-[11px] text-zinc-400">{revealNote}</p>
             )}
           </>
         )}
@@ -213,22 +275,25 @@ export function DetailCTABar({
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-100 bg-white/95 px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden">
         {inquiryStatus ?? (
           <div className="flex items-center gap-2.5">
-            {phone ? (
+            {revealedPhone ? (
               <a
-                href={`tel:${phone}`}
+                href={`tel:${revealedPhone}`}
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
               >
                 <Phone className="h-4 w-4" />
                 Call
               </a>
             ) : (
+              // Not yet revealed: Call triggers the reveal/auth flow first —
+              // no tel: URI ever sits in the initial DOM (spec §60).
               <button
                 type="button"
-                onClick={handleRevealClick}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+                onClick={() => handleRevealClick(true)}
+                disabled={revealPending}
+                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
               >
                 <Phone className="h-4 w-4" />
-                Call
+                {revealPending ? "…" : "Call"}
               </button>
             )}
             {isRestrictedRole ? (
@@ -240,11 +305,9 @@ export function DetailCTABar({
             )}
           </div>
         )}
-        {!phone && revealNotice && (
+        {!revealedPhone && revealNote && (
           <p className="mt-1.5 text-center text-[11px] text-zinc-400">
-            {viewer.isLoggedIn
-              ? "Send an enquiry to request this owner's number."
-              : "Log in and send an enquiry to request this owner's number."}
+            {revealNote}
           </p>
         )}
       </div>

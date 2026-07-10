@@ -6,8 +6,8 @@ import {
   getPublicProjectBySlug,
   getPublicBuilderLinkByProfileId,
   getSimilarProjects,
-  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
+import { getListingContactState } from "@/lib/actions/contact";
 import { isItemSaved, trackRecentlyViewed } from "@/lib/actions/saved";
 import { getMyInquiryForTarget } from "@/lib/actions/leads";
 import { maskMobile } from "@/lib/leads/inquiry-config";
@@ -88,16 +88,9 @@ export default async function ProjectDetailPage({ params }: Props) {
   ]);
   if (profile) void trackRecentlyViewed("project", project.id);
 
-  // Projects have no contact_visibility column — product rule (per
-  // src/lib/actions/contact.ts decideAutoApproval): builder contact is
-  // always visible to any logged-in viewer, so we resolve it the same way.
-  const directPhone = project.builder_profile_id
-    ? await getPublicListingDirectPhone(
-        project.builder_profile_id,
-        "show_after_login",
-        { isLoggedIn: Boolean(profile), isVerified: true }
-      )
-    : null;
+  // Masked-until-reveal (Batch 4 §102): builder contact requires the
+  // explicit Reveal action — no full number in the initial payload.
+  const contactState = await getListingContactState("project", project.id);
 
   const possession = project.possession_date
     ? new Date(project.possession_date).toLocaleDateString("en-IN", {
@@ -319,7 +312,8 @@ export default async function ProjectDetailPage({ params }: Props) {
                     // join yet — never fake the verified badge.
                     verified: false,
                   }}
-                  phone={directPhone}
+                  contact={contactState}
+                  revealTargetType="project"
                   existingInquiry={existingInquiry}
                 />
               </div>

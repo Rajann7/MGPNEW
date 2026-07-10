@@ -5,8 +5,8 @@ import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicBuilderBySlug,
   getPublicProjectsByBuilder,
-  getPublicListingDirectPhone,
 } from "@/lib/actions/public-search";
+import { getListingContactState } from "@/lib/actions/contact";
 import { Breadcrumbs } from "@/components/detail/Breadcrumbs";
 import { PublicProfileHeader } from "@/components/profile/PublicProfileHeader";
 import { ProfileContactButton } from "@/components/profile/ProfileContactButton";
@@ -58,10 +58,11 @@ export default async function BuilderProfilePage({ params }: Props) {
   const projects = await getPublicProjectsByBuilder(builder.profile_id);
   const name = builder.company_name || builder.display_name || "Builder";
 
-  const directPhone = await getPublicListingDirectPhone(
-    builder.profile_id,
-    "show_after_login",
-    { isLoggedIn: Boolean(profile), isVerified: true }
+  // Masked-until-reveal (Batch 4 §139): the builder's number is never in the
+  // initial render — an explicit server-authorised Reveal is required.
+  const contactState = await getListingContactState(
+    "builder_profile",
+    builder.profile_id
   );
 
   const completed = projects.filter(
@@ -118,7 +119,9 @@ export default async function BuilderProfilePage({ params }: Props) {
             label="Contact builder"
             currentPath={`/builder/${slug}`}
             isLoggedIn={Boolean(profile)}
-            phone={directPhone}
+            targetType="builder_profile"
+            targetId={builder.profile_id}
+            contact={contactState}
           />
         </div>
 

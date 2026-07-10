@@ -74,7 +74,13 @@ export type VerificationStatus =
 /** Standard API / server action response shape */
 export type ActionResult<T = null> =
   | { success: true; data: T; message?: string }
-  | { success: false; error: string; fieldErrors?: Record<string, string[]> };
+  | {
+      success: false;
+      error: string;
+      fieldErrors?: Record<string, string[]>;
+      /** Structured context for honest error UI (e.g. real plan/usage numbers on LIMIT_EXCEEDED). */
+      meta?: Record<string, unknown>;
+    };
 
 // ============================================================
 // Auth Types
@@ -416,6 +422,8 @@ export interface Property {
   pin_code: string | null;
   map_visibility: "hidden" | "approximate" | "exact";
   contact_visibility: ContactVisibility;
+  preferred_contact_time: "anytime" | "morning_9_1" | "evening_5_9" | null;
+  current_step: number;
   cover_media_id: string | null;
   media_count: number;
   media_status:
@@ -482,6 +490,9 @@ export interface Project {
   video_media_id: string | null;
   brochure_media_id: string | null;
   virtual_tour_url: string | null;
+  video_url: string | null;
+  preferred_contact_time: "anytime" | "morning_9_1" | "evening_5_9" | null;
+  current_step: number;
   media_count: number;
   status: EntityStatus;
   approval_status: EntityApprovalStatus;
@@ -528,7 +539,15 @@ export interface Requirement {
   locality_id: string | null;
   city_text: string | null;
   preferred_localities_text: string | null;
+  /** Structured multi-locality prefs: [{ city, locality }] (Batch 5 §200) */
+  preferred_locations: { city: string; locality: string }[];
   contact_visibility: ContactVisibility;
+  preferred_contact_time: "anytime" | "morning_9_1" | "evening_5_9" | null;
+  broker_contact_preference: "in_app_only" | "calls_ok";
+  loan_preapproved: boolean;
+  bedroom_options: number[];
+  display_id: string | null;
+  current_step: number;
   status: EntityStatus;
   approval_status: EntityApprovalStatus;
   visibility_status: EntityVisibilityStatus;
@@ -541,6 +560,53 @@ export interface Requirement {
   paused_at: string | null;
   expires_at: string | null;
   deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ============================================================
+// Project wings & unit inventory (Design Batch 5 · 5D)
+// ============================================================
+
+export type UnitAvailabilityStatus =
+  | "available"
+  | "booked"
+  | "sold"
+  | "on_hold"
+  | "not_released"
+  | "hidden";
+
+export interface ProjectWing {
+  id: string;
+  project_id: string;
+  wing_name: string;
+  floors: number;
+  units_per_floor: number;
+  sort_order: number;
+  units_generated: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectUnit {
+  id: string;
+  project_id: string;
+  wing_id: string | null;
+  wing_name: string | null;
+  tower_name: string | null;
+  floor_number: number | null;
+  unit_number: string | null;
+  unit_type: string | null;
+  bhk: number | null;
+  area_value: number | null;
+  area_unit: AreaUnit | null;
+  carpet_area: number | null;
+  built_up_area: number | null;
+  price: number | null;
+  price_visible: boolean;
+  availability_status: UnitAvailabilityStatus;
+  floor_plan_media_id: string | null;
+  version: number;
   created_at: string;
   updated_at: string;
 }
@@ -813,6 +879,7 @@ export type NotificationType =
   | "contact_requested"
   | "contact_approved"
   | "contact_rejected"
+  | "contact_revealed"
   | "new_message"
   | "proposal_sent"
   | "proposal_viewed"

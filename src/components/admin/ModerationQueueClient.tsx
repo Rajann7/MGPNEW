@@ -30,7 +30,7 @@ export function ModerationQueueClient({
   const [items, setItems] = useState(initialItems);
   const [reasonModal, setReasonModal] = useState<{
     id: string;
-    mode: "reject" | "changes";
+    mode: "reject" | "changes" | "rera_exception";
   } | null>(null);
   const [reasonText, setReasonText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +41,13 @@ export function ModerationQueueClient({
     startTransition(async () => {
       const result = await approveEntity(entityType, id);
       if (!result.success) {
+        if (result.error === "RERA_NOT_VERIFIED") {
+          // Project RERA is not verified — approval needs an explicit,
+          // reasoned exception which is written to the audit log.
+          setReasonModal({ id, mode: "rera_exception" });
+          setReasonText("");
+          return;
+        }
         setError(result.error);
         return;
       }
@@ -51,19 +58,25 @@ export function ModerationQueueClient({
 
   function handleReasonSubmit() {
     if (!reasonModal) return;
-    if (reasonText.trim().length < 5) {
-      setError("Reason must be at least 5 characters.");
+    const minLen = reasonModal.mode === "rera_exception" ? 10 : 5;
+    if (reasonText.trim().length < minLen) {
+      setError(`Reason must be at least ${minLen} characters.`);
       return;
     }
     setError(null);
     startTransition(async () => {
-      const action =
-        reasonModal.mode === "reject" ? rejectEntity : requestEntityChanges;
-      const result = await action(
-        entityType,
-        reasonModal.id,
-        reasonText.trim()
-      );
+      const result =
+        reasonModal.mode === "rera_exception"
+          ? await approveEntity(entityType, reasonModal.id, {
+              reraException: { reason: reasonText.trim() },
+            })
+          : await (reasonModal.mode === "reject"
+              ? rejectEntity
+              : requestEntityChanges)(
+              entityType,
+              reasonModal.id,
+              reasonText.trim()
+            );
       if (!result.success) {
         setError(result.error);
         return;
@@ -160,10 +173,14 @@ export function ModerationQueueClient({
             <h3 className="text-sm font-semibold text-zinc-900 mb-1">
               {reasonModal.mode === "reject"
                 ? "Reject listing"
-                : "Request changes"}
+                : reasonModal.mode === "rera_exception"
+                  ? "Approve without verified RERA"
+                  : "Request changes"}
             </h3>
             <p className="text-xs text-zinc-500 mb-3">
-              A reason is required and will be recorded in the audit log.
+              {reasonModal.mode === "rera_exception"
+                ? "This project's RERA registration is not verified. Approving requires an explicit exception reason (min 10 characters). This action will be logged."
+                : "A reason is required and will be recorded in the audit log."}
             </p>
             <textarea
               value={reasonText}
@@ -189,7 +206,11 @@ export function ModerationQueueClient({
                 loading={isPending}
                 onClick={handleReasonSubmit}
               >
-                {reasonModal.mode === "reject" ? "Reject" : "Send"}
+                {reasonModal.mode === "reject"
+                  ? "Reject"
+                  : reasonModal.mode === "rera_exception"
+                    ? "Approve with exception"
+                    : "Send"}
               </Button>
             </div>
           </div>

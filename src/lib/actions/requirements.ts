@@ -69,6 +69,12 @@ export async function createRequirementDraft(
       preferred_amenities: data.preferred_amenities,
       city_text: data.city_text ?? null,
       preferred_localities_text: data.preferred_localities_text ?? null,
+      preferred_locations: data.preferred_locations,
+      bedroom_options: data.bedroom_options,
+      loan_preapproved: data.loan_preapproved,
+      broker_contact_preference: data.broker_contact_preference,
+      preferred_contact_time: data.preferred_contact_time ?? null,
+      current_step: data.current_step ?? 1,
       contact_visibility: data.contact_visibility,
       status: "draft",
       approval_status: "draft",
@@ -153,6 +159,12 @@ export async function updateRequirementDraft(
       preferred_amenities: data.preferred_amenities,
       city_text: data.city_text ?? null,
       preferred_localities_text: data.preferred_localities_text ?? null,
+      preferred_locations: data.preferred_locations,
+      bedroom_options: data.bedroom_options,
+      loan_preapproved: data.loan_preapproved,
+      broker_contact_preference: data.broker_contact_preference,
+      preferred_contact_time: data.preferred_contact_time ?? null,
+      ...(data.current_step ? { current_step: data.current_step } : {}),
       contact_visibility: data.contact_visibility,
     })
     .eq("id", requirementId);
@@ -172,7 +184,7 @@ export async function updateRequirementDraft(
 export async function submitRequirementForApproval(
   requirementId: string,
   formData: unknown
-): Promise<ActionResult<null>> {
+): Promise<ActionResult<{ display_id: string | null }>> {
   const profile = await getCurrentProfile();
   if (!profile) return { success: false, error: "AUTH_REQUIRED" };
 
@@ -225,7 +237,27 @@ export async function submitRequirementForApproval(
     };
   }
 
-  const { error } = await supabase
+  // Duplicate/spam protection (Batch 5 §231-232): block a second ACTIVE
+  // requirement from the same user with identical purpose+category+city.
+  if (existing.status === "draft") {
+    const { data: dupes } = await supabase
+      .from("requirements")
+      .select("id")
+      .eq("created_by_profile_id", profile.id)
+      .neq("id", requirementId)
+      .eq("purpose", parsed.data.purpose)
+      .eq("category", parsed.data.category)
+      .ilike("city_text", parsed.data.city_text ?? "")
+      .in("status", ["submitted", "under_review", "approved", "published"])
+      .is("deleted_at", null)
+      .limit(1);
+    if (dupes && dupes.length > 0)
+      return { success: false, error: "DUPLICATE_REQUIREMENT" };
+  }
+
+  // Conditional transition — duplicate rapid submits match 0 rows and cannot
+  // double-transition or double-count usage (Batch 5 §129, §236, §334).
+  const { data: transitioned, error } = await supabase
     .from("requirements")
     .update({
       status: "submitted",
@@ -238,17 +270,26 @@ export async function submitRequirementForApproval(
       city_text: parsed.data.city_text ?? null,
       contact_visibility: parsed.data.contact_visibility,
     })
-    .eq("id", requirementId);
+    .eq("id", requirementId)
+    .eq("status", existing.status)
+    .select("id, display_id")
+    .maybeSingle();
 
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
+  if (!transitioned)
+    return { success: false, error: "INVALID_STATUS_TRANSITION" };
 
-  if (gate.reason === "ok")
+  // Only a first submission (from draft) consumes a post entitlement (§313).
+  if (gate.reason === "ok" && existing.status === "draft")
     await incrementUsage(
       profile.id,
       profile.public_role,
       "requirement_posts_limit"
     );
-  return { success: true, data: null };
+  return {
+    success: true,
+    data: { display_id: transitioned.display_id ?? null },
+  };
 }
 
 // ============================================================
@@ -391,6 +432,31 @@ export async function getMyRequirementById(
     return { success: false, error: "FORBIDDEN" };
 
   return { success: true, data };
+}
+
+/** Most recent unsubmitted requirement draft — Batch 5 draft resume card. */
+export async function getMyLatestRequirementDraft(): Promise<
+  ActionResult<Partial<Requirement> | null>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("requirements")
+    .select("*")
+    .eq("created_by_profile_id", profile.id)
+    .eq("status", "draft")
+    .is("deleted_at", null)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[getMyLatestRequirementDraft] DB error:", error.code);
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+  return { success: true, data: data ?? null };
 }
 
 export async function getMyRequirements(

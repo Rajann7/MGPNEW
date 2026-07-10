@@ -109,7 +109,8 @@ export async function listModerationQueue(
 
 export async function approveEntity(
   entityType: ModerationEntityType,
-  entityId: string
+  entityId: string,
+  options?: { reraException?: { reason: string } }
 ): Promise<ActionResult<null>> {
   const { staff } = await requireStaffPermission(
     TABLE_MAP[entityType],
@@ -120,7 +121,7 @@ export async function approveEntity(
 
   const { data: existing, error: fetchErr } = await admin
     .from(table)
-    .select("id, status, approval_status, deleted_at")
+    .select("*")
     .eq("id", entityId)
     .single();
 
@@ -129,6 +130,35 @@ export async function approveEntity(
   if (existing.deleted_at) return { success: false, error: "ENTITY_NOT_FOUND" };
   if (!PENDING_APPROVAL_STATUSES.includes(existing.approval_status)) {
     return { success: false, error: "INVALID_STATUS_TRANSITION" };
+  }
+
+  // RERA publication gate (Batch 5 §144-147): a project cannot go live
+  // without team-verified RERA registration OR an explicit, reasoned,
+  // audited staff exception. Format-valid input is NOT verification.
+  if (entityType === "project") {
+    const project = existing as unknown as {
+      rera_registered: boolean;
+      rera_status: string | null;
+    };
+    const reraVerified = project.rera_status === "registered";
+    if (!reraVerified) {
+      const reason = options?.reraException?.reason?.trim();
+      if (!reason || reason.length < 10) {
+        return { success: false, error: "RERA_NOT_VERIFIED" };
+      }
+      await logAdminAction({
+        staff,
+        action: "rera_exception_grant",
+        module: table,
+        targetType: entityType,
+        targetId: entityId,
+        beforeSnapshotSafe: {
+          rera_registered: project.rera_registered,
+          rera_status: project.rera_status,
+        },
+        afterSnapshotSafe: { rera_exception_reason: reason },
+      });
+    }
   }
 
   const now = new Date().toISOString();

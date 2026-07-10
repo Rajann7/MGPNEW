@@ -33,11 +33,13 @@ create index if not exists idx_profile_claim_requests_status
 alter table public.profile_claim_requests enable row level security;
 
 -- Requester can read their own claim requests (to show request status).
+drop policy if exists "profile_claim_requests: requester reads own" on public.profile_claim_requests;
 create policy "profile_claim_requests: requester reads own"
   on public.profile_claim_requests for select
   using (requester_profile_id = mgp_get_my_profile_id());
 
 -- Any logged-in user can submit a claim request for themselves.
+drop policy if exists "profile_claim_requests: own insert" on public.profile_claim_requests;
 create policy "profile_claim_requests: own insert"
   on public.profile_claim_requests for insert
   with check (requester_profile_id = mgp_get_my_profile_id());

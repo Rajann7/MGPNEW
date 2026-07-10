@@ -66,7 +66,10 @@ export function canEditProject(
   if (!profile) return false;
   if (project.deleted_at) return false;
   if (project.builder_profile_id !== profile.id) return false;
-  return ["draft", "submitted", "need_changes"].includes(project.status);
+  // Aligned with canSubmitForApproval (Batch 5 §188-189): editing a
+  // published/paused/rejected project is allowed and routes back through
+  // re-approval on resubmit — locked only while under_review/expired/deleted.
+  return EDITABLE_STATUSES.includes(project.status);
 }
 
 export function canEditRequirement(
