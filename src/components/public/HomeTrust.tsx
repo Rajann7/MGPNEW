@@ -1,56 +1,44 @@
-import { ShieldCheck, BadgeCheck, MessageCircle, Clock } from "lucide-react";
+import { ShieldCheck, Phone, MapPin } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-/** "Built for trust" split panel per the finished design (left copy · right 2×2 features). */
-const FEATURES = [
+/** Trust section — Batch 3 · Screen 1 "Why My Gujarat Property" (3 qualitative cards, no fake stats). */
+const PILLARS: { Icon: LucideIcon; title: string; desc: string }[] = [
   {
     Icon: ShieldCheck,
-    title: "Poster verification",
-    desc: "ID-checked owners, brokers and builders",
+    title: "Verified listings",
+    desc: "Every listing goes through our review process before it appears in search — flagged listings are removed.",
   },
   {
-    Icon: BadgeCheck,
-    title: "RERA references",
-    desc: "Project registration shown where applicable",
+    Icon: Phone,
+    title: "Direct owner contact",
+    desc: "Talk to the person who posted the property. No forced brokerage, no hidden intermediaries.",
   },
   {
-    Icon: MessageCircle,
-    title: "Direct contact",
-    desc: "Talk to the poster, not a call centre",
+    Icon: MapPin,
+    title: "Local Gujarat expertise",
+    desc: "Built for Gujarat's localities, societies and pricing norms — not a generic pan-India template.",
   },
-  {
-    Icon: Clock,
-    title: "Fresh listings",
-    desc: "Expired posts are cycled out automatically",
-  },
-] as const;
+];
 
 export function HomeTrust() {
   return (
     <section className="mx-auto max-w-7xl px-4 pb-14 pt-12 sm:px-6 lg:px-8">
-      <div className="grid grid-cols-1 items-center gap-10 rounded-[20px] border border-border bg-white p-7 sm:p-12 lg:grid-cols-2 lg:gap-12">
-        <div>
-          <h2 className="text-[26px] font-semibold leading-[1.3] tracking-[-0.01em] text-ink">
-            Built for trust, from Gujarat, for Gujarat.
-          </h2>
-          <p className="mt-3.5 text-[15px] leading-[1.7] text-ink-soft">
-            We are a listing marketplace — we connect people, we don&rsquo;t
-            broker deals. Every poster identity check, RERA reference and
-            verification badge exists to keep the marketplace honest.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {FEATURES.map(({ Icon, title, desc }) => (
-            <div key={title} className="flex gap-3">
-              <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand" />
-              <div>
-                <div className="text-[14px] font-semibold text-ink">{title}</div>
-                <div className="mt-0.5 text-[13px] leading-[1.5] text-ink-soft">
-                  {desc}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+      <h2 className="mb-5 text-center text-[22px] font-semibold text-ink">
+        Why My Gujarat Property
+      </h2>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {PILLARS.map(({ Icon, title, desc }) => (
+          <div
+            key={title}
+            className="flex flex-col gap-2.5 rounded-2xl border border-border bg-white p-6"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-brand-soft">
+              <Icon className="h-[19px] w-[19px] text-brand" />
+            </span>
+            <div className="text-[15px] font-semibold text-ink">{title}</div>
+            <div className="text-[13px] leading-[1.55] text-ink-soft">{desc}</div>
+          </div>
+        ))}
       </div>
     </section>
   );

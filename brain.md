@@ -3401,3 +3401,13 @@ Property detail page (`/property/[slug]`) markup replaced to match Batch 4 desig
 - Project/broker/builder detail pages (T04-02+) still use the pre-Batch-4 `DetailCTABar` sidebar/mobile-bar shape now (their `poster` prop was already wired by the same pass) — worth a quick visual re-check next session since this pass changed `DetailCTABar`'s public API (`poster` now required).
 
 **Next:** continue T04 (project/broker/builder detail screens) — not started this pass beyond confirming `DetailCTABar`/`DetailShell` prop compatibility.
+
+## 2026-07-10 — Wireframe deep-check pass (Home / Search / Login)
+
+### Resume guide
+- User asked for a deep check of home, search and login pages against the finished wireframes with bug fixes.
+- **Fixed (Batch 3 Screen 1 true-port):** `HomeRoleCards.tsx` ("List with us — it's free" brand band), `HomeTrust.tsx` ("Why My Gujarat Property" 3 cards), `HomeHowItWorks.tsx` (circle-icon 1·Search/2·Connect/3·Close steps), `HomeFeaturedProjects.tsx` (white project cards, honest RERA-Registered pill). `PropertyResultCard.tsx` raw-enum chips fixed via `formatArea()`/`labelize()`.
+- **Locked deviations (do not "fix" back):** no desktop primary-nav/mega-menu row on the public header — user removed it in commit 6b2d59a (2026-07-09); graphite footer + single dark Login/Register button per §40 override; home containers use `max-w-7xl` (same commit).
+- **Verified live:** guest+owner home 390/1366 (no h-scroll, no console errors), search filter→URL param wiring + honest empty state, full dev-OTP login (9000000011 / 123456) → /dashboard/owner.
+- **Pending:** search Map-view toggle (SETUP_REQUIRED, Maps provider); OTP desktop modal lacks the design's back-chevron in the header row (has Change link instead — cosmetic, decide at Batch 2 polish pass).
+- Checks: lint/typecheck/build all PASS. No DB/RLS changes, no migrations.

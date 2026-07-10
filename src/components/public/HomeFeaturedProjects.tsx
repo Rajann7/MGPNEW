@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ShieldCheck, Building } from "lucide-react";
+import { ShieldCheck, Building, MapPin, ChevronRight } from "lucide-react";
 import type { PublicProjectCard } from "@/lib/actions/public-search";
 import { formatProjectPrice, labelize, locationLabel } from "@/lib/search/format";
 
 /**
- * "Featured projects" — dark project cards per the finished design.
- * REAL published projects only. The RERA-Registered chip shows ONLY when the row
- * is actually rera_registered (never a fake badge). Empty → honest state.
+ * "Featured projects" — Batch 3 · Screen 1 white project cards.
+ * REAL published projects only. The RERA chip shows ONLY when the row is
+ * actually rera_registered (never a fake badge). Empty → honest state.
  */
 export function HomeFeaturedProjects({
   items,
@@ -36,54 +36,63 @@ export function HomeFeaturedProjects({
 
   return (
     <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
-      <div className="mb-4 flex items-baseline justify-between">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-[22px] font-semibold text-ink">Featured projects</h2>
         <Link
           href="/search?entity=project"
-          className="text-[13px] font-semibold text-brand hover:text-brand-hover"
+          className="inline-flex items-center gap-1 text-[13px] font-medium text-brand hover:text-brand-hover"
         >
-          View all →
+          View all <ChevronRight className="h-3.5 w-3.5" />
         </Link>
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((p) => {
           const href = p.slug ? `/project/${p.slug}` : "/search?entity=project";
+          const initials = p.project_name
+            .split(/\s+/)
+            .map((w) => w[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase();
           return (
             <Link
               key={p.id}
               href={href}
-              className="group overflow-hidden rounded-2xl bg-[#1C1C1E] text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.25)]"
+              className="group overflow-hidden rounded-2xl border border-border bg-white transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.10)]"
             >
-              <div className="relative flex h-[150px] items-center justify-center bg-[repeating-linear-gradient(45deg,#2C2C2E,#2C2C2E_10px,#242426_10px,#242426_20px)]">
-                <span className="rounded-full bg-white/10 px-2.5 py-1 font-mono text-[11px] text-white/45">
-                  render coming soon
+              <div className="relative flex h-[150px] items-center justify-center bg-[repeating-linear-gradient(45deg,#f4f4f5,#f4f4f5_10px,#e9e9ec_10px,#e9e9ec_20px)]">
+                <span className="rounded-full bg-white/85 px-2.5 py-1 font-mono text-[11px] text-ink-muted">
+                  project render
                 </span>
                 {p.rera_registered && (
-                  <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-md bg-[#EEF2FF] px-2.5 py-1 text-[11px] font-semibold text-[#3B4FC0]">
+                  <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-[3px] text-[11px] font-medium text-brand shadow-[0_1px_2px_rgba(0,0,0,0.08)]">
                     <ShieldCheck className="h-[11px] w-[11px]" />
                     RERA Registered
                   </span>
                 )}
               </div>
-              <div className="p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.07em] text-white/55">
-                  New Project
-                </div>
-                <div className="mt-1.5 line-clamp-1 text-[16px] font-semibold">
-                  {p.project_name}
-                </div>
-                <div className="mt-0.5 text-[13px] text-white/65">
-                  {locationLabel(p.city_text, p.locality_text)}
-                </div>
-                <div className="mt-3 text-[17px] font-semibold">
+              <div className="flex flex-col gap-[7px] p-3.5">
+                <div className="text-[17px] font-semibold text-ink">
                   {formatProjectPrice(p)}
                 </div>
-                <div className="mt-0.5 text-[12.5px] text-white/60">
-                  {labelize(p.project_type)} project
+                <div className="line-clamp-1 text-[13px] font-medium text-ink">
+                  {p.project_name}
                 </div>
-                <span className="mt-3.5 block w-full rounded-[10px] bg-white py-2.5 text-center text-[13px] font-semibold text-[#1C1C1E] transition-colors group-hover:bg-brand-soft">
-                  View project
-                </span>
+                <div className="flex items-center gap-1 text-xs text-ink-muted">
+                  <MapPin className="h-3 w-3" />
+                  {locationLabel(p.city_text, p.locality_text)}
+                </div>
+                <div className="flex items-center gap-2 border-t border-surface-muted pt-2">
+                  <span className="flex h-[26px] w-[26px] flex-shrink-0 items-center justify-center rounded-full bg-brand-soft text-[10px] font-semibold text-brand">
+                    {initials}
+                  </span>
+                  <span className="text-xs text-ink-muted">
+                    {labelize(p.project_type)} project
+                    {p.construction_status
+                      ? ` · ${labelize(p.construction_status)}`
+                      : ""}
+                  </span>
+                </div>
               </div>
             </Link>
           );

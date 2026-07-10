@@ -4209,3 +4209,12 @@ Not verified this pass (no test listing had `media_count > 0` in the seeded data
 Deferred / SETUP_REQUIRED (documented, not faked): real contact-reveal server action (Call/Reveal number show an honest note instead); poster display-name/verification enrichment on `public_properties_view`; "Similar in locality" block on the unavailable-property state (kept generic per CLAUDE.md §38 — no safe locality lookup for a possibly-hidden row was built this pass).
 
 RESULT: PASS for what was rebuilt and verified; PARTIAL on the two items above (no live click-through gallery test with real photos, no phone-reveal wiring) — both pre-existing gaps unrelated to core correctness, not blocking.
+
+## 2026-07-10 — Deep-check: Home / Search / Login vs wireframes — PASS
+
+- Automated: `npm run lint` PASS · `npx tsc --noEmit` PASS · `npm run build` PASS.
+- Live dev server (localhost:3000, Browser pane):
+  - Home 1366px + 390px, guest and logged-in Owner: rebuilt sections ("List with us — it's free" band, How-it-works circles, "Why My Gujarat Property" cards, white featured-project cards with RERA-Registered pill) render per Batch 3; Recently-viewed strip appears only when logged-in; no horizontal scroll; no console errors.
+  - Search 1366px: condensed header (no site nav/footer), sidebar filters write real URL params (`?bhk=1` verified); 390px: contextual back-header + chip bar + honest actionable empty state. Result-card chips now show "1,450 sq ft" / labelized type (raw-enum bug fixed).
+  - Login: consent-gated Continue (disabled until 10 digits + consent), unregistered-number branch ("This number isn't registered" → Create account / Use a different number), existing-user OTP (masked number, 6-box auto-advance/auto-submit, resend cooldown) → real session at /dashboard/owner.
+- Result: PASS (pending items logged: Map-view SETUP_REQUIRED; OTP modal back-chevron cosmetic).

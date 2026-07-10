@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { PublicPropertyCard } from "@/lib/actions/public-search";
 import {
+  formatArea,
   formatPropertyPrice,
   labelize,
   locationLabel,
@@ -19,10 +20,8 @@ export function PropertyResultCard({
 
   const facts = [
     property.bedrooms ? `${property.bedrooms} BHK` : null,
-    property.area_value
-      ? `${property.area_value} ${property.area_unit ?? "sq ft"}`
-      : null,
-    property.property_type.replace(/_/g, " "),
+    formatArea(property.area_value, property.area_unit),
+    labelize(property.property_type),
   ].filter(Boolean) as string[];
 
   return (
@@ -77,11 +76,9 @@ export function PropertyResultCard({
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {property.bedrooms ? <Fact>{property.bedrooms} BHK</Fact> : null}
           {property.area_value ? (
-            <Fact>
-              {property.area_value} {property.area_unit ?? "sq ft"}
-            </Fact>
+            <Fact>{formatArea(property.area_value, property.area_unit)}</Fact>
           ) : null}
-          <Fact capitalize>{property.property_type.replace(/_/g, " ")}</Fact>
+          <Fact>{labelize(property.property_type)}</Fact>
         </div>
       </div>
     </Link>
