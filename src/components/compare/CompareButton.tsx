@@ -1,7 +1,10 @@
 "use client";
 
 import { Scale, Check } from "lucide-react";
-import { useCompare, type CompareItem } from "@/components/compare/CompareProvider";
+import {
+  useCompare,
+  type CompareItem,
+} from "@/components/compare/CompareProvider";
 
 /**
  * "Add to compare" toggle used inside result cards. Because cards are <Link>

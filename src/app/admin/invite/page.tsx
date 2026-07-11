@@ -3,7 +3,14 @@
 import { useEffect, useState, useTransition, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ShieldCheck, Eye, EyeOff, Check, X, AlertTriangle } from "lucide-react";
+import {
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  Check,
+  X,
+  AlertTriangle,
+} from "lucide-react";
 import {
   getInviteByToken,
   acceptStaffInvite,
@@ -95,14 +102,18 @@ function InviteCard() {
     return (
       <div className={`${cardShell} flex flex-col items-center gap-3 py-12`}>
         <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-[#e4e4e7] border-t-[#18181b]" />
-        <span className="text-[13px] text-[#71717a]">Checking your invite…</span>
+        <span className="text-[13px] text-[#71717a]">
+          Checking your invite…
+        </span>
       </div>
     );
   }
 
   if (effectiveError || !invite) {
     return (
-      <div className={`${cardShell} flex flex-col items-center gap-3 text-center`}>
+      <div
+        className={`${cardShell} flex flex-col items-center gap-3 text-center`}
+      >
         <StaffMark />
         <span className="mt-2 flex h-12 w-12 items-center justify-center rounded-full bg-[#FEF2F2]">
           <AlertTriangle className="h-[22px] w-[22px]" color="#DC2626" />
@@ -124,7 +135,11 @@ function InviteCard() {
   }
 
   return (
-    <form onSubmit={handleAccept} noValidate className={`${cardShell} flex flex-col gap-4`}>
+    <form
+      onSubmit={handleAccept}
+      noValidate
+      className={`${cardShell} flex flex-col gap-4`}
+    >
       <StaffMark />
 
       <div>
@@ -137,8 +152,8 @@ function InviteCard() {
               <strong className="font-semibold text-[#18181b]">
                 {invite.inviterName}
               </strong>
-              {invite.inviterRole ? ` (${labelFor(invite.inviterRole)})` : ""} invited
-              you to join as{" "}
+              {invite.inviterRole ? ` (${labelFor(invite.inviterRole)})` : ""}{" "}
+              invited you to join as{" "}
             </>
           ) : (
             "You have been invited to join as "
@@ -164,7 +179,10 @@ function InviteCard() {
 
       {/* Full name (required for the staff profile) */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="inv-name" className="text-[13px] font-medium text-[#3f3f46]">
+        <label
+          htmlFor="inv-name"
+          className="text-[13px] font-medium text-[#3f3f46]"
+        >
           Your name
         </label>
         <input
@@ -187,7 +205,10 @@ function InviteCard() {
 
       {/* Set password */}
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="inv-pw" className="text-[13px] font-medium text-[#3f3f46]">
+        <label
+          htmlFor="inv-pw"
+          className="text-[13px] font-medium text-[#3f3f46]"
+        >
           Set password
         </label>
         <div className="flex items-center rounded-[10px] border border-[#d4d4d8] pr-2.5 focus-within:border-[1.5px] focus-within:border-[#18181b]">
@@ -207,7 +228,11 @@ function InviteCard() {
             aria-label={showPassword ? "Hide password" : "Show password"}
             className="text-[#a1a1aa] hover:text-[#3f3f46]"
           >
-            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            {showPassword ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
           </button>
         </div>
         <span className="text-xs text-[#71717a]">
@@ -234,7 +259,10 @@ function InviteCard() {
             ].join(" ")}
           >
             {p.granted ? (
-              <Check className="h-[14px] w-[14px] flex-shrink-0" color="#16A34A" />
+              <Check
+                className="h-[14px] w-[14px] flex-shrink-0"
+                color="#16A34A"
+              />
             ) : (
               <X className="h-[14px] w-[14px] flex-shrink-0" color="#a1a1aa" />
             )}

@@ -30,16 +30,46 @@ export const metadata: Metadata = {
 };
 
 const LEAD_STATUS_CHIP: Record<string, { text: string; dot: string }> = {
-  new: { text: "bg-amber-500/10 text-amber-700 dark:text-amber-300", dot: "bg-amber-500" },
-  open: { text: "bg-amber-500/10 text-amber-700 dark:text-amber-300", dot: "bg-amber-500" },
-  contact_requested: { text: "bg-amber-500/10 text-amber-700 dark:text-amber-300", dot: "bg-amber-500" },
-  contacted: { text: "bg-green-500/10 text-green-700 dark:text-green-300", dot: "bg-green-500" },
-  contact_shared: { text: "bg-green-500/10 text-green-700 dark:text-green-300", dot: "bg-green-500" },
-  interested: { text: "bg-green-500/10 text-green-700 dark:text-green-300", dot: "bg-green-500" },
-  site_visit_scheduled: { text: "bg-green-500/10 text-green-700 dark:text-green-300", dot: "bg-green-500" },
-  converted: { text: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300", dot: "bg-zinc-500" },
-  closed: { text: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300", dot: "bg-zinc-500" },
-  lost: { text: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300", dot: "bg-zinc-500" },
+  new: {
+    text: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    dot: "bg-amber-500",
+  },
+  open: {
+    text: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    dot: "bg-amber-500",
+  },
+  contact_requested: {
+    text: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    dot: "bg-amber-500",
+  },
+  contacted: {
+    text: "bg-green-500/10 text-green-700 dark:text-green-300",
+    dot: "bg-green-500",
+  },
+  contact_shared: {
+    text: "bg-green-500/10 text-green-700 dark:text-green-300",
+    dot: "bg-green-500",
+  },
+  interested: {
+    text: "bg-green-500/10 text-green-700 dark:text-green-300",
+    dot: "bg-green-500",
+  },
+  site_visit_scheduled: {
+    text: "bg-green-500/10 text-green-700 dark:text-green-300",
+    dot: "bg-green-500",
+  },
+  converted: {
+    text: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300",
+    dot: "bg-zinc-500",
+  },
+  closed: {
+    text: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300",
+    dot: "bg-zinc-500",
+  },
+  lost: {
+    text: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300",
+    dot: "bg-zinc-500",
+  },
 };
 const DEFAULT_STATUS_CHIP = {
   text: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-300",
@@ -62,9 +92,7 @@ export default async function OwnerDashboardPage() {
     : 0;
   const leadsOpen = leadCounts.success ? leadCounts.data.open : 0;
 
-  const firstName = (profile.display_name ?? profile.full_name).split(
-    /\s+/
-  )[0];
+  const firstName = (profile.display_name ?? profile.full_name).split(/\s+/)[0];
 
   return (
     <DashboardShellV2
@@ -124,21 +152,24 @@ function greetingWord() {
 }
 
 async function loadOwnerOverviewData() {
-  const [propertiesResult, leadCounts, recentLeadsResult, siteVisitsResult, billingResult] =
-    await Promise.all([
-      getMyProperties(1, 1),
-      getLeadCounts(),
-      getMyLeadsAsReceiver(1, 5),
-      listMySiteVisits(),
-      getCurrentBilling("owner"),
-    ]);
+  const [
+    propertiesResult,
+    leadCounts,
+    recentLeadsResult,
+    siteVisitsResult,
+    billingResult,
+  ] = await Promise.all([
+    getMyProperties(1, 1),
+    getLeadCounts(),
+    getMyLeadsAsReceiver(1, 5),
+    listMySiteVisits(),
+    getCurrentBilling("owner"),
+  ]);
 
   const activeListings = propertiesResult.success
     ? propertiesResult.data.total
     : 0;
-  const newLeadsThisWeek = leadCounts.success
-    ? leadCounts.data.newThisWeek
-    : 0;
+  const newLeadsThisWeek = leadCounts.success ? leadCounts.data.newThisWeek : 0;
   const notContacted = leadCounts.success ? leadCounts.data.open : 0;
 
   const nowMs = Date.now();
@@ -257,9 +288,7 @@ function RecentLeadsSection({ leads }: { leads: LeadRow[] }) {
                   key={lead.id}
                   className="border-b border-border last:border-0"
                 >
-                  <td className="px-5 py-3 text-ink">
-                    {lead.counterpartName}
-                  </td>
+                  <td className="px-5 py-3 text-ink">{lead.counterpartName}</td>
                   <td className="px-5 py-3 text-ink-soft">
                     {lead.targetSummary?.title ?? "—"}
                   </td>

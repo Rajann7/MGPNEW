@@ -34,7 +34,11 @@ export function DashboardMobileTabBar({ items }: { items: MobileTabItem[] }) {
               className="flex flex-col items-center -mt-6"
             >
               <span className="w-12 h-12 rounded-full bg-brand flex items-center justify-center shadow-[0_4px_12px_rgba(15,107,92,.35)] border-[3px] border-surface">
-                <Icon className="w-[22px] h-[22px] text-white" strokeWidth={1.75} aria-hidden="true" />
+                <Icon
+                  className="w-[22px] h-[22px] text-white"
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
               </span>
               <span className="mt-0.5 text-[10px] font-medium text-ink-soft">
                 {item.label}

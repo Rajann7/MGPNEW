@@ -2,11 +2,12 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Building2 } from "lucide-react";
 import { requireRole } from "@/lib/auth/session";
-import { getMyProjects } from "@/lib/actions/projects";
+import { getMyProjects, getMyLatestProjectDraft } from "@/lib/actions/projects";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import { getBuilderNav, getMobileTabs } from "@/components/dashboard/navConfig";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { EntityListCard } from "@/components/dashboard/EntityListCard";
+import { ProjectDraftResumeCard } from "@/components/forms/ProjectDraftResumeCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Alert } from "@/components/ui/Alert";
 import type { EntityStatus } from "@/types";
@@ -18,9 +19,14 @@ export const metadata: Metadata = {
 
 export default async function BuilderProjectsPage() {
   const profile = await requireRole("builder");
-  const result = await getMyProjects(1, 20);
+  const [result, draftResult] = await Promise.all([
+    getMyProjects(1, 20),
+    getMyLatestProjectDraft(),
+  ]);
   const items = result.success ? result.data.items : [];
   const total = result.success ? result.data.total : 0;
+  const latestDraft =
+    draftResult.success && draftResult.data ? draftResult.data : null;
 
   return (
     <DashboardShellV2
@@ -30,6 +36,14 @@ export default async function BuilderProjectsPage() {
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"
     >
+      {latestDraft && (
+        <ProjectDraftResumeCard
+          draft={latestDraft}
+          continueHref={`/dashboard/builder/projects/new?draft=${latestDraft.id}`}
+          startNewHref="/dashboard/builder/projects/new?fresh=1"
+        />
+      )}
+
       <DashboardPageHeader
         title="My Projects"
         count={total}

@@ -28,8 +28,8 @@ export function EditReapprovalGate({
         Editing will require re-approval
       </h2>
       <p className="mt-2 text-sm text-zinc-600">
-        This listing is live. Saving changes sends it back to review; it
-        stays hidden until approved again.
+        This listing is live. Saving changes sends it back to review; it stays
+        hidden until approved again.
       </p>
       <div className="mt-5 flex items-center gap-3">
         <Button href={backHref} variant="outline">

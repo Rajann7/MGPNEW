@@ -86,7 +86,8 @@ export function HomeHeroSearch() {
     <section
       className="px-4 pb-12 pt-10 sm:px-6 sm:pb-14 sm:pt-14"
       style={{
-        background: "linear-gradient(180deg, #E7F2EF 0%, var(--surface-subtle, #fafafa) 100%)",
+        background:
+          "linear-gradient(180deg, #E7F2EF 0%, var(--surface-subtle, #fafafa) 100%)",
       }}
     >
       <div className="mx-auto max-w-[920px] text-center">
@@ -104,7 +105,11 @@ export function HomeHeroSearch() {
           style={{ boxShadow: "0 12px 32px rgba(0,0,0,0.10)" }}
         >
           {/* Tabs */}
-          <div className="flex gap-0.5 px-4 pt-3" role="tablist" aria-label="Search type">
+          <div
+            className="flex gap-0.5 px-4 pt-3"
+            role="tablist"
+            aria-label="Search type"
+          >
             {TABS.map((t) => {
               const active = t.key === tab;
               return (
@@ -145,9 +150,16 @@ export function HomeHeroSearch() {
                   }}
                   onFocus={() => setOpenSuggest(true)}
                   onBlur={() => {
-                    blurTimer.current = setTimeout(() => setOpenSuggest(false), 120);
+                    blurTimer.current = setTimeout(
+                      () => setOpenSuggest(false),
+                      120
+                    );
                   }}
-                  placeholder={selectedCity ? selectedCity.name : "City, locality or project…"}
+                  placeholder={
+                    selectedCity
+                      ? selectedCity.name
+                      : "City, locality or project…"
+                  }
                   aria-label="Search location"
                   className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none placeholder:text-ink-muted"
                 />
@@ -212,7 +224,10 @@ export function HomeHeroSearch() {
               >
                 <option value="">Any budget</option>
                 {budgetPresets.map((bp) => (
-                  <option key={bp.label} value={`${bp.min ?? ""}|${bp.max ?? ""}`}>
+                  <option
+                    key={bp.label}
+                    value={`${bp.min ?? ""}|${bp.max ?? ""}`}
+                  >
                     {bp.label}
                   </option>
                 ))}

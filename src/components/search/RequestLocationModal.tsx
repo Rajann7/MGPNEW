@@ -97,13 +97,20 @@ export function RequestLocationModal({
             </button>
           </div>
         ) : (
-          <form onSubmit={submit} noValidate className="flex flex-col gap-3.5 p-5">
+          <form
+            onSubmit={submit}
+            noValidate
+            className="flex flex-col gap-3.5 p-5"
+          >
             <p className="text-[13px] leading-[1.6] text-ink-soft">
               Tell us where you&rsquo;re looking. We&rsquo;ll notify you when
               listings open up in this area.
             </p>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="rl-loc" className="text-[13px] font-medium text-[#3f3f46]">
+              <label
+                htmlFor="rl-loc"
+                className="text-[13px] font-medium text-[#3f3f46]"
+              >
                 Location
               </label>
               <input
@@ -119,7 +126,10 @@ export function RequestLocationModal({
               )}
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="rl-contact" className="text-[13px] font-medium text-[#3f3f46]">
+              <label
+                htmlFor="rl-contact"
+                className="text-[13px] font-medium text-[#3f3f46]"
+              >
                 Notify me at (email or mobile)
               </label>
               <input

@@ -280,10 +280,7 @@ export async function rejectContactReveal(
 // ============================================================
 
 export type RevealTargetType =
-  | "property"
-  | "project"
-  | "broker_profile"
-  | "builder_profile";
+  "property" | "project" | "broker_profile" | "builder_profile";
 
 /** Batch 4 §44 masked display format: `+91 98XXX XXX45`. Never the full
  * number — only first two and last two digits survive. */
@@ -326,7 +323,10 @@ async function resolveRevealTarget(
       // contact is visible to any logged-in viewer (docs/06), via explicit
       // reveal only.
       return data?.builder_profile_id
-        ? { ownerProfileId: data.builder_profile_id, visibility: "show_after_login" }
+        ? {
+            ownerProfileId: data.builder_profile_id,
+            visibility: "show_after_login",
+          }
         : null;
     }
     case "broker_profile": {
@@ -412,7 +412,11 @@ export async function getListingContactState(
     .eq("target_id", targetId)
     .maybeSingle();
   if (existingEvent) {
-    return { masked, revealedPhone: ownerRow?.mobile ?? null, policy: "eligible" };
+    return {
+      masked,
+      revealedPhone: ownerRow?.mobile ?? null,
+      policy: "eligible",
+    };
   }
 
   if (target.visibility === "hidden")
@@ -461,15 +465,16 @@ export async function revealListingContact(
     // show_after_approval
     const { data: approved } = await admin
       .from("contact_requests")
-      .select("id, lead_id, leads!inner(target_type, target_id, requester_profile_id)")
+      .select(
+        "id, lead_id, leads!inner(target_type, target_id, requester_profile_id)"
+      )
       .eq("requester_profile_id", profile.id)
       .eq("status", "approved")
       .eq("leads.target_type", targetType)
       .eq("leads.target_id", targetId)
       .limit(1)
       .maybeSingle();
-    if (!approved)
-      return { success: false, error: "NEEDS_ENQUIRY_APPROVAL" };
+    if (!approved) return { success: false, error: "NEEDS_ENQUIRY_APPROVAL" };
     basis = "approved_contact_request" as never;
   }
 
@@ -525,9 +530,7 @@ export async function revealListingContact(
 // getContactRevealStatus — for the lead detail page
 // ============================================================
 
-export async function getContactRevealStatus(
-  leadId: string
-): Promise<
+export async function getContactRevealStatus(leadId: string): Promise<
   ActionResult<{
     contactRequest: ContactRequest | null;
     revealedMobile: string | null;

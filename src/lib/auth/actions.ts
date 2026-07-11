@@ -241,7 +241,9 @@ export async function verifyOtpAndLogin(
   // Fetch the profile by mobile (tolerate both "+919000000001" and "9000000001" storage formats)
   const { data: profileData, error: profileError } = await admin
     .from("profiles")
-    .select("id, auth_user_id, account_status, public_role, full_name, display_name")
+    .select(
+      "id, auth_user_id, account_status, public_role, full_name, display_name"
+    )
     .or(`mobile.eq.${normalizedMobile},mobile.eq.+91${normalizedMobile}`)
     .maybeSingle();
 
@@ -443,7 +445,8 @@ export async function verifyOtpAndRegister(
     }
     return {
       success: false,
-      error: "Registration failed while starting your session. Please try again.",
+      error:
+        "Registration failed while starting your session. Please try again.",
     };
   }
 

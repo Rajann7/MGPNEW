@@ -54,7 +54,9 @@ export function DetailGallery({ mediaCount }: { mediaCount: number }) {
               key={i}
               type="button"
               onClick={() => setGalleryOpen(true)}
-              aria-label={isLast ? `View all ${count} photos` : `Open photo ${i + 1}`}
+              aria-label={
+                isLast ? `View all ${count} photos` : `Open photo ${i + 1}`
+              }
               className="relative flex items-center justify-center border border-zinc-100 bg-zinc-50 text-zinc-400 hover:bg-zinc-100"
             >
               <PlaceholderIcon className="h-6 w-6" />

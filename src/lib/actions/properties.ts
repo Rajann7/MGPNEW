@@ -222,7 +222,10 @@ export async function autosavePropertyDraft(
     if (!created.success) return created;
     return {
       success: true,
-      data: { id: created.data.id, updated_at: created.data.updated_at ?? null },
+      data: {
+        id: created.data.id,
+        updated_at: created.data.updated_at ?? null,
+      },
     };
   }
 
@@ -256,7 +259,11 @@ export async function autosavePropertyDraft(
   if (baseUpdatedAt && existing.updated_at !== baseUpdatedAt) {
     return {
       success: true,
-      data: { id: existing.id, updated_at: existing.updated_at, conflict: true },
+      data: {
+        id: existing.id,
+        updated_at: existing.updated_at,
+        conflict: true,
+      },
     };
   }
 

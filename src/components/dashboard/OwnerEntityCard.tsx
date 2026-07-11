@@ -3,45 +3,56 @@ import type { EntityStatus } from "@/types";
 import { EntityRowActions } from "./EntityRowActions";
 import { cn } from "@/lib/cn";
 
-const STATUS_PILL: Record<string, { label: string; className: string; dot: string }> = {
+const STATUS_PILL: Record<
+  string,
+  { label: string; className: string; dot: string }
+> = {
   published: {
     label: "Live",
-    className: "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-500/10 dark:border-green-500/20",
+    className:
+      "text-green-700 bg-green-50 border-green-200 dark:text-green-300 dark:bg-green-500/10 dark:border-green-500/20",
     dot: "bg-green-600",
   },
   submitted: {
     label: "Pending",
-    className: "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/20",
+    className:
+      "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/20",
     dot: "bg-amber-600",
   },
   under_review: {
     label: "Pending",
-    className: "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/20",
+    className:
+      "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/20",
     dot: "bg-amber-600",
   },
   need_changes: {
     label: "Needs Changes",
-    className: "text-orange-700 bg-orange-50 border-orange-200 dark:text-orange-300 dark:bg-orange-500/10 dark:border-orange-500/20",
+    className:
+      "text-orange-700 bg-orange-50 border-orange-200 dark:text-orange-300 dark:bg-orange-500/10 dark:border-orange-500/20",
     dot: "bg-orange-600",
   },
   rejected: {
     label: "Rejected",
-    className: "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-500/10 dark:border-red-500/20",
+    className:
+      "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-500/10 dark:border-red-500/20",
     dot: "bg-red-600",
   },
   paused: {
     label: "Paused",
-    className: "text-zinc-600 bg-zinc-100 border-zinc-200 dark:text-zinc-300 dark:bg-white/5 dark:border-white/10",
+    className:
+      "text-zinc-600 bg-zinc-100 border-zinc-200 dark:text-zinc-300 dark:bg-white/5 dark:border-white/10",
     dot: "bg-zinc-500",
   },
   expired: {
     label: "Expired",
-    className: "text-zinc-500 bg-zinc-100 border-zinc-200 dark:text-zinc-400 dark:bg-white/5 dark:border-white/10",
+    className:
+      "text-zinc-500 bg-zinc-100 border-zinc-200 dark:text-zinc-400 dark:bg-white/5 dark:border-white/10",
     dot: "bg-zinc-400",
   },
   draft: {
     label: "Draft",
-    className: "text-zinc-600 bg-zinc-100 border-zinc-200 dark:text-zinc-300 dark:bg-white/5 dark:border-white/10",
+    className:
+      "text-zinc-600 bg-zinc-100 border-zinc-200 dark:text-zinc-300 dark:bg-white/5 dark:border-white/10",
     dot: "bg-zinc-500",
   },
 };
@@ -55,7 +66,10 @@ function StatusPill({ status }: { status: EntityStatus }) {
         pill.className
       )}
     >
-      <span className={cn("w-1.5 h-1.5 rounded-full", pill.dot)} aria-hidden="true" />
+      <span
+        className={cn("w-1.5 h-1.5 rounded-full", pill.dot)}
+        aria-hidden="true"
+      />
       {pill.label}
     </span>
   );
@@ -75,7 +89,13 @@ function PropertyThumbnail({ dimmed }: { dimmed?: boolean }) {
 }
 
 /** Requirement type icon in a brand-soft circle — dims to zinc when closed/paused. */
-function RequirementIcon({ icon: Icon, dimmed }: { icon: LucideIcon; dimmed?: boolean }) {
+function RequirementIcon({
+  icon: Icon,
+  dimmed,
+}: {
+  icon: LucideIcon;
+  dimmed?: boolean;
+}) {
   return (
     <span
       className={cn(

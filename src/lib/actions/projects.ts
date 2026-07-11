@@ -50,7 +50,7 @@ export async function createProjectDraft(
       builder_profile_id: profileId,
       created_by_profile_id: profileId,
       project_name: data.project_name,
-      project_type: data.project_type,
+      project_type: data.project_type ?? null,
       category: data.category,
       purpose: data.purpose,
       short_description: data.short_description ?? null,
@@ -86,6 +86,10 @@ export async function createProjectDraft(
       virtual_tour_url: data.virtual_tour_url || null,
       video_url: data.video_url || null,
       preferred_contact_time: data.preferred_contact_time ?? null,
+      construction_percentage: data.construction_percentage ?? null,
+      progress_note: data.progress_note || null,
+      progress_updated_at:
+        data.construction_percentage != null ? new Date().toISOString() : null,
       current_step: data.current_step ?? 1,
       status: "draft",
       approval_status: "draft",
@@ -148,7 +152,7 @@ export async function updateProjectDraft(
     .from("projects")
     .update({
       project_name: data.project_name,
-      project_type: data.project_type,
+      project_type: data.project_type ?? null,
       category: data.category,
       purpose: data.purpose,
       short_description: data.short_description ?? null,
@@ -184,6 +188,11 @@ export async function updateProjectDraft(
       virtual_tour_url: data.virtual_tour_url || null,
       video_url: data.video_url || null,
       preferred_contact_time: data.preferred_contact_time ?? null,
+      construction_percentage: data.construction_percentage ?? null,
+      progress_note: data.progress_note || null,
+      ...(data.construction_percentage != null
+        ? { progress_updated_at: new Date().toISOString() }
+        : {}),
       ...(data.current_step ? { current_step: data.current_step } : {}),
     })
     .eq("id", projectId);

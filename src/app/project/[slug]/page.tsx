@@ -8,6 +8,7 @@ import {
   getSimilarProjects,
 } from "@/lib/actions/public-search";
 import { getListingContactState } from "@/lib/actions/contact";
+import { getPublicProjectBrochure } from "@/lib/actions/media";
 import { isItemSaved, trackRecentlyViewed } from "@/lib/actions/saved";
 import { getMyInquiryForTarget } from "@/lib/actions/leads";
 import { maskMobile } from "@/lib/leads/inquiry-config";
@@ -78,14 +79,17 @@ export default async function ProjectDetailPage({ params }: Props) {
   if (!project) notFound();
 
   const location = locationLabel(project.city_text, project.locality_text);
-  const [builder, saved, existingInquiry, similar] = await Promise.all([
-    getPublicBuilderLinkByProfileId(project.builder_profile_id),
-    isItemSaved("project", project.id),
-    profile
-      ? getMyInquiryForTarget("project", project.id)
-      : Promise.resolve(null),
-    getSimilarProjects({ excludeId: project.id, city: project.city_text }),
-  ]);
+  const [builder, saved, existingInquiry, similar, brochureResult] =
+    await Promise.all([
+      getPublicBuilderLinkByProfileId(project.builder_profile_id),
+      isItemSaved("project", project.id),
+      profile
+        ? getMyInquiryForTarget("project", project.id)
+        : Promise.resolve(null),
+      getSimilarProjects({ excludeId: project.id, city: project.city_text }),
+      getPublicProjectBrochure(project.id),
+    ]);
+  const brochure = brochureResult.success ? brochureResult.data : null;
   if (profile) void trackRecentlyViewed("project", project.id);
 
   // Masked-until-reveal (Batch 4 §102): builder contact requires the
@@ -111,16 +115,34 @@ export default async function ProjectDetailPage({ params }: Props) {
     : null;
 
   const projectFacts = [
-    { label: "Category", value: project.category ? labelize(project.category) : null },
-    { label: "Purpose", value: project.purpose ? labelize(project.purpose) : null },
+    {
+      label: "Category",
+      value: project.category ? labelize(project.category) : null,
+    },
+    {
+      label: "Purpose",
+      value: project.purpose ? labelize(project.purpose) : null,
+    },
     {
       label: "Total area",
       value: formatArea(project.total_area_value, project.total_area_unit),
     },
-    { label: "Towers", value: project.total_towers ? `${project.total_towers}` : null },
-    { label: "Wings", value: project.total_wings ? `${project.total_wings}` : null },
-    { label: "Floors", value: project.total_floors ? `${project.total_floors}` : null },
-    { label: "Total units", value: project.total_units ? `${project.total_units}` : null },
+    {
+      label: "Towers",
+      value: project.total_towers ? `${project.total_towers}` : null,
+    },
+    {
+      label: "Wings",
+      value: project.total_wings ? `${project.total_wings}` : null,
+    },
+    {
+      label: "Floors",
+      value: project.total_floors ? `${project.total_floors}` : null,
+    },
+    {
+      label: "Total units",
+      value: project.total_units ? `${project.total_units}` : null,
+    },
     {
       label: "Available units",
       value: project.available_units ? `${project.available_units}` : null,
@@ -157,24 +179,46 @@ export default async function ProjectDetailPage({ params }: Props) {
       <div className="mt-6">
         <AvailableUnits units={project.unit_configurations} />
       </div>
-      <ConstructionProgress status={project.construction_status} />
+      <ConstructionProgress
+        status={project.construction_status}
+        percentage={project.construction_percentage}
+        progressNote={project.progress_note}
+      />
       <section className="mt-6">
         <h2 className="mb-2 text-sm font-semibold text-zinc-900">
           Video &amp; virtual tour
         </h2>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <MediaSetupState
-            title="Walkthrough video"
-            note={
-              project.virtual_tour_url
-                ? "Provided by builder."
-                : "Not uploaded by the builder yet."
-            }
-          />
-          <MediaSetupState
-            title="360° tour"
-            note="Tour provider not configured — no fake embed shown."
-          />
+          {project.video_url ? (
+            <a
+              href={project.video_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl border border-zinc-200 p-4 text-sm font-medium text-brand hover:border-brand/40"
+            >
+              Watch walkthrough video →
+            </a>
+          ) : (
+            <MediaSetupState
+              title="Walkthrough video"
+              note="Not uploaded by the builder yet."
+            />
+          )}
+          {project.virtual_tour_url ? (
+            <a
+              href={project.virtual_tour_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl border border-zinc-200 p-4 text-sm font-medium text-brand hover:border-brand/40"
+            >
+              Open 360° tour →
+            </a>
+          ) : (
+            <MediaSetupState
+              title="360° tour"
+              note="Tour provider not configured — no fake embed shown."
+            />
+          )}
         </div>
       </section>
       {similar.length > 0 && (
@@ -284,7 +328,7 @@ export default async function ProjectDetailPage({ params }: Props) {
                 (enquiry card first) without affecting mobile stacking. */}
             <div className="lg:sticky lg:top-20 lg:flex lg:flex-col lg:gap-4">
               <div className="lg:order-2">
-                <BrochureCard />
+                <BrochureCard brochure={brochure} />
               </div>
               <div className="lg:order-3">
                 <BuilderMiniCard

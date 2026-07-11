@@ -230,17 +230,15 @@ export async function trackRecentlyViewed(
   if (!profile) return { success: true, data: null }; // guest — no-op, no fake tracking
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("recently_viewed_items")
-    .upsert(
-      {
-        profile_id: profile.id,
-        item_type: itemType,
-        item_id: itemId,
-        viewed_at: new Date().toISOString(),
-      },
-      { onConflict: "profile_id,item_type,item_id" }
-    );
+  const { error } = await supabase.from("recently_viewed_items").upsert(
+    {
+      profile_id: profile.id,
+      item_type: itemType,
+      item_id: itemId,
+      viewed_at: new Date().toISOString(),
+    },
+    { onConflict: "profile_id,item_type,item_id" }
+  );
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
 
   // Trim to max — delete oldest beyond the limit for this user.

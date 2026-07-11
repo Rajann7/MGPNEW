@@ -35,12 +35,35 @@ export const AREA_UNITS = [
   "hectare",
 ] as const;
 
+/** Canonical Project amenity registry (Batch 5 §163-164) — the complete
+ * product set, not the design mock's shortened sample. Sourced here so the
+ * wizard never retypes a subset. */
+export const PROJECT_AMENITIES = [
+  "Clubhouse",
+  "Swimming pool",
+  "Gymnasium",
+  "Children's play area",
+  "Landscaped garden",
+  "24x7 security",
+  "Power backup",
+  "Covered parking",
+  "Lift",
+  "Indoor games",
+  "Jogging track",
+  "Banquet hall",
+  "EV charging",
+  "Solar power",
+] as const;
+
 export const ProjectDraftSchema = z.object({
   project_name: z
     .string()
     .min(3, "Project name must be at least 3 characters")
     .max(200),
-  project_type: z.enum(PROJECT_TYPES),
+  // Category/purpose default on Step 1; project_type is chosen on Step 2 —
+  // draft-level validation must not force a Step-2 field to create a Step-1
+  // draft (Batch 5 §16-19 "first-step draft problem").
+  project_type: z.enum(PROJECT_TYPES).nullable().optional(),
   category: z.enum(PROJECT_CATEGORIES),
   purpose: z.enum(PROJECT_PURPOSES),
   short_description: z.string().max(300).optional(),
@@ -113,6 +136,17 @@ export const ProjectDraftSchema = z.object({
     .nullable()
     .optional(),
 
+  // Timelines & Progress (Batch 5 §167-169) — real builder-entered percent,
+  // never derived/faked from construction_status.
+  construction_percentage: z
+    .number()
+    .int()
+    .min(0)
+    .max(100)
+    .nullable()
+    .optional(),
+  progress_note: z.string().max(500).optional(),
+
   // Wizard step persistence (resume exact step — Batch 5 §38)
   current_step: z.number().int().min(1).max(20).optional(),
 });
@@ -138,6 +172,9 @@ export type ProjectWingInput = z.infer<typeof ProjectWingSchema>;
 
 export const ProjectSubmitSchema = ProjectDraftSchema.extend({
   project_name: z.string().min(3).max(200),
+  project_type: z.enum(PROJECT_TYPES, {
+    message: "Please select a project type",
+  }),
   city_text: z.string().min(2, "City is required").max(100),
   construction_status: z.enum([
     "pre_launch",

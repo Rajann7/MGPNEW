@@ -35,7 +35,10 @@ export default async function BrokerNewPropertyPage({ searchParams }: Props) {
   if (draft && !fresh && !draftParam) {
     return (
       <WizardShell {...shellProps}>
-        <WizardMobileHeader title="Post a Property" backHref="/dashboard/broker" />
+        <WizardMobileHeader
+          title="Post a Property"
+          backHref="/dashboard/broker"
+        />
         <div className="mb-6 hidden lg:block">
           <h1 className="text-xl font-bold text-ink">Post a Property</h1>
           <p className="text-sm text-ink-soft">

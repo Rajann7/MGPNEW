@@ -66,10 +66,16 @@ export function FullscreenGallery({
         </span>
         <div className="flex items-center gap-3">
           <span className="hidden items-center gap-1.5 text-xs text-white/50 sm:flex">
-            <kbd className="rounded border border-white/20 px-1.5 py-0.5 font-sans">←</kbd>
-            <kbd className="rounded border border-white/20 px-1.5 py-0.5 font-sans">→</kbd>
+            <kbd className="rounded border border-white/20 px-1.5 py-0.5 font-sans">
+              ←
+            </kbd>
+            <kbd className="rounded border border-white/20 px-1.5 py-0.5 font-sans">
+              →
+            </kbd>
             <span>navigate</span>
-            <kbd className="ml-2 rounded border border-white/20 px-1.5 py-0.5 font-sans">Esc</kbd>
+            <kbd className="ml-2 rounded border border-white/20 px-1.5 py-0.5 font-sans">
+              Esc
+            </kbd>
             <span>close</span>
           </span>
           <button

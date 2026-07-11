@@ -2,7 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Building, Search, ChevronLeft, ChevronDown, MapPin } from "lucide-react";
+import {
+  Building,
+  Search,
+  ChevronLeft,
+  ChevronDown,
+  MapPin,
+} from "lucide-react";
 import { useAuthModal } from "@/components/auth/AuthModalProvider";
 import { useCity } from "@/components/location/CityProvider";
 import type { Profile } from "@/types";
@@ -29,7 +35,9 @@ export function SearchShellHeader({
   const { openAuth } = useAuthModal();
   const { city } = useCity();
   const cityName = city?.name ?? "All Gujarat";
-  const dashboardRoute = profile ? `/dashboard/${profile.public_role}` : "/login";
+  const dashboardRoute = profile
+    ? `/dashboard/${profile.public_role}`
+    : "/login";
   const initial = profile?.full_name?.charAt(0).toUpperCase() ?? "U";
 
   return (
@@ -41,7 +49,11 @@ export function SearchShellHeader({
           className="hidden items-center gap-6 px-6 py-3.5 md:flex"
         >
           <div className="flex flex-shrink-0 items-center gap-3">
-            <Link href="/" aria-label="Home" className="flex items-center gap-2.5">
+            <Link
+              href="/"
+              aria-label="Home"
+              className="flex items-center gap-2.5"
+            >
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white">
                 <Building className="h-[17px] w-[17px]" />
               </span>

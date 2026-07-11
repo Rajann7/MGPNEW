@@ -19,7 +19,9 @@ function LoginContent() {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#0F6B5C]">
           <Building2 className="h-8 w-8 text-white" />
         </div>
-        <h1 className="text-xl font-semibold text-[#18181b]">My Gujarat Property</h1>
+        <h1 className="text-xl font-semibold text-[#18181b]">
+          My Gujarat Property
+        </h1>
         <p className="mt-1 text-sm text-[#52525b]">
           Gujarat&apos;s trusted real estate marketplace
         </p>

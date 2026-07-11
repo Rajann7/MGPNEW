@@ -34,7 +34,9 @@ export function HomeFeaturedProperties({
   return (
     <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-[22px] font-semibold text-ink">Featured properties</h2>
+        <h2 className="text-[22px] font-semibold text-ink">
+          Featured properties
+        </h2>
         <Link
           href="/search?entity=property"
           className="inline-flex items-center gap-1 text-[13px] font-medium text-brand hover:text-brand-hover"
@@ -52,14 +54,16 @@ export function HomeFeaturedProperties({
             No featured listings yet
           </div>
           <p className="max-w-xs text-[13px] text-ink-soft">
-            Approved property listings will appear here. Be the first — post your
-            property after logging in.
+            Approved property listings will appear here. Be the first — post
+            your property after logging in.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {items.map((p) => {
-            const href = p.slug ? `/property/${p.slug}` : "/search?entity=property";
+            const href = p.slug
+              ? `/property/${p.slug}`
+              : "/search?entity=property";
             const chips = [
               p.bedrooms ? `${p.bedrooms} BHK` : null,
               formatArea(p.area_value, p.area_unit),
@@ -103,7 +107,8 @@ export function HomeFeaturedProperties({
                     </div>
                   )}
                   <div className="border-t border-surface-muted pt-2 text-[11px] text-ink-muted">
-                    Posted by {labelize(p.poster_role)} · {timeAgo(p.published_at)}
+                    Posted by {labelize(p.poster_role)} ·{" "}
+                    {timeAgo(p.published_at)}
                   </div>
                 </div>
               </Link>

@@ -70,13 +70,11 @@ export function ModerationQueueClient({
           ? await approveEntity(entityType, reasonModal.id, {
               reraException: { reason: reasonText.trim() },
             })
-          : await (reasonModal.mode === "reject"
-              ? rejectEntity
-              : requestEntityChanges)(
-              entityType,
-              reasonModal.id,
-              reasonText.trim()
-            );
+          : await (
+              reasonModal.mode === "reject"
+                ? rejectEntity
+                : requestEntityChanges
+            )(entityType, reasonModal.id, reasonText.trim());
       if (!result.success) {
         setError(result.error);
         return;

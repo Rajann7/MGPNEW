@@ -4,8 +4,14 @@ import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
 import { LeadListClient } from "@/components/leads/LeadListClient";
 import { LeadsTable, LeadsEmptyState } from "@/components/leads/LeadsTable";
-import { LeadStageTabs, type LeadStageTab } from "@/components/leads/LeadStageTabs";
-import { bucketForCrmStage, type LeadStageBucket } from "@/components/leads/LeadStageBadge";
+import {
+  LeadStageTabs,
+  type LeadStageTab,
+} from "@/components/leads/LeadStageTabs";
+import {
+  bucketForCrmStage,
+  type LeadStageBucket,
+} from "@/components/leads/LeadStageBadge";
 import { Alert } from "@/components/ui/Alert";
 import {
   getMyLeadsAsReceiver,
@@ -88,14 +94,14 @@ export default async function OwnerLeadsPage({
 
         {received.success && items.length === 0 && <LeadsEmptyState />}
 
-        {items.length > 0 && <LeadsTable items={items} basePath="/dashboard/leads" />}
+        {items.length > 0 && (
+          <LeadsTable items={items} basePath="/dashboard/leads" />
+        )}
       </div>
 
       {sent.success && sent.data.items.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-ink mb-3">
-            My Inquiries
-          </h2>
+          <h2 className="text-sm font-semibold text-ink mb-3">My Inquiries</h2>
           <LeadListClient items={sent.data.items} basePath="/dashboard/leads" />
         </div>
       )}

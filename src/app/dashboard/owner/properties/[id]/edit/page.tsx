@@ -17,8 +17,10 @@ export const metadata: Metadata = {
 };
 
 const LOCKED_REASON: Record<string, string> = {
-  under_review: "This property is currently under review and can't be edited until that finishes.",
-  expired: "This listing has expired. Use Relist from My Properties to send it back for approval.",
+  under_review:
+    "This property is currently under review and can't be edited until that finishes.",
+  expired:
+    "This listing has expired. Use Relist from My Properties to send it back for approval.",
   deleted: "This listing has been deleted.",
 };
 
@@ -60,7 +62,10 @@ export default async function EditPropertyPage({
   ) {
     return (
       <WizardShell {...shellProps}>
-        <WizardMobileHeader title="Edit Property" backHref="/dashboard/owner/properties" />
+        <WizardMobileHeader
+          title="Edit Property"
+          backHref="/dashboard/owner/properties"
+        />
         <Alert tone="info">
           {LOCKED_REASON[property.status ?? ""] ??
             "This listing can't be edited right now."}

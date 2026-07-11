@@ -6,7 +6,12 @@ import { REPORT_CATEGORY_VALUES } from "@/lib/reports/config";
 import type { ActionResult } from "@/types";
 
 const VALID_CATEGORIES = REPORT_CATEGORY_VALUES;
-const VALID_TARGET_TYPES = new Set(["property", "project", "requirement", "user"]);
+const VALID_TARGET_TYPES = new Set([
+  "property",
+  "project",
+  "requirement",
+  "user",
+]);
 const DAILY_CAP = 10;
 
 /**

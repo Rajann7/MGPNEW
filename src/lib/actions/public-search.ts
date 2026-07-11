@@ -1,6 +1,5 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 import { expandSearchTerms } from "@/lib/search/config";
 
 // ============================================================
@@ -437,7 +436,7 @@ export async function getPublicProjectBySlug(slug: string) {
   const { data } = await supabase
     .from("public_projects_view")
     .select(
-      "id, project_name, slug, short_description, project_type, category, purpose, price_min, price_max, price_visible, total_area_value, total_area_unit, total_towers, total_wings, total_floors, total_units, available_units, unit_configurations, construction_status, possession_date, launch_date, phase_name, rera_registered, rera_number, rera_status, rera_disclaimer_required, amenities, city_text, locality_text, landmark, pin_code, approx_latitude, approx_longitude, cover_media_id, media_count, virtual_tour_url, published_at, builder_profile_id"
+      "id, project_name, slug, short_description, project_type, category, purpose, price_min, price_max, price_visible, total_area_value, total_area_unit, total_towers, total_wings, total_floors, total_units, available_units, unit_configurations, construction_status, construction_percentage, progress_note, possession_date, launch_date, phase_name, rera_registered, rera_number, rera_status, rera_disclaimer_required, amenities, city_text, locality_text, landmark, pin_code, approx_latitude, approx_longitude, cover_media_id, media_count, virtual_tour_url, video_url, published_at, builder_profile_id"
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -464,7 +463,9 @@ export async function getPublicOwnerByProfileId(profileId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("public_owner_profiles_view")
-    .select("profile_id, display_name, avatar_media_id, city_id, verification_status, created_at")
+    .select(
+      "profile_id, display_name, avatar_media_id, city_id, verification_status, created_at"
+    )
     .eq("profile_id", profileId)
     .maybeSingle();
   return data;

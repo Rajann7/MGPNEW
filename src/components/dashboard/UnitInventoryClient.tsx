@@ -49,10 +49,12 @@ const ERR: Record<string, string> = {
   FORBIDDEN: "You don't have access to this project.",
   ENTITY_NOT_FOUND: "Not found.",
   VALIDATION_ERROR: "Please check the values entered.",
-  STRUCTURE_LOCKED: "Units already generated for this wing — reduce/remove blocked.",
+  STRUCTURE_LOCKED:
+    "Units already generated for this wing — reduce/remove blocked.",
   TOO_MANY_UNITS: "That would generate too many units at once (max 5,000).",
   STALE_VERSION: "This unit changed elsewhere — reloaded the latest values.",
-  INVALID_STATUS_TRANSITION: "That status change isn't allowed from the current status.",
+  INVALID_STATUS_TRANSITION:
+    "That status change isn't allowed from the current status.",
   UNKNOWN_ERROR: "Something went wrong. Please try again.",
 };
 
@@ -104,7 +106,8 @@ export function UnitInventoryClient({
   }) {
     setListError(null);
     const res = await listProjectUnits(projectId, {
-      wingId: overrides?.wingId !== undefined ? overrides.wingId : wingFilter || null,
+      wingId:
+        overrides?.wingId !== undefined ? overrides.wingId : wingFilter || null,
       status: (overrides?.status !== undefined
         ? overrides.status
         : statusFilter || null) as UnitAvailabilityStatus | null,
@@ -164,7 +167,7 @@ export function UnitInventoryClient({
         setWingError(
           "fieldErrors" in res && res.fieldErrors?.wings
             ? `Wing(s) already generated, can't shrink/remove: ${res.fieldErrors.wings.join(", ")}`
-            : ERR[res.error] ?? res.error
+            : (ERR[res.error] ?? res.error)
         );
         return;
       }
@@ -386,9 +389,7 @@ export function UnitInventoryClient({
       {/* ------------------------------------------------------------ */}
       <section className="rounded-2xl border border-zinc-200 bg-white p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-zinc-900">
-            Units ({total})
-          </h2>
+          <h2 className="text-base font-bold text-zinc-900">Units ({total})</h2>
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={wingFilter}
@@ -535,7 +536,9 @@ export function UnitInventoryClient({
                   <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-zinc-500">
                     <span>Floor: {u.floor_number ?? "—"}</span>
                     <span>Type: {u.unit_type ?? "—"}</span>
-                    <span>Area: {u.area_value ? `${u.area_value} sq ft` : "—"}</span>
+                    <span>
+                      Area: {u.area_value ? `${u.area_value} sq ft` : "—"}
+                    </span>
                     <span>
                       Price:{" "}
                       {u.price ? `₹${u.price.toLocaleString("en-IN")}` : "—"}
@@ -558,7 +561,9 @@ export function UnitInventoryClient({
         {selected.size > 0 && (
           <div
             className="sticky bottom-16 z-10 -mx-5 mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-200 bg-white/95 px-5 py-3 backdrop-blur sm:static sm:-mx-6 sm:mx-0 sm:rounded-xl sm:border sm:px-4"
-            style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+            style={{
+              paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
+            }}
           >
             <span className="text-sm font-medium text-zinc-700">
               {selected.size} selected

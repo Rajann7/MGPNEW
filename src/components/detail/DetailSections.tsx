@@ -53,7 +53,9 @@ export function KeyFacts({
             key={i.label}
             className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700"
           >
-            {Icon && <Icon className="h-3.5 w-3.5 text-brand" aria-hidden="true" />}
+            {Icon && (
+              <Icon className="h-3.5 w-3.5 text-brand" aria-hidden="true" />
+            )}
             {i.value}
           </li>
         );
@@ -185,11 +187,7 @@ export function LocationSection({
 
 /** Available unit configurations for a project (design Batch 4 · Screen 2).
  * Reads the real `unit_configurations` jsonb; hidden when none. */
-export function AvailableUnits({
-  units,
-}: {
-  units: unknown;
-}) {
+export function AvailableUnits({ units }: { units: unknown }) {
   const list = Array.isArray(units) ? (units as Record<string, unknown>[]) : [];
   if (list.length === 0) return null;
   const str = (v: unknown) => (v == null ? null : String(v));

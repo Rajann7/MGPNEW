@@ -37,7 +37,9 @@ export function DashboardPageHeader({
           {count === 1 ? itemLabel : (itemLabelPlural ?? `${itemLabel}s`)}
         </p>
       </div>
-      <div className={hideActionOnMobile ? "hidden sm:block shrink-0" : "shrink-0"}>
+      <div
+        className={hideActionOnMobile ? "hidden sm:block shrink-0" : "shrink-0"}
+      >
         <Button href={actionHref}>
           <Plus className="w-4 h-4" strokeWidth={2.5} aria-hidden="true" />
           {actionLabel}

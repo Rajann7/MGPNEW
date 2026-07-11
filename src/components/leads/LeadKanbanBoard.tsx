@@ -102,7 +102,9 @@ export function LeadKanbanBoard({
                 e.preventDefault();
                 setDragOverStage(col.stage);
               }}
-              onDragLeave={() => setDragOverStage((s) => (s === col.stage ? null : s))}
+              onDragLeave={() =>
+                setDragOverStage((s) => (s === col.stage ? null : s))
+              }
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOverStage(null);
@@ -117,7 +119,10 @@ export function LeadKanbanBoard({
               aria-label={`${col.label} column`}
             >
               <div className="mb-2 flex items-center gap-2 px-1">
-                <span className={`h-2 w-2 rounded-full ${col.tone}`} aria-hidden />
+                <span
+                  className={`h-2 w-2 rounded-full ${col.tone}`}
+                  aria-hidden
+                />
                 <span className="text-[13px] font-semibold text-zinc-800">
                   {col.label}
                 </span>

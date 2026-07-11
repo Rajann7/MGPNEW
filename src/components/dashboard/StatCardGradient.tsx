@@ -22,7 +22,11 @@ export function StatCardGradientGrid({ stats }: { stats: StatCardItem[] }) {
   );
 }
 
-export function StatCardGradientSkeletonGrid({ count = 4 }: { count?: number }) {
+export function StatCardGradientSkeletonGrid({
+  count = 4,
+}: {
+  count?: number;
+}) {
   return (
     <div
       className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6"
@@ -66,7 +70,9 @@ function StatCardGradient({
           highlight ? "text-white/90" : "text-ink-soft"
         )}
       >
-        {Icon && <Icon className="w-4 h-4" strokeWidth={1.75} aria-hidden="true" />}
+        {Icon && (
+          <Icon className="w-4 h-4" strokeWidth={1.75} aria-hidden="true" />
+        )}
         {label}
       </p>
       <p className="text-2xl sm:text-3xl font-semibold">{value}</p>

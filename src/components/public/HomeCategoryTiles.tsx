@@ -7,7 +7,11 @@ import { Building2, Store, LandPlot, Building, BedDouble } from "lucide-react";
  * Links are real /search category routes.
  */
 const TILES = [
-  { label: "Residential", Icon: Building2, href: "/search?category=residential" },
+  {
+    label: "Residential",
+    Icon: Building2,
+    href: "/search?category=residential",
+  },
   { label: "Commercial", Icon: Store, href: "/search?category=commercial" },
   { label: "Plots & Land", Icon: LandPlot, href: "/search?category=plot" },
   { label: "Projects", Icon: Building, href: "/search?entity=project" },

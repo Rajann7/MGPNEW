@@ -16,8 +16,8 @@ export function CompareView() {
         </span>
         <h1 className="text-lg font-bold text-ink">Nothing to compare yet</h1>
         <p className="text-sm text-ink-soft">
-          Add up to 4 properties or projects from search using the compare button
-          on each card, then review them side by side here.
+          Add up to 4 properties or projects from search using the compare
+          button on each card, then review them side by side here.
         </p>
         <Link
           href="/search"
@@ -29,12 +29,13 @@ export function CompareView() {
     );
   }
 
-  const rows: { label: string; get: (i: (typeof items)[number]) => string }[] = [
-    { label: "Price", get: (i) => i.price },
-    { label: "Location", get: (i) => i.location },
-    { label: "Type", get: (i) => i.kind },
-    { label: "Details", get: (i) => i.facts.join(" · ") || "—" },
-  ];
+  const rows: { label: string; get: (i: (typeof items)[number]) => string }[] =
+    [
+      { label: "Price", get: (i) => i.price },
+      { label: "Location", get: (i) => i.location },
+      { label: "Type", get: (i) => i.kind },
+      { label: "Details", get: (i) => i.facts.join(" · ") || "—" },
+    ];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 pb-28 sm:px-6">

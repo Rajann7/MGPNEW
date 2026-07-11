@@ -3581,3 +3581,67 @@ with no breakpoint changes in that range so low risk).
 **Test data left in the dev DB** (not production): several `LIMITTEST`/`MANUALVERIFY`/`QA Verify` properties
 under the test owner account, in draft/submitted status — harmless dev artifacts, safe to leave or clean up
 later via the UI's own Delete action.
+
+---
+
+> RESUME (2026-07-10, Batch 5 · Section 2 — Post Project Wizard, 10 steps): **DONE, PASS.** Rebuilt
+> `src/components/forms/ProjectForm.tsx` onto the exact 10-step design (shared `WizardShell`/`WizardProgress`/
+> `WizardFooter`/`useWizardAutosave`, Submitted as visible step 10). Wired the previously-built-but-unconnected
+> structured Wings/Units backend (`saveProjectWings`/`generateWingUnits`/`getProjectWings`) into a real Step 4
+> UI. Added: Developer field (real `builder_profiles`, prefilled+locked), canonical `PROJECT_AMENITIES` (14
+> items) in `src/lib/validators/project.ts`, truthful `construction_percentage`/`progress_note` columns +
+> Step 6 input, full Contact (Step 8) + Preview (Step 9, per-block Edit links) steps, `EditReapprovalGate`
+> wired into the edit page, new `ProjectDraftResumeCard` (10-step variant) wired into both the wizard entry and
+> My Projects list. Confirmed with no code change needed: RERA publication gate already server-enforced in
+> `approveEntity()`, and `canEditProject`/`canSubmitForApproval` already consistent.
+>
+> **Two real bugs found and fixed via live browser walkthrough** (see `BUGS_AND_FIXES.md`
+> BUG-20260710-PROJ-001/002): (1) Project Step 1 couldn't create a draft at all — `project_type` (a Step 2
+> field) was `not null` in the DB and non-optional in `ProjectDraftSchema`; fixed with the same nullable+guarded-
+> CHECK pattern already used for `properties`. (2) "Generate units" always failed with Postgres `42P10` — the
+> unique index backing the idempotent-upsert was partial (`where unit_number is not null`), which Postgres
+> can't match against a client-supplied `onConflict` string; fixed by making it a plain unique index.
+>
+> Migrations applied to the live linked Supabase project this session (via `supabase link` + `supabase db
+> push`, owner DB password supplied for this session only, each diff reviewed before applying):
+> `20260710160000_project_wizard_progress_gap.sql`, `20260710161000_project_type_draft_nullable.sql`,
+> `20260710162000_project_units_upsert_conflict_fix.sql`.
+>
+> Checks: `npx tsc --noEmit` PASS · `npx eslint .` PASS · `npm run build` PASS (40/40 routes). **Live browser
+> verification: full 10-step wizard walked end-to-end as the test Builder account** (mobile-OTP login via the
+> real UI, native-value-setter technique — see memory `driving-otp-widget`), including a real wing +
+> idempotent unit generation, submitted successfully, confirmed "Submitted" status on My Projects. Responsive
+> checked at 390px and 1440px (screenshots), no horizontal overflow, both the mobile contextual header and the
+> full desktop Builder dashboard shell render correctly.
+>
+> **Note for future Claude:** the pre-existing 5D Unit Inventory backend (`src/lib/actions/units.ts`) was built
+> in an earlier pass but had literally never been exercised end-to-end until this session wired Step 4 into
+> it — both bugs above were latent since that pass and only surfaced now. If touching `units.ts` again, re-test
+> generation live, don't assume it works from code review alone.
+>
+> Not in scope for this section (separate Batch 5 sub-sections, untouched): 5A Property Wizard, 5C Requirement
+> Wizard, 5D Unit Inventory UI (desktop grid/mobile accordion/edit modal — the generation/CRUD backend used
+> here is 5D's, but its own management UI is a different section).
+
+---
+
+> RESUME (2026-07-10, Batch 5 · Section 2 follow-up — pending-issue fixes): Fixed all code-fixable pending
+> issues from the manual-verification pass: (1) public brochure download now works for guests/logged-in
+> visitors of a published project via new `getPublicProjectBrochure()` (service-role, re-verifies
+> `visibility_status=public` fresh every call — never broadens private-bucket access beyond that), wired into
+> `BrochureCard`; (2) `registerMedia` now verifies real PDF magic bytes (`%PDF-`) before registering a
+> brochure, closing a MIME-string-spoofing gap found live in the prior pass. `tsc`/`eslint`/`build` all green.
+>
+> **Could not live-verify this pass:** browser automation (sandboxed preview + Chrome extension fallback)
+> stayed unreachable across repeated retries in two consecutive turns — a session-level tooling issue (the same
+> tools worked earlier in this session and produced the extensive live-verified results already in
+> BUGS_AND_FIXES.md/MANUAL_VERIFICATION.md). Next session should open a fresh browser tool connection and:
+> (a) click-confirm the new brochure download link + a spoofed-MIME PDF rejection, (b) re-attempt the
+> previously-noted-as-code-only items (double-submit concurrency, direct-URL/role security, 768/1024/1280/1366
+> responsive breakpoints for the Project wizard specifically).
+>
+> All prior Section 2 findings/fixes remain valid and were live-verified in the earlier part of this same
+> session: 10-step wizard end-to-end, RERA gate + exception + audit log, idempotent unit generation +
+> structure-change lock, and — most importantly — a real S1 RLS bug (`20260710164000_fix_entity_update_rls_governance_check.sql`,
+> user-approved) that was silently blocking ALL edits/pause/resume on any already-published project or property;
+> full edit-after-publish cycle reconfirmed working after the fix.

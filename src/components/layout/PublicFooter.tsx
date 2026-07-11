@@ -83,11 +83,12 @@ export function PublicFooter() {
           <span className="text-xs leading-[1.6] text-white/45">
             My Gujarat Property is a listing marketplace. We are not a party to
             any transaction between users and do not act as a broker or agent.
-            Please verify all property details and documents independently before
-            transacting.
+            Please verify all property details and documents independently
+            before transacting.
           </span>
           <span className="text-xs text-white/35">
-            © {new Date().getFullYear()} My Gujarat Property. All rights reserved.
+            © {new Date().getFullYear()} My Gujarat Property. All rights
+            reserved.
           </span>
         </div>
       </div>

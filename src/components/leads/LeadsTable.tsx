@@ -14,8 +14,7 @@ function relativeDate(iso: string) {
   if (hours < 24) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
   const days = Math.floor(hours / 24);
   if (days === 1) return "Yesterday";
-  if (days < 7)
-    return d.toLocaleDateString("en-IN", { weekday: "short" });
+  if (days < 7) return d.toLocaleDateString("en-IN", { weekday: "short" });
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
@@ -51,7 +50,10 @@ export function LeadsTable({
               className="grid grid-cols-[2fr_1.8fr_1fr_1fr_40px] gap-3 px-5 py-3.5 border-b border-border last:border-0 items-center hover:bg-ink/[0.02] dark:hover:bg-white/[0.03] transition-colors"
             >
               <span className="flex items-center gap-2.5 min-w-0">
-                <LeadAvatar name={lead.counterpartName} isNew={bucket === "new"} />
+                <LeadAvatar
+                  name={lead.counterpartName}
+                  isNew={bucket === "new"}
+                />
                 <span className="text-[13px] font-medium text-ink truncate">
                   {lead.counterpartName}
                 </span>
@@ -84,7 +86,11 @@ export function LeadsTable({
               href={`${basePath}/${lead.id}`}
               className="bg-surface border border-border rounded-2xl p-3.5 flex items-center gap-3"
             >
-              <LeadAvatar name={lead.counterpartName} isNew={bucket === "new"} size="md" />
+              <LeadAvatar
+                name={lead.counterpartName}
+                isNew={bucket === "new"}
+                size="md"
+              />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-ink">
                   {lead.counterpartName}
@@ -112,7 +118,10 @@ export function LeadsEmptyState() {
   return (
     <div className="flex flex-col items-center text-center gap-1.5 py-8 px-4">
       <span className="w-10 h-10 rounded-full bg-brand-soft flex items-center justify-center">
-        <MessageCircle className="w-[18px] h-[18px] text-brand" aria-hidden="true" />
+        <MessageCircle
+          className="w-[18px] h-[18px] text-brand"
+          aria-hidden="true"
+        />
       </span>
       <p className="text-[13px] font-semibold text-ink mt-1">No leads yet</p>
       <p className="text-xs text-ink-muted">

@@ -141,9 +141,7 @@ export function DashboardSidebar({
         </span>
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-ink truncate">
-              {userName}
-            </p>
+            <p className="text-sm font-medium text-ink truncate">{userName}</p>
             <p className="text-xs text-ink-muted truncate">{userRole}</p>
           </div>
         )}

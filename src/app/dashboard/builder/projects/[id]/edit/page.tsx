@@ -5,7 +5,10 @@ import { canEditProject } from "@/lib/permissions/entity-permissions";
 import { getMyProjectById } from "@/lib/actions/projects";
 import { ProjectForm } from "@/components/forms/ProjectForm";
 import { WizardShell } from "@/components/forms/WizardShell";
+import { EditReapprovalGate } from "@/components/forms/wizard/EditReapprovalGate";
+import { WizardMobileHeader } from "@/components/forms/wizard/WizardMobileHeader";
 import { getBuilderNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import { createClient } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 
@@ -21,6 +24,10 @@ const LOCKED_REASON: Record<string, string> = {
     "This listing has expired. Use Relist from My Projects to send it back for approval.",
   deleted: "This project has been deleted.",
 };
+
+// Editing any of these sends a previously-reviewed project back through
+// re-approval (Batch 5 §45-49, §188-190) — must be explicitly confirmed first.
+const REQUIRES_REAPPROVAL_CONFIRM = ["published", "paused", "rejected"];
 
 export default async function EditProjectPage({
   params,
@@ -56,6 +63,10 @@ export default async function EditProjectPage({
   ) {
     return (
       <WizardShell {...shellProps}>
+        <WizardMobileHeader
+          title="Edit Project"
+          backHref="/dashboard/builder/projects"
+        />
         <Alert tone="info">
           {LOCKED_REASON[project.status ?? ""] ??
             "This project can't be edited right now."}
@@ -69,17 +80,41 @@ export default async function EditProjectPage({
     );
   }
 
+  const supabase = await createClient();
+  const { data: builderProfile } = await supabase
+    .from("builder_profiles")
+    .select("company_name, verification_status")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  const needsConfirm = REQUIRES_REAPPROVAL_CONFIRM.includes(
+    project.status ?? ""
+  );
+
   return (
     <WizardShell {...shellProps}>
-      <div className="mb-6 hidden sm:block">
-        <h1 className="text-xl font-bold text-ink">Edit Project</h1>
-        <p className="text-sm text-ink-soft">
-          {["published", "paused", "rejected"].includes(project.status ?? "")
-            ? "Saving changes will send this project back for admin approval."
-            : "Complete all steps and submit for admin approval."}
-        </p>
-      </div>
-      <ProjectForm mode="edit" existing={project} />
+      <EditReapprovalGate
+        requiresConfirmation={needsConfirm}
+        backHref="/dashboard/builder/projects"
+      >
+        <div className="mb-6 hidden lg:block">
+          <h1 className="text-xl font-bold text-ink">Edit Project</h1>
+          <p className="text-sm text-ink-soft">
+            {needsConfirm
+              ? "Saving changes will send this project back for admin approval."
+              : "Complete all steps and submit for admin approval."}
+          </p>
+        </div>
+        <ProjectForm
+          mode="edit"
+          existing={project}
+          dashboardHref="/dashboard/builder/projects"
+          developerName={builderProfile?.company_name ?? profile.display_name}
+          developerVerificationStatus={
+            builderProfile?.verification_status ?? null
+          }
+        />
+      </EditReapprovalGate>
     </WizardShell>
   );
 }

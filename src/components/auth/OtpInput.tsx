@@ -54,7 +54,10 @@ export function OtpInput({
     if (index < LENGTH - 1) refs.current[index + 1]?.focus();
   }
 
-  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>
+  ) {
     if (e.key === "Backspace") {
       e.preventDefault();
       if (digits[index]) {
@@ -72,7 +75,10 @@ export function OtpInput({
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
     e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, LENGTH);
+    const pasted = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, LENGTH);
     if (!pasted) return;
     onChange(pasted);
     const focusIndex = Math.min(pasted.length, LENGTH - 1);
@@ -81,7 +87,11 @@ export function OtpInput({
   }
 
   return (
-    <div className="flex gap-2 justify-center" role="group" aria-label="6-digit OTP">
+    <div
+      className="flex gap-2 justify-center"
+      role="group"
+      aria-label="6-digit OTP"
+    >
       {digits.map((digit, i) => (
         <input
           key={i}

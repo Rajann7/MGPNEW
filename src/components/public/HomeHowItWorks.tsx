@@ -32,8 +32,12 @@ export function HomeHowItWorks() {
             <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-brand-soft text-[13px] font-bold text-brand">
               {n}
             </span>
-            <div className="mt-4 text-[17px] font-semibold text-ink">{title}</div>
-            <p className="mt-2 text-[14px] leading-[1.6] text-ink-soft">{desc}</p>
+            <div className="mt-4 text-[17px] font-semibold text-ink">
+              {title}
+            </div>
+            <p className="mt-2 text-[14px] leading-[1.6] text-ink-soft">
+              {desc}
+            </p>
           </div>
         ))}
       </div>

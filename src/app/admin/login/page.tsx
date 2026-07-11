@@ -153,7 +153,8 @@ function AdminLoginForm() {
             Contact your admin
           </a>
           <div className="mt-1 text-[11px] text-[#a1a1aa]">
-            This screen is a client-side display only — the lockout itself is enforced server-side.
+            This screen is a client-side display only — the lockout itself is
+            enforced server-side.
           </div>
         </div>
       ) : (
@@ -170,10 +171,13 @@ function AdminLoginForm() {
 
           {justInvited && !hasCredError && (
             <div className="mb-4 flex gap-2 rounded-[10px] border border-[#BBF7D0] bg-[#F0FDF4] px-3 py-2.5">
-              <Check className="mt-px h-[15px] w-[15px] flex-shrink-0" color="#16A34A" />
+              <Check
+                className="mt-px h-[15px] w-[15px] flex-shrink-0"
+                color="#16A34A"
+              />
               <span className="text-xs leading-[1.5] text-[#166534]">
-                Your staff account is ready. Sign in with your work email and the
-                password you just set.
+                Your staff account is ready. Sign in with your work email and
+                the password you just set.
               </span>
             </div>
           )}
@@ -185,14 +189,18 @@ function AdminLoginForm() {
                 color="#DC2626"
               />
               <span className="text-xs leading-[1.5] text-[#7F1D1D]">
-                Invalid email or password.{" "}
-                {attemptsLeft} attempt{attemptsLeft === 1 ? "" : "s"} remaining
-                before a 30-minute lockout.
+                Invalid email or password. {attemptsLeft} attempt
+                {attemptsLeft === 1 ? "" : "s"} remaining before a 30-minute
+                lockout.
               </span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            className="flex flex-col gap-4"
+          >
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="admin-email"

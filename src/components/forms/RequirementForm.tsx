@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Home, Building2, SquareDashed, Store, Check, Lock } from "lucide-react";
+import {
+  Home,
+  Building2,
+  SquareDashed,
+  Store,
+  Check,
+  Lock,
+} from "lucide-react";
 import {
   createRequirementDraft,
   updateRequirementDraft,
@@ -338,7 +345,11 @@ export function RequirementForm({ existing, mode, dashboardRole }: Props) {
                       ].join(" ")}
                     >
                       <Icon
-                        className={active ? "h-5 w-5 text-brand" : "h-5 w-5 text-zinc-500"}
+                        className={
+                          active
+                            ? "h-5 w-5 text-brand"
+                            : "h-5 w-5 text-zinc-500"
+                        }
                       />
                       <span
                         className={[
@@ -657,10 +668,15 @@ export function RequirementForm({ existing, mode, dashboardRole }: Props) {
         {/* STEP 7 · PREVIEW + SUBMIT */}
         {step === 7 && (
           <div className="space-y-5">
-            <h2 className="text-lg font-bold text-zinc-900">Preview &amp; submit</h2>
+            <h2 className="text-lg font-bold text-zinc-900">
+              Preview &amp; submit
+            </h2>
             <div className="space-y-3 rounded-xl bg-zinc-50 p-4 text-sm">
               <SummaryRow label="Title" value={form.title} />
-              <SummaryRow label="Purpose" value={PURPOSE_LABELS[form.purpose]} />
+              <SummaryRow
+                label="Purpose"
+                value={PURPOSE_LABELS[form.purpose]}
+              />
               <SummaryRow
                 label="Category"
                 value={CATEGORY_META[form.category].label}
@@ -705,8 +721,8 @@ export function RequirementForm({ existing, mode, dashboardRole }: Props) {
             <div className="flex gap-2 rounded-xl bg-brand-soft px-3.5 py-3">
               <Lock className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-brand" />
               <span className="text-[11px] leading-[1.5] text-[#0C5648]">
-                Once approved, this is visible to verified Brokers &amp; Builders
-                only — never public, never to guests.
+                Once approved, this is visible to verified Brokers &amp;
+                Builders only — never public, never to guests.
               </span>
             </div>
           </div>
@@ -720,7 +736,11 @@ export function RequirementForm({ existing, mode, dashboardRole }: Props) {
           canSaveDraft={!!savedId}
           submitLabel="Submit requirement"
           onBack={handleBack}
-          onSaveDraft={() => startTransition(async () => { await saveNow(); })}
+          onSaveDraft={() =>
+            startTransition(async () => {
+              await saveNow();
+            })
+          }
           onContinue={handleNext}
           onSubmit={handleSubmit}
           backHref={`/dashboard/${dashboardRole}/requirements`}

@@ -34,7 +34,10 @@ export function ProjectHero({
   return (
     <div className="relative flex min-h-[180px] flex-col justify-end overflow-hidden rounded-2xl border border-zinc-100 bg-zinc-50 sm:min-h-[220px]">
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <Building2 className="h-12 w-12 text-zinc-300 sm:h-16 sm:w-16" aria-hidden="true" />
+        <Building2
+          className="h-12 w-12 text-zinc-300 sm:h-16 sm:w-16"
+          aria-hidden="true"
+        />
       </div>
       {overflowMenu && (
         <div className="absolute right-2.5 top-2.5 z-10 sm:right-3.5 sm:top-3.5 [&_button]:bg-black/35 [&_button]:text-white [&_button]:backdrop-blur-sm [&_button:hover]:bg-black/50">
@@ -68,14 +71,18 @@ export function ProjectHero({
           <div className="hidden flex-shrink-0 text-right sm:block">
             <p className="text-lg font-bold">{priceRange}</p>
             {possessionLabel && (
-              <p className="text-xs text-white/80">Possession {possessionLabel}</p>
+              <p className="text-xs text-white/80">
+                Possession {possessionLabel}
+              </p>
             )}
           </div>
         </div>
         <div className="mt-3 sm:hidden">
           <p className="text-base font-bold">{priceRange}</p>
           {possessionLabel && (
-            <p className="text-xs text-white/80">Possession {possessionLabel}</p>
+            <p className="text-xs text-white/80">
+              Possession {possessionLabel}
+            </p>
           )}
         </div>
       </div>
@@ -94,14 +101,24 @@ const STATUS_MAP: Record<string, { index: number; percent: number }> = {
 };
 
 /** Horizontal construction-progress timeline driven by the project's real
- * construction_status — hidden when that field isn't set (no fake progress). */
+ * construction_status (which stage) — hidden when that field isn't set (no
+ * fake progress). The displayed percentage prefers the builder's real,
+ * directly-entered `construction_percentage` (Batch 5 §167-169); it only
+ * falls back to the coarse per-stage estimate when the builder hasn't
+ * entered a real number, and that fallback is never labeled as exact. */
 export function ConstructionProgress({
   status,
+  percentage,
+  progressNote,
 }: {
   status: string | null | undefined;
+  percentage?: number | null;
+  progressNote?: string | null;
 }) {
   const mapped = status ? STATUS_MAP[status] : null;
   if (!mapped) return null;
+  const realPercent = typeof percentage === "number" ? percentage : null;
+  const displayPercent = realPercent ?? mapped.percent;
   return (
     <section className="mt-6">
       <h2 className="mb-3 text-sm font-semibold text-zinc-900">
@@ -113,7 +130,10 @@ export function ConstructionProgress({
             const done = i < mapped.index;
             const current = i === mapped.index;
             return (
-              <div key={stage} className="flex flex-1 items-center last:flex-none">
+              <div
+                key={stage}
+                className="flex flex-1 items-center last:flex-none"
+              >
                 <div className="flex flex-col items-center gap-1.5">
                   <span
                     className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold ${
@@ -132,7 +152,7 @@ export function ConstructionProgress({
                     }`}
                   >
                     {stage}
-                    {current ? ` ${mapped.percent}%` : ""}
+                    {current ? ` ${displayPercent}%` : ""}
                   </span>
                 </div>
                 {i < STAGES.length - 1 && (
@@ -146,15 +166,46 @@ export function ConstructionProgress({
             );
           })}
         </div>
+        <p className="mt-3 text-[11px] text-zinc-500">
+          {realPercent != null
+            ? `${realPercent}% complete — reported directly by the builder.`
+            : "Estimated stage only — the builder hasn't reported an exact percentage yet."}
+          {progressNote ? ` ${progressNote}` : ""}
+        </p>
       </div>
     </section>
   );
 }
 
-/** Brochure card (design Batch 4 sidebar). No brochure file pipeline is wired
- * yet, so this is always an honest "Setup Required" state — never a fake
- * download link. */
-export function BrochureCard() {
+/** Brochure card (design Batch 4 sidebar). Renders a real, working download
+ * link (short-lived signed URL, resolved server-side via
+ * `getPublicProjectBrochure` — never the raw private storage path) when the
+ * builder has actually uploaded one; an honest "not uploaded yet" state
+ * otherwise — never a fake download link. */
+export function BrochureCard({
+  brochure,
+}: {
+  brochure?: { url: string; fileName: string; fileSizeBytes: number } | null;
+}) {
+  if (brochure) {
+    const sizeMb = (brochure.fileSizeBytes / (1024 * 1024)).toFixed(1);
+    return (
+      <a
+        href={brochure.url}
+        className="flex items-center gap-2.5 rounded-2xl border border-zinc-200 bg-white p-4 hover:border-brand/40"
+      >
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+          <FileText className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-zinc-900">
+            {brochure.fileName}
+          </p>
+          <p className="text-[11px] text-brand">{sizeMb} MB · Download →</p>
+        </div>
+      </a>
+    );
+  }
   return (
     <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50 p-4">
       <div className="flex items-center gap-2.5">
@@ -162,7 +213,9 @@ export function BrochureCard() {
           <FileText className="h-4 w-4" />
         </span>
         <div>
-          <p className="text-xs font-semibold text-zinc-700">Project brochure</p>
+          <p className="text-xs font-semibold text-zinc-700">
+            Project brochure
+          </p>
           <p className="text-[11px] text-zinc-500">
             Not uploaded by the builder yet.
           </p>
@@ -194,7 +247,8 @@ export function BuilderMiniCard({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-zinc-900">{name}</p>
         <p className="text-xs text-zinc-500">
-          {projectCount != null ? `${projectCount} projects · ` : ""}View microsite
+          {projectCount != null ? `${projectCount} projects · ` : ""}View
+          microsite
         </p>
       </div>
       <ChevronRight className="h-4 w-4 flex-shrink-0 text-zinc-400" />

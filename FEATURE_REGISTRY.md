@@ -2480,3 +2480,25 @@ Conflict resolutions locked in CLAUDE.md §3A: requirement approval; 9-step prop
 | Media upload — Project photos+brochure | Project wizard step 7 | DONE | photos public bucket; brochure PDF private bucket, signed-URL only, never public |
 | Media DB migration applied to production | n/a | BLOCKED | sandbox credential guard prevented `supabase db push`; user must run manually |
 | Wizard/units live browser verification | n/a | BLOCKED | all routes `requireRole()`-gated; mobile-OTP login not automatable this session |
+
+## Batch 5 · Section 2 — Post Project Wizard (Builder, 10 steps) [2026-07-10]
+
+| Feature | Route | Status | Notes |
+| --- | --- | --- | --- |
+| Project Wizard = exact 10 steps on shared Batch 5 shell | `/dashboard/builder/projects/new`, `[id]/edit` | DONE | `WizardShell`+`WizardProgress`+`WizardFooter`+`useWizardAutosave`; Submitted is step 10 |
+| Draft resume (wizard-entry + My Projects list) | `/dashboard/builder/projects`, `/new` | DONE | new `ProjectDraftResumeCard` (10-step variant); real persisted `current_step` |
+| Edit-after-approval re-approval gate | `/dashboard/builder/projects/[id]/edit` | DONE | `EditReapprovalGate` wired (was missing) |
+| Developer field (real, verified Builder Profile) | Step 1 | DONE | prefilled+locked from `builder_profiles.company_name`/`verification_status`; never free-typed |
+| Structured Wings/Towers/Units editor | Step 4 | DONE | wired existing `project_wings`/`generateWingUnits` backend (built earlier, never connected to the wizard UI) into real Add-Wing / Save Wings / Generate Units controls |
+| Canonical Project amenity registry | Step 5 | DONE | moved to `src/lib/validators/project.ts` `PROJECT_AMENITIES` (14 items incl. Jogging track/Banquet hall/EV charging/Solar power) |
+| Truthful construction-progress foundation | Step 6 | DONE | new `construction_percentage`/`progress_note`/`progress_updated_at` columns — real builder input, never derived from `construction_status` |
+| Project Video + 360° Tour as separate fields | Step 7 | DONE | both already existed (`video_url`, `virtual_tour_url`); relabeled to match design copy exactly |
+| Contact step parity with Property (preferred time + privacy copy) | Step 8 | DONE | was previously just a Map Visibility selector |
+| Full Preview with per-block Edit links | Step 9 | DONE | Basics/Developer/Type-RERA/Location/Units/Amenities/Timeline/Media/Contact, each with its own Edit link |
+| RERA publication gate (server-enforced) | admin moderation | DONE (pre-existing, reconfirmed) | `approveEntity()` blocks publish unless `rera_status==='registered'` or an explicit audited admin exception (`admin_audit_logs`) |
+| `canEditProject`/`canSubmitForApproval` consistency | `entity-permissions.ts` | DONE (pre-existing, reconfirmed) | both already use the identical status list — no change needed |
+| Project submit quota/idempotency | `submitProjectForApproval` | DONE (pre-existing, reconfirmed) | conditional status transition + usage increment only on first `draft→submitted` |
+| Edit-after-publish RLS (fixed S1 bug) | `projects`/`properties`/`requirements` RLS | DONE | governance-column trigger replaces broken value-whitelist `with check`; user-approved migration `20260710164000` |
+| Truthful public construction-progress + Video/Tour display | `/project/[slug]` | DONE | fixed view/select gaps + field-confusion bug; real % now shown, not a status-derived estimate |
+| Public brochure download (guests/logged-in) | `/project/[slug]` | DONE (code-verified; live re-check pending) | `getPublicProjectBrochure()`, service-role re-verifies `visibility_status='public'` each call |
+| Brochure PDF magic-byte check | `registerMedia` | DONE (code-verified; live re-check pending) | rejects a spoofed-MIME non-PDF file, cleans up storage object |

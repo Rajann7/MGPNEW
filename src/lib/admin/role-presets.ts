@@ -39,7 +39,10 @@ const R: Partial<Record<InternalRole, RolePreset>> = {
       { label: "Users — read & update", granted: true },
       { label: "Verification queue — review & approve", granted: true },
       { label: "Support tickets — read & respond", granted: true },
-      { label: "Provider secrets & system settings — Super Admin only", granted: false },
+      {
+        label: "Provider secrets & system settings — Super Admin only",
+        granted: false,
+      },
     ],
   },
   verification_manager: {
@@ -48,7 +51,10 @@ const R: Partial<Record<InternalRole, RolePreset>> = {
       properties: { can_read: true },
     },
     preview: [
-      { label: "Verification queue — review & approve listings", granted: true },
+      {
+        label: "Verification queue — review & approve listings",
+        granted: true,
+      },
       { label: "Listings — read & flag", granted: true },
       { label: "Billing, Ads, System — no access", granted: false },
     ],
@@ -102,7 +108,9 @@ const R: Partial<Record<InternalRole, RolePreset>> = {
     ],
   },
   city_manager: {
-    grants: { locations: { can_read: true, can_create: true, can_update: true } },
+    grants: {
+      locations: { can_read: true, can_create: true, can_update: true },
+    },
     preview: [
       { label: "Locations — create & edit", granted: true },
       { label: "Billing, Ads, System — no access", granted: false },
@@ -126,7 +134,10 @@ const R: Partial<Record<InternalRole, RolePreset>> = {
     grants: { settings: { can_read: true } },
     preview: [
       { label: "System settings — read", granted: true },
-      { label: "Provider secrets & security — Super Admin only", granted: false },
+      {
+        label: "Provider secrets & security — Super Admin only",
+        granted: false,
+      },
     ],
   },
   security_manager: {

@@ -18,15 +18,13 @@ export async function blockUser(
     return { success: false, error: "VALIDATION_ERROR" };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("user_blocks")
-    .upsert(
-      { blocker_profile_id: profile.id, blocked_profile_id: blockedProfileId },
-      {
-        onConflict: "blocker_profile_id,blocked_profile_id",
-        ignoreDuplicates: true,
-      }
-    );
+  const { error } = await supabase.from("user_blocks").upsert(
+    { blocker_profile_id: profile.id, blocked_profile_id: blockedProfileId },
+    {
+      onConflict: "blocker_profile_id,blocked_profile_id",
+      ignoreDuplicates: true,
+    }
+  );
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
 
   // Mark any shared thread as blocked so sendMessage stops working immediately.

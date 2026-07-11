@@ -18,7 +18,13 @@ function toRenderedIcon(navItems: SidebarNavItem[]) {
     const Icon = item.icon;
     return {
       ...item,
-      icon: <Icon className="w-5 h-5 shrink-0" strokeWidth={1.75} aria-hidden="true" />,
+      icon: (
+        <Icon
+          className="w-5 h-5 shrink-0"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        />
+      ),
     };
   });
 }
@@ -127,7 +133,9 @@ export function DashboardShellV2({
           title={title}
           breadcrumb={breadcrumb ?? [title]}
           userName={userName}
-          desktopOnly={!!mobileDrawerNav || !!mobileBackHref || !!hideTopbarOnMobile}
+          desktopOnly={
+            !!mobileDrawerNav || !!mobileBackHref || !!hideTopbarOnMobile
+          }
         />
         <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
           {children}

@@ -16,7 +16,8 @@ const CLAIM_ROLES = [
 const ERR: Record<string, string> = {
   AUTH_REQUIRED: "Please log in to claim this profile.",
   OWN_PROFILE: "This is already your own profile.",
-  ALREADY_REQUESTED: "You already have a pending claim request for this profile.",
+  ALREADY_REQUESTED:
+    "You already have a pending claim request for this profile.",
   UNKNOWN_ERROR: "Something went wrong. Please try again.",
 };
 
@@ -89,7 +90,9 @@ export function ClaimProfileCard({
       <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-zinc-400">
         <Building2 className="h-5 w-5" aria-hidden="true" />
       </span>
-      <p className="text-sm font-semibold text-zinc-900">Is this your business?</p>
+      <p className="text-sm font-semibold text-zinc-900">
+        Is this your business?
+      </p>
       <p className="max-w-xs text-xs text-zinc-500">
         If you run this company and this profile isn&apos;t yours yet, you can
         request a claim review from our team.
@@ -186,8 +189,8 @@ export function ClaimProfileCard({
 
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] leading-[1.5] text-amber-800">
                       Document upload (RERA certificate / GST proof) isn&apos;t
-                      available yet — describe your proof of ownership below
-                      and our team will contact you to verify.
+                      available yet — describe your proof of ownership below and
+                      our team will contact you to verify.
                     </div>
 
                     <div>

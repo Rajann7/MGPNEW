@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentProfile } from "@/lib/auth/session";
 import type { ActionResult } from "@/types";
 import { z } from "zod";
@@ -96,9 +97,7 @@ export async function getMediaUploadTarget(
   ownerId: string,
   filename: string,
   mimeType: string
-): Promise<
-  ActionResult<{ bucket: string; path: string; authUid: string }>
-> {
+): Promise<ActionResult<{ bucket: string; path: string; authUid: string }>> {
   const ctx = await requireEntityOwnership(ownerType, ownerId);
   if ("error" in ctx) return { success: false, error: ctx.error };
 
@@ -115,9 +114,7 @@ export async function getMediaUploadTarget(
   if (!user) return { success: false, error: "AUTH_REQUIRED" };
 
   const bucket = isPdf ? "media-private" : "media-public";
-  const safeName = filename
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .slice(-100);
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100);
   const path = `${user.id}/${ownerType}/${ownerId}/${crypto.randomUUID()}-${safeName}`;
 
   return { success: true, data: { bucket, path, authUid: user.id } };
@@ -138,8 +135,7 @@ export async function registerMedia(
   input: unknown
 ): Promise<ActionResult<MediaItem>> {
   const parsed = RegisterMediaSchema.safeParse(input);
-  if (!parsed.success)
-    return { success: false, error: "VALIDATION_ERROR" };
+  if (!parsed.success) return { success: false, error: "VALIDATION_ERROR" };
   const {
     ownerType,
     ownerId,
@@ -164,6 +160,25 @@ export async function registerMedia(
   if (bucket === "media-private" && mimeType !== "application/pdf") {
     return { success: false, error: "VALIDATION_ERROR" };
   }
+  // Batch 5 §173 "PDF structure" check: a declared MIME string alone is
+  // trivially spoofable (a plain-text file can claim application/pdf) —
+  // verify the uploaded object's real magic bytes before ever registering
+  // it as a brochure. Reject and clean up the storage object on mismatch.
+  if (bucket === "media-private") {
+    const { data: fileData, error: downloadErr } = await ctx.supabase.storage
+      .from(bucket)
+      .download(storagePath, { transform: undefined });
+    if (downloadErr || !fileData) {
+      return { success: false, error: "UNKNOWN_ERROR" };
+    }
+    const header = new Uint8Array(await fileData.slice(0, 5).arrayBuffer());
+    const isRealPdf =
+      header.length === 5 && String.fromCharCode(...header) === "%PDF-";
+    if (!isRealPdf) {
+      await ctx.supabase.storage.from(bucket).remove([storagePath]);
+      return { success: false, error: "VALIDATION_ERROR" };
+    }
+  }
   if (
     bucket === "media-public" &&
     !ALLOWED_IMAGE_MIME.includes(mimeType) &&
@@ -171,7 +186,8 @@ export async function registerMedia(
   ) {
     return { success: false, error: "VALIDATION_ERROR" };
   }
-  const sizeCap = bucket === "media-public" ? MAX_PUBLIC_BYTES : MAX_PRIVATE_BYTES;
+  const sizeCap =
+    bucket === "media-public" ? MAX_PUBLIC_BYTES : MAX_PRIVATE_BYTES;
   if (fileSizeBytes > sizeCap) {
     return {
       success: false,
@@ -180,11 +196,12 @@ export async function registerMedia(
     };
   }
 
-  const kind: MediaKind = mimeType === "application/pdf"
-    ? "pdf"
-    : ALLOWED_VIDEO_MIME.includes(mimeType)
-      ? "video"
-      : "image";
+  const kind: MediaKind =
+    mimeType === "application/pdf"
+      ? "pdf"
+      : ALLOWED_VIDEO_MIME.includes(mimeType)
+        ? "video"
+        : "image";
 
   const { count } = await ctx.supabase
     .from("media")
@@ -271,10 +288,7 @@ export async function deleteMedia(
   if (!row) return { success: false, error: "ENTITY_NOT_FOUND" };
 
   await ctx.supabase.storage.from(row.bucket).remove([row.storage_path]);
-  const { error } = await ctx.supabase
-    .from("media")
-    .delete()
-    .eq("id", mediaId);
+  const { error } = await ctx.supabase.from("media").delete().eq("id", mediaId);
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
 
   await syncMediaCount(ctx.supabase, ownerType, ownerId);
@@ -353,6 +367,66 @@ export async function getSignedMediaUrl(
     .createSignedUrl(row.storage_path, 300);
   if (error || !data) return { success: false, error: "UNKNOWN_ERROR" };
   return { success: true, data: { url: data.signedUrl } };
+}
+
+/**
+ * Public-visitor brochure access (Batch 5 §170-174, manual-verification
+ * follow-up): the private `media-private` bucket has no RLS read policy for
+ * non-owners (correct — brochure rows must never be broadly SELECT-able),
+ * so a guest/logged-in visitor of a *published* project can never sign
+ * their own URL through the owner-gated `getSignedMediaUrl`. This action
+ * runs under the service role specifically to re-verify — itself, freshly,
+ * every call — that the project is genuinely `visibility_status = 'public'`
+ * before ever touching the private bucket, then returns a short-lived
+ * signed URL plus an honest display name/size. No brochure ever becomes
+ * more broadly reachable than "the real published project's brochure".
+ */
+export async function getPublicProjectBrochure(
+  projectId: string
+): Promise<
+  ActionResult<{ url: string; fileName: string; fileSizeBytes: number } | null>
+> {
+  const admin = createServiceClient();
+
+  const { data: project } = await admin
+    .from("projects")
+    .select("id, visibility_status, deleted_at")
+    .eq("id", projectId)
+    .maybeSingle();
+  if (
+    !project ||
+    project.deleted_at ||
+    project.visibility_status !== "public"
+  ) {
+    return { success: false, error: "ENTITY_NOT_FOUND" };
+  }
+
+  const { data: row } = await admin
+    .from("media")
+    .select("storage_path, file_size_bytes")
+    .eq("owner_type", "project")
+    .eq("owner_id", projectId)
+    .eq("kind", "pdf")
+    .maybeSingle();
+  if (!row) return { success: true, data: null };
+
+  const { data: signed, error } = await admin.storage
+    .from("media-private")
+    .createSignedUrl(row.storage_path, 300, { download: true });
+  if (error || !signed) return { success: false, error: "UNKNOWN_ERROR" };
+
+  const fileName = row.storage_path
+    .split("/")
+    .pop()!
+    .replace(/^[a-f0-9-]{36}-/, "");
+  return {
+    success: true,
+    data: {
+      url: signed.signedUrl,
+      fileName,
+      fileSizeBytes: row.file_size_bytes,
+    },
+  };
 }
 
 async function syncMediaCount(

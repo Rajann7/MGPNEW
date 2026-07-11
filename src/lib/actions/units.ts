@@ -27,11 +27,10 @@ const UNIT_TRANSITIONS: Record<string, UnitAvailabilityStatus[]> = {
   sold: [],
 };
 
-type RequireOwnProjectError = "AUTH_REQUIRED" | "ENTITY_NOT_FOUND" | "FORBIDDEN";
+type RequireOwnProjectError =
+  "AUTH_REQUIRED" | "ENTITY_NOT_FOUND" | "FORBIDDEN";
 
-async function requireOwnProject(
-  projectId: string
-): Promise<
+async function requireOwnProject(projectId: string): Promise<
   | { error: RequireOwnProjectError }
   | {
       profile: NonNullable<Awaited<ReturnType<typeof getCurrentProfile>>>;
@@ -117,11 +116,13 @@ export async function saveProjectWings(
   for (const w of existing ?? []) {
     if (!w.units_generated) continue;
     const inc = wings.find(
-      (x) => x.wing_name.trim().toUpperCase() === w.wing_name.trim().toUpperCase()
+      (x) =>
+        x.wing_name.trim().toUpperCase() === w.wing_name.trim().toUpperCase()
     );
     if (
       !incomingNames.has(w.wing_name.trim().toUpperCase()) ||
-      (inc && (inc.floors < w.floors || inc.units_per_floor < w.units_per_floor))
+      (inc &&
+        (inc.floors < w.floors || inc.units_per_floor < w.units_per_floor))
     ) {
       locked.push(w.wing_name);
     }
@@ -137,8 +138,7 @@ export async function saveProjectWings(
   // Delete removed (non-generated) wings
   const toDelete = (existing ?? []).filter(
     (w) =>
-      !w.units_generated &&
-      !incomingNames.has(w.wing_name.trim().toUpperCase())
+      !w.units_generated && !incomingNames.has(w.wing_name.trim().toUpperCase())
   );
   if (toDelete.length > 0) {
     await ctx.supabase
@@ -240,8 +240,7 @@ export async function generateWingUnits(
   }
 
   // Bounded safety: never generate unbounded inventory in one call
-  if (rows.length > 5000)
-    return { success: false, error: "TOO_MANY_UNITS" };
+  if (rows.length > 5000) return { success: false, error: "TOO_MANY_UNITS" };
 
   const { count: existingCount } = await ctx.supabase
     .from("project_units")
@@ -250,12 +249,10 @@ export async function generateWingUnits(
     .eq("wing_id", wing.id);
 
   // Upsert with ignoreDuplicates → conflict rows silently skipped (idempotent)
-  const { error } = await ctx.supabase
-    .from("project_units")
-    .upsert(rows, {
-      onConflict: "project_id,unit_number",
-      ignoreDuplicates: true,
-    });
+  const { error } = await ctx.supabase.from("project_units").upsert(rows, {
+    onConflict: "project_id,unit_number",
+    ignoreDuplicates: true,
+  });
   if (error) {
     console.error("[generateWingUnits] DB error:", error.code);
     return { success: false, error: "UNKNOWN_ERROR" };
@@ -453,8 +450,7 @@ export async function bulkUpdateUnitStatus(
   if ("error" in ctx) return { success: false, error: ctx.error };
 
   const parsed = BulkStatusSchema.safeParse(input);
-  if (!parsed.success)
-    return { success: false, error: "VALIDATION_ERROR" };
+  if (!parsed.success) return { success: false, error: "VALIDATION_ERROR" };
 
   const { unitIds, status } = parsed.data;
   const { data: units } = await ctx.supabase
@@ -527,8 +523,7 @@ export async function bulkUpdateUnitPrice(
   if ("error" in ctx) return { success: false, error: ctx.error };
 
   const parsed = BulkPriceSchema.safeParse(input);
-  if (!parsed.success)
-    return { success: false, error: "VALIDATION_ERROR" };
+  if (!parsed.success) return { success: false, error: "VALIDATION_ERROR" };
 
   const { unitIds, price } = parsed.data;
   const { data: units } = await ctx.supabase

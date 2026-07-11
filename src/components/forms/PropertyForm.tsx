@@ -332,9 +332,7 @@ export function PropertyForm({
         | "public",
       map_visibility: form.map_visibility as "hidden" | "approximate" | "exact",
       preferred_contact_time: form.preferred_contact_time as
-        | "anytime"
-        | "morning_9_1"
-        | "evening_5_9",
+        "anytime" | "morning_9_1" | "evening_5_9",
       current_step: step,
     };
   }
@@ -740,7 +738,9 @@ export function PropertyForm({
         {/* STEP 3: Price & Area */}
         {step === 3 && (
           <div className="space-y-5">
-            <h2 className="text-lg font-bold text-zinc-900">Price &amp; Area</h2>
+            <h2 className="text-lg font-bold text-zinc-900">
+              Price &amp; Area
+            </h2>
 
             {showPriceField && (
               <FormField
@@ -1089,12 +1089,16 @@ export function PropertyForm({
                 <FormField label="Possession Status">
                   <select
                     value={form.possession_status}
-                    onChange={(e) => setField("possession_status", e.target.value)}
+                    onChange={(e) =>
+                      setField("possession_status", e.target.value)
+                    }
                     className="form-select"
                   >
                     <option value="">—</option>
                     <option value="ready_to_move">Ready to Move</option>
-                    <option value="under_construction">Under Construction</option>
+                    <option value="under_construction">
+                      Under Construction
+                    </option>
                     <option value="on_request">On Request</option>
                   </select>
                 </FormField>
@@ -1160,7 +1164,8 @@ export function PropertyForm({
                  * amenities (garden, gym, kids' play area…) aren't
                  * meaningful on Land/Plot or Business-sale listings. */}
                 {AMENITY_GROUPS.filter(
-                  (g) => !(g.group === "Lifestyle" && (isLand || isBusinessSale))
+                  (g) =>
+                    !(g.group === "Lifestyle" && (isLand || isBusinessSale))
                 ).map((g) => (
                   <div key={g.group}>
                     <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-400">
@@ -1199,7 +1204,10 @@ export function PropertyForm({
               </div>
             </FormField>
 
-            <FormField label="Additional Details" hint="Anything else worth mentioning — e.g. Wash Rooms: 2, Water Source: Borewell.">
+            <FormField
+              label="Additional Details"
+              hint="Anything else worth mentioning — e.g. Wash Rooms: 2, Water Source: Borewell."
+            >
               <div className="space-y-2">
                 {extraDetails.map((d, i) => (
                   <div key={i} className="flex gap-2">
@@ -1234,7 +1242,9 @@ export function PropertyForm({
                     <button
                       type="button"
                       onClick={() =>
-                        setExtraDetails((prev) => prev.filter((_, xi) => xi !== i))
+                        setExtraDetails((prev) =>
+                          prev.filter((_, xi) => xi !== i)
+                        )
                       }
                       aria-label="Remove detail"
                       className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-zinc-400 hover:bg-zinc-100 hover:text-red-500"
@@ -1363,8 +1373,8 @@ export function PropertyForm({
                 <option value="exact">Exact location</option>
               </select>
               <p className="text-xs text-zinc-400 mt-1">
-                Maps render only after the maps provider is configured (Phase 11)
-                — this preference is stored now.
+                Maps render only after the maps provider is configured (Phase
+                11) — this preference is stored now.
               </p>
             </FormField>
           </div>
@@ -1472,7 +1482,11 @@ export function PropertyForm({
           canSaveDraft={!!savedId}
           submitLabel="Submit for Approval"
           onBack={handleBack}
-          onSaveDraft={() => startTransition(async () => { await saveNow(); })}
+          onSaveDraft={() =>
+            startTransition(async () => {
+              await saveNow();
+            })
+          }
           onContinue={handleNext}
           onSubmit={handleSubmitForApproval}
           backHref={dashboardHref}

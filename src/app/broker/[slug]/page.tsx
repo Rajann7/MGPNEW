@@ -80,7 +80,12 @@ export default async function BrokerProfilePage({ params }: Props) {
   ];
 
   return (
-    <DetailShell profile={profile} title={name} showCityPill={false} hideCompareTray>
+    <DetailShell
+      profile={profile}
+      title={name}
+      showCityPill={false}
+      hideCompareTray
+    >
       <SeoJsonLd
         id="broker-breadcrumb-jsonld"
         data={breadcrumbJsonLd([

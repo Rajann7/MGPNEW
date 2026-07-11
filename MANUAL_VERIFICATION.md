@@ -4232,3 +4232,56 @@ credential-leakage sandbox guard blocked sourcing the DB password into a shell c
 
 RESULT: PARTIAL — code complete and build-verified; DB migration apply + live browser verification both pending
 and require the user (DB credentials / an authenticated session respectively).
+
+## Batch 5 · Section 2 — Post Project Wizard (Builder, 10 steps) [2026-07-10] — RESULT: PASS
+
+Scope: rebuilt the Post Project Wizard onto the exact 10-step Batch 5 design (shared `WizardShell`/
+`WizardProgress`/`WizardFooter`/`useWizardAutosave`), wired the previously-unconnected structured Wings/Units
+backend into a real UI, added the Developer field, canonical amenity registry, truthful construction-progress
+fields, full Contact/Preview steps, and `EditReapprovalGate`/`ProjectDraftResumeCard` wiring. Full detail in
+`CHANGELOG.md` [2026-07-10] and `FEATURE_REGISTRY.md` "Batch 5 · Section 2".
+
+**This session, migration apply + live browser verification (both PARTIAL/BLOCKED in the prior Batch 5 entry
+above) were both completed:**
+
+- Migrations applied to the live linked Supabase project via `supabase db push` (owner DB password supplied
+  for this session, reviewed diff shown before each apply): `20260710160000_project_wizard_progress_gap.sql`,
+  `20260710161000_project_type_draft_nullable.sql`, `20260710162000_project_units_upsert_conflict_fix.sql`.
+- Automated: `npx tsc --noEmit` PASS · `npx eslint .` PASS (0 errors) · `npm run build` PASS (40/40 routes).
+- **Live dev server + browser walkthrough, logged in as the test Builder account (mobile-OTP, `9000000013` /
+  `123456` — see memory `test-accounts`):**
+  - Step 1 Basics: name + Developer field (real `builder_profiles` lookup, honest "Not verified" /
+    "Complete your Builder profile" fallback since the test account has no builder profile row) + Purpose +
+    Category + Description — draft created successfully (this is where BUG-20260710-PROJ-001 was caught and
+    fixed).
+  - Step 2 Type & RERA: type select, RERA-pending honest copy, format-only disclaimer.
+  - Step 3 Location: city/locality/landmark/address/PIN.
+  - Step 4 Wings/Towers/Units: added a real wing (A, 4 floors × 3 units/floor), Save Wings persisted it
+    server-side ("1 wing · 12 units total"), Generate Units created exactly 12 real `project_units` rows
+    (this is where BUG-20260710-PROJ-002 was caught and fixed), Regenerate confirmed idempotent (0 new rows).
+  - Step 5 Amenities: all 14 canonical items rendered including the previously-missing Jogging track/Banquet
+    hall/EV charging/Solar power.
+  - Step 6 Timelines & Progress: status/launch/possession dates + real Construction  0nput + progress note.
+  - Step 7 Media: photo uploader + brochure PDF slot + separate Project Video / 360° Tour fields.
+  - Step 8 Contact: preferred contact time + privacy copy + map visibility.
+  - Step 9 Preview: every field reflected correctly with a working per-block Edit link back to its step.
+  - Step 10 Submitted: correct "Project submitted for review... RERA registration... 1-2 business days" copy;
+    confirmed on My Projects list as status "Submitted" afterward.
+  - Responsive: 390px (mobile contextual header + sticky footer, zero horizontal overflow) and 1440px (full
+    Builder dashboard sidebar/topbar + desktop numbered-step progress) both confirmed via screenshot.
+
+RESULT: PASS.
+
+## Batch 5 · Section 2 — pending-issue follow-up [2026-07-10] — RESULT: PARTIAL
+
+Addressed the pending issues from the prior manual-verification pass:
+
+1. **Public brochure download for guest/logged-in visitors** — was a pre-existing Batch 4 gap (BrochureCard always showed the honest "not uploaded" state regardless of real uploads). Fixed: new `getPublicProjectBrochure()` server action (service-role, re-verifies `visibility_status='public'` on every call before touching the private bucket), `BrochureCard` now renders a real filename/size/signed download link when present. See BUGS_AND_FIXES.md BUG-20260710-PROJ-005.
+2. **PDF magic-byte verification** — added: `registerMedia` now downloads the just-uploaded object and checks its real header bytes equal `%PDF-` before ever registering it as a brochure, rejecting and cleaning up the storage object otherwise. Closes the MIME-string-spoofing gap found during the prior pass (a file could previously claim `application/pdf` without containing real PDF bytes).
+3. **Docs** — BUGS_AND_FIXES.md, this file, and brain.md updated with the 3 additional findings from the prior pass (RLS edit-after-publish block, fake construction-progress display, brochure/PDF gaps) plus this follow-up.
+
+Automated: `npx tsc --noEmit` PASS · `npx eslint .` PASS (0 errors, 1 pre-existing unrelated warning) · `npm run build` PASS (40/40 routes).
+
+**Live re-verification could not be completed:** browser automation (both the sandboxed preview tool and the Chrome-extension fallback) remained unreachable after multiple retries across two consecutive turns in this session — this appears to be a session-level tooling issue, not a code issue (the same tooling was working correctly earlier in this same session and produced the live-verified results in the prior PARTIAL report). The new brochure download link and PDF magic-byte rejection are code-reviewed and build-verified only.
+
+RESULT: PARTIAL — all identified pending issues have been coded, typechecked, linted and built successfully; live click-through re-verification of the two new fixes (brochure download, magic-byte rejection) plus the previously-flagged double-submit/direct-URL/responsive-breakpoint items still needs a fresh session with working browser tooling.

@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { ShieldCheck, Building } from "lucide-react";
 import type { PublicProjectCard } from "@/lib/actions/public-search";
-import { formatProjectPrice, labelize, locationLabel } from "@/lib/search/format";
+import {
+  formatProjectPrice,
+  labelize,
+  locationLabel,
+} from "@/lib/search/format";
 
 /**
  * "Featured projects" — dark project cards per the finished design.
@@ -37,7 +41,9 @@ export function HomeFeaturedProjects({
   return (
     <section className="mx-auto max-w-7xl px-4 pt-10 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-[22px] font-semibold text-ink">Featured projects</h2>
+        <h2 className="text-[22px] font-semibold text-ink">
+          Featured projects
+        </h2>
         <Link
           href="/search?entity=project"
           className="text-[13px] font-semibold text-brand hover:text-brand-hover"

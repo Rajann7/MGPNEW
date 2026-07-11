@@ -43,7 +43,9 @@ export function HomeTrust() {
             <div key={title} className="flex gap-3">
               <Icon className="mt-0.5 h-5 w-5 flex-shrink-0 text-brand" />
               <div>
-                <div className="text-[14px] font-semibold text-ink">{title}</div>
+                <div className="text-[14px] font-semibold text-ink">
+                  {title}
+                </div>
                 <div className="mt-0.5 text-[13px] leading-[1.5] text-ink-soft">
                   {desc}
                 </div>

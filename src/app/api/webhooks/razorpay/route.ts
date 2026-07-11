@@ -226,15 +226,13 @@ export async function POST(request: NextRequest) {
         processed_at: new Date().toISOString(),
       })
       .eq("id", webhookRowId);
-    await admin
-      .from("billing_audit_logs")
-      .insert({
-        actor_type: "webhook",
-        action: "payment_reconciliation_mismatch",
-        entity_type: "payment",
-        entity_id: paymentId,
-        reason: reconciliation,
-      });
+    await admin.from("billing_audit_logs").insert({
+      actor_type: "webhook",
+      action: "payment_reconciliation_mismatch",
+      entity_type: "payment",
+      entity_id: paymentId,
+      reason: reconciliation,
+    });
     return NextResponse.json({ status: "recorded_mismatch" }, { status: 200 });
   }
 

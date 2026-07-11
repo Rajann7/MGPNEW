@@ -91,7 +91,10 @@ export default async function PropertyDetailPage({ params }: Props) {
         : `Floor ${property.floor_number}`
       : null;
   const keyFacts = [
-    { label: "Bedrooms", value: property.bedrooms ? `${property.bedrooms} BHK` : null },
+    {
+      label: "Bedrooms",
+      value: property.bedrooms ? `${property.bedrooms} BHK` : null,
+    },
     {
       label: "Bathrooms",
       value: property.bathrooms
@@ -108,13 +111,23 @@ export default async function PropertyDetailPage({ params }: Props) {
     { label: "Floor", value: floorFact },
     {
       label: "Furnishing",
-      value: property.furnishing_status ? labelize(property.furnishing_status) : null,
+      value: property.furnishing_status
+        ? labelize(property.furnishing_status)
+        : null,
     },
-    { label: "Facing", value: property.facing ? labelize(property.facing) : null },
-    { label: "Parking", value: property.parking ? labelize(property.parking) : null },
+    {
+      label: "Facing",
+      value: property.facing ? labelize(property.facing) : null,
+    },
+    {
+      label: "Parking",
+      value: property.parking ? labelize(property.parking) : null,
+    },
     {
       label: "Possession",
-      value: property.possession_status ? labelize(property.possession_status) : null,
+      value: property.possession_status
+        ? labelize(property.possession_status)
+        : null,
     },
   ];
 
@@ -157,7 +170,9 @@ export default async function PropertyDetailPage({ params }: Props) {
             <div className="mt-5 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 rounded-md bg-brand-soft text-brand text-xs font-medium capitalize">
-                  {property.purpose === "sell" ? "Buy" : labelize(property.purpose)}
+                  {property.purpose === "sell"
+                    ? "Buy"
+                    : labelize(property.purpose)}
                 </span>
                 <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 text-xs font-medium">
                   {labelize(property.property_type)}
@@ -240,7 +255,11 @@ export default async function PropertyDetailPage({ params }: Props) {
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {similar.map((p) => (
-                    <PropertyResultCard key={p.id} property={p} showCompare={false} />
+                    <PropertyResultCard
+                      key={p.id}
+                      property={p}
+                      showCompare={false}
+                    />
                   ))}
                 </div>
               </section>

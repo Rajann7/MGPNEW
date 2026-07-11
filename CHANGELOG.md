@@ -2613,3 +2613,60 @@ but were partly unwired/untested). This pass:
   needs to run `supabase link --project-ref cekpewpegltqpbmlofmc && supabase db push` manually. No live browser
   verification was possible (all touched routes are `requireRole()`-gated, mobile-OTP login isn't automatable
   in this session) — verified via build/lint/typecheck only, per CLAUDE.md §31.
+
+## [2026-07-10] Batch 5 · Section 2 — Post Project Wizard (Builder, 10 steps)
+
+- Rebuilt `src/components/forms/ProjectForm.tsx` onto the exact 10-step Batch 5 design: shared `WizardShell`/
+  `WizardProgress`/`WizardFooter`/`useWizardAutosave` (was a 9-step form on the old generic `Stepper`, with
+  Submitted handled as an ad-hoc overlay outside the progress). Submitted is now step 10 in the visible
+  progress, matching the Property wizard's architecture.
+- Wired the structured Wing/Tower/Unit editor (Step 4) to the real, previously-unconnected backend
+  (`saveProjectWings`/`generateWingUnits`/`getProjectWings` in `src/lib/actions/units.ts`, and the
+  `project_wings` table from an earlier migration) — Add Wing / Save Wings / Generate Units are now live,
+  idempotent controls instead of flat `total_towers/total_wings/total_floors/total_units` number fields.
+- Added a real Developer field (Step 1): prefilled and locked from the authenticated Builder's
+  `builder_profiles.company_name`/`verification_status` — never a free-typed name.
+- Moved `PROJECT_AMENITIES` into `src/lib/validators/project.ts` as the canonical registry (14 items,
+  including the previously-missing Jogging track/Banquet hall/EV charging/Solar power) and wired it into the
+  wizard's Amenities step.
+- Added a truthful construction-progress foundation: new `construction_percentage`/`progress_note`/
+  `progress_updated_at` columns (migration `20260710160000_project_wizard_progress_gap.sql`) plus a real
+  Step 6 input — never a synthetic percentage derived from `construction_status`.
+- Filled in the Contact step (Step 8, was just a Map Visibility selector) and the Preview step (Step 9, was a
+  handful of `SummaryRow`s) with full field coverage and a per-block Edit link back to every step (Basics,
+  Developer, Type/RERA, Location, Units, Amenities, Timeline, Media, Contact).
+- Wired `EditReapprovalGate` into the Project edit page (was previously missing there, though already used by
+  Property) and added a new `ProjectDraftResumeCard` (10-step variant of the Property one) to both the wizard
+  entry point and the My Projects list.
+- Reconfirmed (no code change needed): the RERA publication gate is already server-enforced in
+  `approveEntity()` (blocks publish without `rera_status==='registered'` or an explicit, audited admin
+  exception), and `canEditProject`/`canSubmitForApproval` already use identical status lists.
+- **Two live-verified bugs found and fixed while walking the wizard end-to-end in the browser (Builder test
+  account):**
+  1. **First-step draft problem for Project** (same class of bug the Property wizard had already fixed):
+     `project_type` — a Step 2 field — was `not null` at the DB level and non-optional in
+     `ProjectDraftSchema`, so creating a Step 1 draft (title + description only) failed with a Postgres
+     `23502` not-null violation. Fixed with the same pattern already used for `properties`: made
+     `project_type` nullable in both the Zod draft schema and the DB column, added a guarded
+     `projects_classification_required` CHECK (`status = 'draft' or project_type is not null`) so it's still
+     required for every non-draft status, and restored the strict requirement in `ProjectSubmitSchema`.
+     Migrations: `20260710160000_project_wizard_progress_gap.sql` (attempted in-place, superseded) and
+     `20260710161000_project_type_draft_nullable.sql` (the one actually applied).
+  2. **Idempotent unit generation was completely broken**: `generateWingUnits()` upserts with
+     `onConflict: "project_id,unit_number"`, but the pre-existing unique index was a *partial* index
+     (`where unit_number is not null`) — Postgres rejects `ON CONFLICT` against a partial index unless the
+     predicate is restated verbatim, which the Supabase JS client can't do, so every "Generate units" click
+     failed with `42P10`. Fixed by replacing it with a plain (non-partial) unique index — safe, since NULLs
+     were never compared as equal in the original index anyway. Migration:
+     `20260710162000_project_units_upsert_conflict_fix.sql`.
+- Migrations applied to the live linked Supabase project via the reviewed `supabase db push` path (owner
+  credentials, explicit approval already on file for this session): `20260710160000_project_wizard_progress_gap.sql`,
+  `20260710161000_project_type_draft_nullable.sql`, `20260710162000_project_units_upsert_conflict_fix.sql`.
+- Checks: `npx tsc --noEmit` PASS, `npx eslint .` PASS (0 errors), `npm run build` PASS (40 routes).
+- **Live browser verification: PASS.** Logged in as the test Builder account (mobile-OTP, see memory
+  `test-accounts`), walked all 10 steps end-to-end for real (project basics → type/RERA → location → added a
+  wing, saved it, generated 12 units, confirmed regenerate is idempotent (0 created second time) → amenities →
+  timeline/progress → media → contact → preview with all fields reflected correctly → submitted → landed on
+  the Submitted state with the correct RERA-pending copy → confirmed status "Submitted" on My Projects).
+  Verified responsive at 390px (mobile contextual header, no horizontal overflow) and 1440px (full Builder
+  dashboard sidebar + desktop stepped progress).

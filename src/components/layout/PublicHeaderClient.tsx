@@ -33,7 +33,12 @@ interface Props {
 const DRAWER_NAV = [
   { key: "buy", label: "Buy", href: "/search?purpose=buy", Icon: Home },
   { key: "rent", label: "Rent", href: "/search?purpose=rent", Icon: KeyRound },
-  { key: "projects", label: "Projects", href: "/search?entity=project", Icon: Building },
+  {
+    key: "projects",
+    label: "Projects",
+    href: "/search?entity=project",
+    Icon: Building,
+  },
   { key: "cities", label: "Cities", href: "/search", Icon: MapPin },
 ];
 
@@ -472,16 +477,32 @@ export function PublicHeaderClient({ profile }: Props) {
             </div>
 
             <div className="flex gap-4 border-t border-zinc-100 px-4 py-3.5 text-[11px] text-zinc-400">
-              <Link href="/support" onClick={() => setMobileMenuOpen(false)} className="hover:text-zinc-700">
+              <Link
+                href="/support"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-zinc-700"
+              >
                 About
               </Link>
-              <Link href="/legal/terms" onClick={() => setMobileMenuOpen(false)} className="hover:text-zinc-700">
+              <Link
+                href="/legal/terms"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-zinc-700"
+              >
                 Terms
               </Link>
-              <Link href="/legal/privacy" onClick={() => setMobileMenuOpen(false)} className="hover:text-zinc-700">
+              <Link
+                href="/legal/privacy"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-zinc-700"
+              >
                 Privacy
               </Link>
-              <Link href="/support" onClick={() => setMobileMenuOpen(false)} className="hover:text-zinc-700">
+              <Link
+                href="/support"
+                onClick={() => setMobileMenuOpen(false)}
+                className="hover:text-zinc-700"
+              >
                 RERA Info
               </Link>
             </div>

@@ -40,7 +40,10 @@ export function PropertyResultCard({
               slug: property.slug,
               title: property.title,
               price: formatPropertyPrice(property),
-              location: locationLabel(property.city_text, property.locality_text),
+              location: locationLabel(
+                property.city_text,
+                property.locality_text
+              ),
               facts,
             }}
           />

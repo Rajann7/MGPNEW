@@ -27,7 +27,9 @@ export function DashboardMobileBackHeader({
       >
         <ChevronLeft className="w-5 h-5" aria-hidden="true" />
       </Link>
-      <h1 className="text-sm font-semibold text-ink truncate flex-1">{title}</h1>
+      <h1 className="text-sm font-semibold text-ink truncate flex-1">
+        {title}
+      </h1>
       {actionHref && (
         <Link
           href={actionHref}

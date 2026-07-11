@@ -32,7 +32,11 @@ export function EmptyState({
     <div
       className={cn(
         "text-center bg-white rounded-2xl border border-zinc-200",
-        dashed ? (compact ? "border-dashed py-8 px-6" : "border-dashed py-9 px-6") : "py-16"
+        dashed
+          ? compact
+            ? "border-dashed py-8 px-6"
+            : "border-dashed py-9 px-6"
+          : "py-16"
       )}
     >
       <div
@@ -58,7 +62,11 @@ export function EmptyState({
       <h2
         className={cn(
           "font-semibold text-zinc-900",
-          dashed ? (compact ? "text-sm mt-3" : "text-[15px] mt-3.5") : "text-base mb-1"
+          dashed
+            ? compact
+              ? "text-sm mt-3"
+              : "text-[15px] mt-3.5"
+            : "text-base mb-1"
         )}
       >
         {title}
@@ -86,7 +94,11 @@ export function EmptyState({
           )}
         >
           {dashed && !hideActionIcon && (
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden="true" />
+            <Plus
+              className="w-3.5 h-3.5"
+              strokeWidth={2.5}
+              aria-hidden="true"
+            />
           )}
           {actionLabel}
         </Link>

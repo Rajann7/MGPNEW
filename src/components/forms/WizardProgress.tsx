@@ -55,7 +55,11 @@ export function WizardProgress({
                   aria-current={isActive ? "step" : undefined}
                 >
                   {isDone ? (
-                    <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden="true" />
+                    <Check
+                      className="h-3.5 w-3.5"
+                      strokeWidth={3}
+                      aria-hidden="true"
+                    />
                   ) : (
                     n
                   )}

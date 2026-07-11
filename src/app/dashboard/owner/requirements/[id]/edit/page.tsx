@@ -15,7 +15,8 @@ export const metadata: Metadata = {
 };
 
 const LOCKED_REASON: Record<string, string> = {
-  under_review: "This requirement is currently under review and can't be edited until that finishes.",
+  under_review:
+    "This requirement is currently under review and can't be edited until that finishes.",
   deleted: "This requirement has been deleted.",
 };
 
@@ -76,7 +77,11 @@ export default async function EditRequirementPage({
             : "Update the details and submit for admin approval."}
         </p>
       </div>
-      <RequirementForm mode="edit" existing={requirement} dashboardRole="owner" />
+      <RequirementForm
+        mode="edit"
+        existing={requirement}
+        dashboardRole="owner"
+      />
     </DashboardShellV2>
   );
 }

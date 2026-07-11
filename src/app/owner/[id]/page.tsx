@@ -11,11 +11,7 @@ import { PublicProfileHeader } from "@/components/profile/PublicProfileHeader";
 import { PrivacyNoticeBanner } from "@/components/profile/ProfileBlocks";
 import { ReportModal } from "@/components/detail/ReportModal";
 import { SeoJsonLd } from "@/components/detail/SeoJsonLd";
-import {
-  canonicalUrl,
-  breadcrumbJsonLd,
-  NOINDEX,
-} from "@/lib/seo";
+import { canonicalUrl, breadcrumbJsonLd, NOINDEX } from "@/lib/seo";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -55,7 +51,12 @@ export default async function OwnerProfilePage({ params }: Props) {
   });
 
   return (
-    <DetailShell profile={profile} title={name} showCityPill={false} hideCompareTray>
+    <DetailShell
+      profile={profile}
+      title={name}
+      showCityPill={false}
+      hideCompareTray
+    >
       <SeoJsonLd
         id="owner-breadcrumb-jsonld"
         data={breadcrumbJsonLd([
@@ -73,8 +74,8 @@ export default async function OwnerProfilePage({ params }: Props) {
             isVerified={owner.verification_status === "verified"}
           />
           <p className="mt-3 text-sm text-zinc-500">
-            {properties.length} active listing{properties.length === 1 ? "" : "s"} ·
-            Member since {memberSince}
+            {properties.length} active listing
+            {properties.length === 1 ? "" : "s"} · Member since {memberSince}
           </p>
         </div>
 

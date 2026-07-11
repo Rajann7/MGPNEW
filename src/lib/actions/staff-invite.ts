@@ -42,9 +42,7 @@ export async function getInviteByToken(
   const admin = createServiceClient();
   const { data: invite } = await admin
     .from("staff_invites")
-    .select(
-      "id, email, internal_role, invited_by_staff_id, status, expires_at"
-    )
+    .select("id, email, internal_role, invited_by_staff_id, status, expires_at")
     .eq("invite_token_hash", hashToken(token))
     .maybeSingle();
 
@@ -246,7 +244,10 @@ export async function acceptStaffInvite(
       .from("staff_permissions")
       .insert(permissionRows);
     if (permError) {
-      console.error("[acceptStaffInvite] permission seed error:", permError.code);
+      console.error(
+        "[acceptStaffInvite] permission seed error:",
+        permError.code
+      );
     }
   }
 

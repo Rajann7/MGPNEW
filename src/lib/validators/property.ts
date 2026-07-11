@@ -198,7 +198,10 @@ export const PropertySubmitSchema = PropertyDraftSchema.extend({
   property_type: z.string().min(1),
   // Batch 5 §61: draft can stay incomplete, but a real description of at
   // least 30 characters is required to submit for review.
-  description: z.string().min(30, "Description must be at least 30 characters").max(5000),
+  description: z
+    .string()
+    .min(30, "Description must be at least 30 characters")
+    .max(5000),
   city_text: z.string().min(2, "City is required").max(100),
 })
   .refine(

@@ -10,11 +10,7 @@ import {
 import { OtpInput } from "@/components/auth/OtpInput";
 
 type Step =
-  | "mobile"
-  | "unregistered"
-  | "otp"
-  | "rate_limited"
-  | "provider_down";
+  "mobile" | "unregistered" | "otp" | "rate_limited" | "provider_down";
 
 const RESEND_COOLDOWN = 30;
 
@@ -178,13 +174,19 @@ export function MobileOtpForm({
         <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#FEF2F2]">
           <Lock className="h-6 w-6" color="#DC2626" />
         </span>
-        <div className="text-[17px] font-semibold text-[#18181b]">Too many attempts</div>
+        <div className="text-[17px] font-semibold text-[#18181b]">
+          Too many attempts
+        </div>
         <p className="text-[13px] leading-[1.6] text-[#52525b]">
           {lockoutMessage ?? (
             <>
               For your security, OTP login for this number is paused.
               <br />
-              Try again in <strong className="font-semibold text-[#18181b]">15 minutes</strong>.
+              Try again in{" "}
+              <strong className="font-semibold text-[#18181b]">
+                15 minutes
+              </strong>
+              .
             </>
           )}
         </p>
@@ -204,7 +206,9 @@ export function MobileOtpForm({
         >
           Back to browsing
         </button>
-        <div className="text-[11px] text-[#a1a1aa]">No bypass, no alternate path shown.</div>
+        <div className="text-[11px] text-[#a1a1aa]">
+          No bypass, no alternate path shown.
+        </div>
       </div>
     );
   }
@@ -214,15 +218,20 @@ export function MobileOtpForm({
     return (
       <div className="flex flex-col gap-4">
         <div>
-          <div className="text-[18px] font-semibold leading-[1.35] text-[#18181b]">Login or register</div>
+          <div className="text-[18px] font-semibold leading-[1.35] text-[#18181b]">
+            Login or register
+          </div>
           <div className="mt-0.5 text-xs text-[#52525b]">+91 {mobile}</div>
         </div>
         <div className="flex gap-2.5 rounded-[10px] border border-[#BFDBFE] bg-[#EFF6FF] px-3.5 py-3">
           <Info className="mt-px h-4 w-4 flex-shrink-0" color="#2563EB" />
           <div>
-            <div className="text-[13px] font-medium text-[#1E3A8A]">SMS OTP temporarily unavailable</div>
+            <div className="text-[13px] font-medium text-[#1E3A8A]">
+              SMS OTP temporarily unavailable
+            </div>
             <div className="mt-0.5 text-xs leading-[1.5] text-[#3f3f46]">
-              We couldn&rsquo;t send your code right now. Please try again in a few minutes.
+              We couldn&rsquo;t send your code right now. Please try again in a
+              few minutes.
             </div>
           </div>
         </div>
@@ -243,16 +252,25 @@ export function MobileOtpForm({
   // ── Mobile number entry (design screens 1–2) ──
   if (step === "mobile") {
     return (
-      <form onSubmit={handleMobileSubmit} noValidate className="flex flex-col gap-4">
+      <form
+        onSubmit={handleMobileSubmit}
+        noValidate
+        className="flex flex-col gap-4"
+      >
         <div>
-          <div className="text-[20px] font-semibold leading-[1.35] text-[#18181b]">Login or register</div>
+          <div className="text-[20px] font-semibold leading-[1.35] text-[#18181b]">
+            Login or register
+          </div>
           <div className="mt-1 text-[13px] leading-[1.55] text-[#52525b]">
             We&rsquo;ll check your number and send an OTP.
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="mgp-mobile" className="text-[13px] font-medium text-[#3f3f46]">
+          <label
+            htmlFor="mgp-mobile"
+            className="text-[13px] font-medium text-[#3f3f46]"
+          >
             Mobile number
           </label>
           <div className="flex overflow-hidden rounded-[10px] border border-[#d4d4d8] focus-within:border-[1.5px] focus-within:border-[#0F6B5C] focus-within:shadow-[0_0_0_3px_#E7F2EF]">
@@ -290,18 +308,32 @@ export function MobileOtpForm({
           />
           <span>
             I agree to the{" "}
-            <a href="/legal/terms" target="_blank" rel="noopener noreferrer" className="font-medium text-[#0F6B5C]">
+            <a
+              href="/legal/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[#0F6B5C]"
+            >
               Terms of Use
             </a>{" "}
             and{" "}
-            <a href="/legal/privacy" target="_blank" rel="noopener noreferrer" className="font-medium text-[#0F6B5C]">
+            <a
+              href="/legal/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-[#0F6B5C]"
+            >
               Privacy Policy
             </a>
             .
           </span>
         </label>
 
-        <button type="submit" disabled={isPending || mobile.length < 10 || !consent} className={BTN_PRIMARY}>
+        <button
+          type="submit"
+          disabled={isPending || mobile.length < 10 || !consent}
+          className={BTN_PRIMARY}
+        >
           {isPending ? "Checking…" : "Continue"}
         </button>
         {(mobile.length < 10 || !consent) && (
@@ -324,9 +356,15 @@ export function MobileOtpForm({
       className="flex flex-col gap-4"
     >
       <div>
-        <div className="text-[20px] font-semibold leading-[1.35] text-[#18181b]">Welcome back</div>
+        <div className="text-[20px] font-semibold leading-[1.35] text-[#18181b]">
+          Welcome back
+        </div>
         <div className="mt-1 text-[13px] leading-[1.55] text-[#52525b]">
-          OTP sent to <strong className="font-semibold text-[#18181b]">+91 {maskMobile(mobile)}</strong> ·{" "}
+          OTP sent to{" "}
+          <strong className="font-semibold text-[#18181b]">
+            +91 {maskMobile(mobile)}
+          </strong>{" "}
+          ·{" "}
           <button
             type="button"
             onClick={() => {
@@ -343,7 +381,10 @@ export function MobileOtpForm({
 
       {error && (
         <div className="flex gap-2 rounded-[10px] border border-[#FECACA] bg-[#FEF2F2] px-3 py-2.5">
-          <AlertTriangle className="mt-px h-[15px] w-[15px] flex-shrink-0" color="#DC2626" />
+          <AlertTriangle
+            className="mt-px h-[15px] w-[15px] flex-shrink-0"
+            color="#DC2626"
+          />
           <span className="text-xs leading-[1.5] text-[#7F1D1D]">{error}</span>
         </div>
       )}
@@ -360,11 +401,16 @@ export function MobileOtpForm({
       />
       {!error && (
         <div className="text-center text-xs text-[#71717a]">
-          First box auto-focused · auto-advance on entry · auto-submit on 6th digit.
+          First box auto-focused · auto-advance on entry · auto-submit on 6th
+          digit.
         </div>
       )}
 
-      <button type="submit" disabled={isPending || otp.length < 6} className={BTN_PRIMARY}>
+      <button
+        type="submit"
+        disabled={isPending || otp.length < 6}
+        className={BTN_PRIMARY}
+      >
         {isPending ? "Verifying…" : error ? "Try again" : "Verify & login"}
       </button>
 
@@ -372,13 +418,20 @@ export function MobileOtpForm({
         {cooldown > 0 ? (
           <span className="text-[#a1a1aa]">
             Resend OTP in{" "}
-            <strong className="font-semibold tabular-nums">0:{String(cooldown).padStart(2, "0")}</strong>{" "}
+            <strong className="font-semibold tabular-nums">
+              0:{String(cooldown).padStart(2, "0")}
+            </strong>{" "}
             <span className="text-[11px]">· link disabled during cooldown</span>
           </span>
         ) : (
           <>
             Didn&rsquo;t get it?{" "}
-            <button type="button" onClick={sendOtp} disabled={isPending} className="font-medium text-[#0F6B5C] disabled:opacity-50">
+            <button
+              type="button"
+              onClick={sendOtp}
+              disabled={isPending}
+              className="font-medium text-[#0F6B5C] disabled:opacity-50"
+            >
               Resend OTP
             </button>
           </>

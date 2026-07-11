@@ -110,7 +110,7 @@ export default async function OwnerRequirementsPage() {
                   requirementIcon={requirementIconFor(req.purpose)}
                   metaParts={[
                     budgetText,
-                    isPaused ? closedNote : req.city_text ?? undefined,
+                    isPaused ? closedNote : (req.city_text ?? undefined),
                     !isPaused ? req.possession_timeline : undefined,
                     `${proposalCount} ${proposalCount === 1 ? "proposal" : "proposals"} received`,
                   ]}

@@ -31,7 +31,9 @@ export function LeadStageTabs({
           return (
             <Link
               key={tab.key}
-              href={tab.key === "all" ? baseHref : `${baseHref}?stage=${tab.key}`}
+              href={
+                tab.key === "all" ? baseHref : `${baseHref}?stage=${tab.key}`
+              }
               className={cn(
                 "text-xs font-medium px-3.5 py-1.5 rounded-full whitespace-nowrap transition-colors",
                 active

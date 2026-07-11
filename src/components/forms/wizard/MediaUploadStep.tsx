@@ -12,7 +12,15 @@ import {
   type MediaItem,
   type MediaOwnerType,
 } from "@/lib/actions/media";
-import { ImageIcon, X, Star, ChevronUp, ChevronDown, FileText, RotateCw } from "lucide-react";
+import {
+  ImageIcon,
+  X,
+  Star,
+  ChevronUp,
+  ChevronDown,
+  FileText,
+  RotateCw,
+} from "lucide-react";
 
 const ERR: Record<string, string> = {
   AUTH_REQUIRED: "Please log in to continue.",
@@ -106,8 +114,8 @@ export function MediaUploadStep({
           Save this listing first
         </p>
         <p className="mt-1 text-xs text-zinc-400">
-          Complete the previous steps — a draft is created automatically —
-          then come back here to add photos.
+          Complete the previous steps — a draft is created automatically — then
+          come back here to add photos.
         </p>
       </div>
     );
@@ -116,7 +124,11 @@ export function MediaUploadStep({
   async function runUpload(entry: PendingUpload) {
     if (!ownerId) return;
     setPending((prev) =>
-      prev.map((p) => (p.key === entry.key ? { ...p, status: "uploading", errorText: undefined } : p))
+      prev.map((p) =>
+        p.key === entry.key
+          ? { ...p, status: "uploading", errorText: undefined }
+          : p
+      )
     );
     const supabase = createClient();
     const file = entry.file;
@@ -156,7 +168,9 @@ export function MediaUploadStep({
     });
     if (!reg.success) {
       if (entry.isCover) coverClaimedRef.current = false;
-      await supabase.storage.from(target.data.bucket).remove([target.data.path]);
+      await supabase.storage
+        .from(target.data.bucket)
+        .remove([target.data.path]);
       failEntry(entry.key, ERR[reg.error] ?? reg.error);
       return;
     }
@@ -166,7 +180,9 @@ export function MediaUploadStep({
 
   function failEntry(key: string, text: string) {
     setPending((prev) =>
-      prev.map((p) => (p.key === key ? { ...p, status: "failed", errorText: text } : p))
+      prev.map((p) =>
+        p.key === key ? { ...p, status: "failed", errorText: text } : p
+      )
     );
   }
 
@@ -185,8 +201,7 @@ export function MediaUploadStep({
       // Claim the cover slot for at most one file per selection, decided
       // synchronously here (not inside the async upload) so a multi-file
       // batch can never race and register several covers.
-      const claimsCover =
-        kind === "image" && !coverClaimedRef.current;
+      const claimsCover = kind === "image" && !coverClaimedRef.current;
       if (claimsCover) coverClaimedRef.current = true;
       accepted.push({
         key: crypto.randomUUID(),
@@ -233,7 +248,11 @@ export function MediaUploadStep({
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     setItems(next);
-    await reorderMedia(ownerType, ownerId, next.map((m) => m.id));
+    await reorderMedia(
+      ownerType,
+      ownerId,
+      next.map((m) => m.id)
+    );
   }
 
   async function handleSetCover(id: string) {
@@ -444,7 +463,8 @@ export function MediaUploadStep({
               ) : (
                 <>
                   <span className="truncate">
-                    {pendingBrochure.file.name} — {pendingBrochure.errorText ?? "failed"}
+                    {pendingBrochure.file.name} —{" "}
+                    {pendingBrochure.errorText ?? "failed"}
                   </span>
                   <button
                     type="button"

@@ -71,7 +71,10 @@ export function CompareProvider({ children }: { children: ReactNode }) {
     }
   }, [items, hydrated]);
 
-  const has = useCallback((id: string) => items.some((i) => i.id === id), [items]);
+  const has = useCallback(
+    (id: string) => items.some((i) => i.id === id),
+    [items]
+  );
 
   const toggle = useCallback((item: CompareItem) => {
     setItems((prev) => {

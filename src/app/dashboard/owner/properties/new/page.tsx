@@ -34,7 +34,10 @@ export default async function NewPropertyPage({ searchParams }: Props) {
   if (!canCreateProperty(profile)) {
     return (
       <WizardShell {...shellProps}>
-        <WizardMobileHeader title="Post a Property" backHref="/dashboard/owner" />
+        <WizardMobileHeader
+          title="Post a Property"
+          backHref="/dashboard/owner"
+        />
         <Alert tone="danger">
           Your account is not permitted to post properties.
         </Alert>
@@ -57,7 +60,10 @@ export default async function NewPropertyPage({ searchParams }: Props) {
   if (draft && !fresh && !draftParam) {
     return (
       <WizardShell {...shellProps}>
-        <WizardMobileHeader title="Post a Property" backHref="/dashboard/owner" />
+        <WizardMobileHeader
+          title="Post a Property"
+          backHref="/dashboard/owner"
+        />
         <div className="mb-6 hidden lg:block">
           <h1 className="text-xl font-bold text-ink">Post a Property</h1>
           <p className="text-sm text-ink-soft">

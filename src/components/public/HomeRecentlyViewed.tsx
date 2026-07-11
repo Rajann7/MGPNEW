@@ -23,12 +23,15 @@ export async function HomeRecentlyViewed() {
   return (
     <section className="mx-auto max-w-7xl px-4 pb-2 pt-10 sm:px-6 lg:px-8">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-[22px] font-semibold text-[#18181b]">Recently viewed</h2>
+        <h2 className="text-[22px] font-semibold text-[#18181b]">
+          Recently viewed
+        </h2>
         <ClearHistoryButton />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((it) => {
-          const href = it.available && it.slug ? HREF[it.item_type]?.(it.slug) : null;
+          const href =
+            it.available && it.slug ? HREF[it.item_type]?.(it.slug) : null;
           const inner = (
             <>
               <span className="h-[52px] w-16 flex-shrink-0 rounded-[10px] bg-[repeating-linear-gradient(45deg,#f4f4f5,#f4f4f5_8px,#e9e9ec_8px,#e9e9ec_16px)]" />
@@ -46,7 +49,11 @@ export async function HomeRecentlyViewed() {
           const cls =
             "flex items-center gap-3 rounded-2xl border border-[#e4e4e7] bg-white p-3 transition-colors";
           return href ? (
-            <Link key={it.id} href={href} className={`${cls} hover:bg-[#fafafa]`}>
+            <Link
+              key={it.id}
+              href={href}
+              className={`${cls} hover:bg-[#fafafa]`}
+            >
               {inner}
             </Link>
           ) : (

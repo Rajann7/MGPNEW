@@ -492,6 +492,9 @@ export interface Project {
   virtual_tour_url: string | null;
   video_url: string | null;
   preferred_contact_time: "anytime" | "morning_9_1" | "evening_5_9" | null;
+  construction_percentage: number | null;
+  progress_note: string | null;
+  progress_updated_at: string | null;
   current_step: number;
   media_count: number;
   status: EntityStatus;
@@ -569,12 +572,7 @@ export interface Requirement {
 // ============================================================
 
 export type UnitAvailabilityStatus =
-  | "available"
-  | "booked"
-  | "sold"
-  | "on_hold"
-  | "not_released"
-  | "hidden";
+  "available" | "booked" | "sold" | "on_hold" | "not_released" | "hidden";
 
 export interface ProjectWing {
   id: string;

@@ -66,24 +66,35 @@ export default async function BuilderProfilePage({ params }: Props) {
   );
 
   const completed = projects.filter(
-    (p) => p.construction_status === "completed" || p.construction_status === "ready_to_move"
+    (p) =>
+      p.construction_status === "completed" ||
+      p.construction_status === "ready_to_move"
   );
   const active = projects.filter((p) => !completed.includes(p));
   const cities = Array.from(
-    new Set(projects.map((p) => p.city_text).filter((x): x is string => Boolean(x)))
+    new Set(
+      projects.map((p) => p.city_text).filter((x): x is string => Boolean(x))
+    )
   );
   const statTiles = [
     { value: `${projects.length}`, label: "Projects" },
     { value: `${cities.length || "—"}`, label: "Cities" },
     {
       value: builder.rera_registered ? "RERA" : "—",
-      label: builder.rera_registered ? "Registered company" : "RERA not on file",
+      label: builder.rera_registered
+        ? "Registered company"
+        : "RERA not on file",
       muted: !builder.rera_registered,
     },
   ];
 
   return (
-    <DetailShell profile={profile} title={name} showCityPill={false} hideCompareTray>
+    <DetailShell
+      profile={profile}
+      title={name}
+      showCityPill={false}
+      hideCompareTray
+    >
       <SeoJsonLd
         id="builder-breadcrumb-jsonld"
         data={breadcrumbJsonLd([
@@ -134,7 +145,11 @@ export default async function BuilderProfilePage({ params }: Props) {
           </p>
         )}
 
-        <BuilderProjectTabs active={active} completed={completed} about={null} />
+        <BuilderProjectTabs
+          active={active}
+          completed={completed}
+          about={null}
+        />
 
         <ClaimProfileCard
           targetType="builder_profile"

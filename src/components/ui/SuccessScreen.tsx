@@ -6,11 +6,13 @@ export function SuccessScreen({
   description,
   actionLabel,
   actionHref,
+  children,
 }: {
   title: string;
   description: string;
   actionLabel: string;
   actionHref: string;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="max-w-xl mx-auto py-12 text-center">
@@ -23,7 +25,10 @@ export function SuccessScreen({
       </div>
       <h2 className="text-xl font-bold text-zinc-900 mb-2">{title}</h2>
       <p className="text-sm text-zinc-500 mb-6">{description}</p>
-      <Button href={actionHref}>{actionLabel}</Button>
+      {children}
+      <div className="mt-6">
+        <Button href={actionHref}>{actionLabel}</Button>
+      </div>
     </div>
   );
 }

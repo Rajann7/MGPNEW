@@ -56,12 +56,15 @@ function statusNote(
     const days = Math.ceil(
       (new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     );
-    return days > 0 ? `expires in ${days} day${days === 1 ? "" : "s"}` : undefined;
+    return days > 0
+      ? `expires in ${days} day${days === 1 ? "" : "s"}`
+      : undefined;
   }
   if (status === "submitted" || status === "under_review")
     return "under review, typically 24 hrs";
   if (status === "paused") return "hidden from search while paused";
-  if (status === "rejected") return rejectionReason ?? "rejected — edit and resubmit";
+  if (status === "rejected")
+    return rejectionReason ?? "rejected — edit and resubmit";
   if (status === "expired") return "expired — repost to make it live again";
   return undefined;
 }
@@ -145,12 +148,18 @@ export default async function OwnerPropertiesPage({
         </div>
 
         {!result.success && (
-          <Alert tone="danger">Failed to load properties. Please refresh.</Alert>
+          <Alert tone="danger">
+            Failed to load properties. Please refresh.
+          </Alert>
         )}
 
         {result.success && allItems.length > 0 && (
           <div className="sm:px-5">
-            <StatusTabs tabs={tabs} activeKey={activeTab} baseHref={BASE_HREF} />
+            <StatusTabs
+              tabs={tabs}
+              activeKey={activeTab}
+              baseHref={BASE_HREF}
+            />
           </div>
         )}
 
@@ -179,55 +188,59 @@ export default async function OwnerPropertiesPage({
         )}
 
         {items.length > 0 && (
-        <div className="space-y-3 sm:px-5 sm:pb-5 sm:pt-1">
-          {items.map((property) => {
-            const status = (property.status ?? "draft") as EntityStatus;
-            const isPaused = status === "paused";
-            const leadCount = leadCounts[property.id!] ?? 0;
-            const priceText = property.price
-              ? `₹${Number(property.price).toLocaleString("en-IN")}`
-              : property.rent_amount
-                ? `₹${Number(property.rent_amount).toLocaleString("en-IN")}/mo`
-                : undefined;
-            const location = [property.locality_text, property.city_text]
-              .filter(Boolean)
-              .join(", ");
+          <div className="space-y-3 sm:px-5 sm:pb-5 sm:pt-1">
+            {items.map((property) => {
+              const status = (property.status ?? "draft") as EntityStatus;
+              const isPaused = status === "paused";
+              const leadCount = leadCounts[property.id!] ?? 0;
+              const priceText = property.price
+                ? `₹${Number(property.price).toLocaleString("en-IN")}`
+                : property.rent_amount
+                  ? `₹${Number(property.rent_amount).toLocaleString("en-IN")}/mo`
+                  : undefined;
+              const location = [property.locality_text, property.city_text]
+                .filter(Boolean)
+                .join(", ");
 
-            return (
-              <OwnerEntityCard
-                key={property.id}
-                kind="property"
-                entityId={property.id!}
-                status={status}
-                title={property.title ?? "Untitled Property"}
-                metaParts={[
-                  priceText,
-                  location || undefined,
-                  leadCount > 0
-                    ? `${leadCount} ${leadCount === 1 ? "lead" : "leads"}`
-                    : undefined,
-                  statusNote(status, property.expires_at, property.rejection_reason),
-                ]}
-                relatedCount={leadCount}
-                viewHref={
-                  status !== "paused" && property.slug
-                    ? `/property/${property.slug}`
-                    : undefined
-                }
-                editHref={
-                  EDITABLE_STATUSES.includes(status)
-                    ? `/dashboard/owner/properties/${property.id}/edit`
-                    : undefined
-                }
-                showPauseResume={["published", "paused"].includes(status)}
-                isPaused={isPaused}
-                showDelete={status !== "under_review"}
-                showRelist={status === "expired"}
-                entityLabel="listing"
-              />
-            );
-          })}
-        </div>
+              return (
+                <OwnerEntityCard
+                  key={property.id}
+                  kind="property"
+                  entityId={property.id!}
+                  status={status}
+                  title={property.title ?? "Untitled Property"}
+                  metaParts={[
+                    priceText,
+                    location || undefined,
+                    leadCount > 0
+                      ? `${leadCount} ${leadCount === 1 ? "lead" : "leads"}`
+                      : undefined,
+                    statusNote(
+                      status,
+                      property.expires_at,
+                      property.rejection_reason
+                    ),
+                  ]}
+                  relatedCount={leadCount}
+                  viewHref={
+                    status !== "paused" && property.slug
+                      ? `/property/${property.slug}`
+                      : undefined
+                  }
+                  editHref={
+                    EDITABLE_STATUSES.includes(status)
+                      ? `/dashboard/owner/properties/${property.id}/edit`
+                      : undefined
+                  }
+                  showPauseResume={["published", "paused"].includes(status)}
+                  isPaused={isPaused}
+                  showDelete={status !== "under_review"}
+                  showRelist={status === "expired"}
+                  entityLabel="listing"
+                />
+              );
+            })}
+          </div>
         )}
       </div>
     </DashboardShellV2>
