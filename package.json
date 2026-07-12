@@ -14,7 +14,8 @@
     "test:watch": "vitest --config vitest.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:integration"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run scan:legacy && npm run test && npm run test:integration",
+    "scan:legacy": "node scripts/scan-legacy.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",
