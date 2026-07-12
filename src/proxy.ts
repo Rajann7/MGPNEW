@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
+import {
+  buildHostUrl,
+  getHostContext,
+  wrongHostRedirect,
+} from "@/config/hosts";
+
 // ============================================================
 // Route groups
 // ============================================================
@@ -25,7 +31,32 @@ function matchesPathPrefix(pathname: string, base: string): boolean {
 // ============================================================
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
+
+  // ----- Canonical host handling (Phase 4, Files 09/21) -----
+  // broker.<root> / builder.<root> own their workspaces; account.<root>
+  // owns internal /admin; everything else is the public host. A request
+  // for a host-owned path on the wrong host is safely redirected to the
+  // correct host — never a dead end.
+  const hostHeader = request.headers.get("host");
+  const hostContext = getHostContext(hostHeader);
+  const wrongHost = wrongHostRedirect(hostContext, pathname);
+  if (wrongHost && hostHeader) {
+    return NextResponse.redirect(
+      buildHostUrl(hostHeader, wrongHost.targetContext, `${pathname}${search}`)
+    );
+  }
+  // Subdomain roots land on their workspace entry point.
+  if (pathname === "/" && hostContext !== "public") {
+    const entry =
+      hostContext === "internal"
+        ? "/admin"
+        : hostContext === "broker"
+          ? "/dashboard/broker"
+          : "/dashboard/builder";
+    return NextResponse.redirect(new URL(entry, request.url));
+  }
+
   const response = NextResponse.next({
     request: { headers: request.headers },
   });

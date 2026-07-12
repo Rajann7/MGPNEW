@@ -13,13 +13,11 @@ import {
   LifeBuoy,
   FileText,
   Megaphone,
-  Users,
   Globe,
   MessageSquare,
   MessageCircle,
   Search,
   Plus,
-  CalendarClock,
   History,
   Settings,
   BarChart3,
@@ -71,12 +69,7 @@ export function getOwnerNav(
       icon: MessageSquare,
       active: activeHref.startsWith("/dashboard/messages"),
     },
-    {
-      label: "Site Visits",
-      href: "#",
-      icon: CalendarClock,
-      disabled: true,
-    },
+    // "Site Visits" removed: Site Visit module is constitutionally removed (REM-003).
     {
       label: "Saved",
       href: "/dashboard/owner/saved",
@@ -162,12 +155,7 @@ export function getOwnerDrawerNav(
       icon: MessageSquare,
       active: activeHref.startsWith("/dashboard/messages"),
     },
-    {
-      label: "Site Visits",
-      href: "#",
-      icon: CalendarClock,
-      disabled: true,
-    },
+    // "Site Visits" removed: Site Visit module is constitutionally removed (REM-003).
     {
       label: "Saved",
       href: "/dashboard/owner/saved",
@@ -325,12 +313,7 @@ export function getBuilderNav(activeHref: string): SidebarNavItem[] {
       icon: Megaphone,
       active: activeHref === "/dashboard/builder/ads",
     },
-    {
-      label: "Agents / Team",
-      href: "/dashboard/builder/agents",
-      icon: Users,
-      active: activeHref === "/dashboard/builder/agents",
-    },
+    // "Agents / Team" removed: Builder Agent is constitutionally removed (REM-005).
     {
       label: "Notifications",
       href: "/dashboard/builder/notifications",
