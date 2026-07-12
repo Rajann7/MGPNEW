@@ -21,6 +21,17 @@ const ADMIN_ONLY_PATHS = ["/admin"];
 /** Routes to redirect to dashboard if already logged in */
 const AUTH_PAGES = ["/login", "/register"];
 
+/**
+ * Legacy URLs of constitutionally removed features (REM-001..009).
+ * They must never 404 silently or serve content — they land on /gone
+ * (410 semantics) with safe next actions (VP-P04 rules 2-3).
+ */
+const LEGACY_GONE_PATHS = [
+  "/dashboard/builder/agents",
+  "/site-visits",
+  "/dashboard/site-visits",
+];
+
 /** True if `pathname` is exactly `base` or a sub-path of it (segment-boundary safe). */
 function matchesPathPrefix(pathname: string, base: string): boolean {
   return pathname === base || pathname.startsWith(`${base}/`);
@@ -38,6 +49,11 @@ export async function proxy(request: NextRequest) {
   // owns internal /admin; everything else is the public host. A request
   // for a host-owned path on the wrong host is safely redirected to the
   // correct host — never a dead end.
+  // ----- Removed-feature URLs → /gone (410 semantics) -----
+  if (LEGACY_GONE_PATHS.some((p) => matchesPathPrefix(pathname, p))) {
+    return NextResponse.redirect(new URL("/gone", request.url));
+  }
+
   const hostHeader = request.headers.get("host");
   const hostContext = getHostContext(hostHeader);
   const wrongHost = wrongHostRedirect(hostContext, pathname);

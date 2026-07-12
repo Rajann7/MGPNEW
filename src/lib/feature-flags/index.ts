@@ -1,6 +1,11 @@
 // ============================================================
 // My Gujarat Property — Feature Flag Convention (baseline)
 // Full backend-enforced feature flags will be added in later phases.
+//
+// VP-P04 rule: feature flags and Plans must NOT be able to
+// reactivate constitutionally removed capabilities (REM-004/007).
+// Removed-capability flags are hard-coded to false — no env var,
+// plan entitlement or admin setting can turn them back on.
 // ============================================================
 
 /**
@@ -15,12 +20,15 @@ export const FEATURE_FLAGS = {
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY !== undefined &&
     process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY !== "",
 
-  /** Google Maps integration (embed or API mode) */
-  mapsEnabled:
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY !== undefined &&
-    process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY !== "",
+  /**
+   * REMOVED (REM-004): Maps is constitutionally removed.
+   * Hard-off — deliberately NOT derived from any environment variable.
+   */
+  mapsEnabled: false,
 
-  /** WhatsApp click / business API */
-  whatsappEnabled:
-    process.env.WHATSAPP_MODE !== undefined && process.env.WHATSAPP_MODE !== "",
+  /**
+   * REMOVED (REM-007): WhatsApp delivery is constitutionally removed.
+   * Hard-off — deliberately NOT derived from any environment variable.
+   */
+  whatsappEnabled: false,
 } as const;

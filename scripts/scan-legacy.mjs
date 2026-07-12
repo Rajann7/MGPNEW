@@ -146,6 +146,8 @@ const BASELINE = new Map(
       "legacy_roles",
     ],
     "src/components/dashboard/navConfig.ts": ["site_visit", "builder_agent"],
+    // Gone-redirect list references removed paths in order to block them (410 semantics).
+    "src/proxy.ts": ["site_visit", "builder_agent"],
   }).map(([k, v]) => [k, new Set(v)])
 );
 
