@@ -10,6 +10,11 @@ No completed work should be undocumented.
 
 No fake completion is allowed.
 
+## 2026-07-13 — Phase 1 (Shared Foundations) manual verification: PASS
+Independently verified the Phase 1 shared-foundations implementation against the running app, live DB and all five authority files. Evidence: migration `20260713150000_phase1_shared_foundations.sql` applied (22 locations, 13 provider_configs with honest statuses, notification_deliveries + background_jobs); anon RLS denies `provider_configs`/`background_jobs`/`notification_deliveries`/`profiles`; two-user cross-RLS shows no leak (leads/notifications/threads/contact_requests filter per participant, `profiles` select returns caller's own row only, service-only tables deny authenticated users); all 5 shells (Public/Owner/Broker/Builder/Admin) render live with correct locked nav and no horizontal overflow across 320–1440; overlay foundation (login sheet + admin drawer) enforces scroll-lock/Escape/focus-restoration; open-redirect blocked on both proxy and `isSafeRedirectUrl`.
+- **Defect found & fixed:** admin mobile drawer (pure-CSS Server Component) had no Escape-close/scroll-lock/focus-restore. Added `src/components/layout/AdminDrawerBehavior.tsx` (client enhancer) and mounted it in `src/components/layout/AdminMobileDrawer.tsx`. Retested live — Escape closes, body scroll locks while open, focus restores to the trigger.
+- Gates after fix: typecheck PASS, lint PASS (0 errors), production build PASS.
+
 ## 2026-07-08 — Design migration T01 (Batch 1) FINAL: COMPLETE (authenticated shells verified)
 Closed the T01 UNVERIFIED-AUTH gap by logging in live (owner mobile-OTP + super-admin) and re-rendering the authenticated design-system shells. Two locked-design defects found & fixed:
 - **3E dashboard mobile bottom nav** rebuilt to the locked 5-item bar **Home · Search · Post (raised center FAB) · Leads · Profile** (was a 4-item slice of the sidebar). Files: `src/components/dashboard/DashboardMobileTabBar.tsx`, `src/components/dashboard/navConfig.ts`.
@@ -2613,3 +2618,15 @@ but were partly unwired/untested). This pass:
   needs to run `supabase link --project-ref cekpewpegltqpbmlofmc && supabase db push` manually. No live browser
   verification was possible (all touched routes are `requireRole()`-gated, mobile-OTP login isn't automatable
   in this session) — verified via build/lint/typecheck only, per CLAUDE.md §31.
+
+## 2026-07-13 — Phase 1 (Five-file master plan): Audit Reconciliation & Shared Foundations
+
+- Design-registry reconciliation: re-extracted all 14 `newdesign` bundles (JS-bundled HTML → decoded); every File-2 screen group maps to a numbered frame in the actual HTML; no unregistered screens; one filename-case note (`batch 4 - Detail Pages` lowercase b); Batch 1–3 HTML intentionally absent (already implemented).
+- Route audit: 85 routes classified; removed dead legacy `src/components/dashboard/DashboardShell.tsx` (0 consumers; V2 is the only dashboard shell).
+- New shared error foundation: `src/components/ui/ErrorState.tsx` (InlineErrorBanner + ErrorStateCard, Batch 1 pattern), global `src/app/error.tsx` boundary.
+- Fake-zero elimination on Overviews: owner/broker/builder stat cards + admin moderation total now render "—" + "Couldn't load" on query failure (never zero); Owner Recent Leads failure shows an inline error, not the empty state.
+- New shared overlay hook `src/components/ui/useOverlay.ts` (Escape, scroll lock, focus trap, focus restoration) wired into ConfirmDialog, ReportModal, MobileFilterSheet.
+- Session refresh + return-intent confirmed in `src/proxy.ts` (Next 16 middleware convention; preserves query string in redirectTo, same-origin only); role checks stay in server guards.
+- Migration `20260713150000_phase1_shared_foundations.sql` (applied): canonical `locations` hierarchy (+ India→Gujarat→20 cities seed with Gujarati names/aliases), `provider_configs` registry (13 providers, safe status, env-ref only — never secrets), `notification_deliveries`, `background_jobs` + DLQ states. All RLS-enabled.
+- Dev fixture: QA Gujarati long-content draft property (`qa-gujarati-long-content-fixture`, draft = never public).
+- Verified live: middleware redirect + OTP login + return intent → owner dashboard; wrong-role denial; filter-sheet Escape/scroll-lock; lint ✓ typecheck ✓ production build ✓; no console errors.

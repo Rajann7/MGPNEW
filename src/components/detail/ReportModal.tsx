@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { useOverlay } from "@/components/ui/useOverlay";
 import Link from "next/link";
 import { Flag, X, Check, ChevronDown } from "lucide-react";
 import { submitReport } from "@/lib/actions/reports";
@@ -56,13 +57,12 @@ export function ReportModal({
   const [done, setDone] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+  // Shared overlay behavior: Escape, scroll lock, focus trap, restoration.
+  const contentRef = useOverlay({
+    open,
+    onClose: close,
+    closeOnEscape: !isPending,
+  });
 
   function close() {
     setOpen(false);
@@ -115,9 +115,11 @@ export function ReportModal({
               onClick={close}
             />
             <div
+              ref={contentRef}
               role="dialog"
               aria-modal="true"
               aria-label={`Report this ${entityNoun}`}
+              tabIndex={-1}
               className="relative z-10 w-full bg-white shadow-[0_12px_32px_rgba(0,0,0,0.2)] rounded-t-[20px] sm:w-full sm:max-w-[400px] sm:rounded-[16px]"
             >
               {/* mobile grab handle */}

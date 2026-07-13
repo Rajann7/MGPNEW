@@ -14,6 +14,14 @@ No fake PASS is allowed.
 
 ---
 
+## BUG-2026-07-13-01 — Admin mobile drawer ignored Escape / no scroll-lock (FIXED, retested)
+- **Found:** Phase 1 manual verification. The admin mobile nav drawer (`AdminMobileDrawer.tsx`) is a pure-CSS checkbox toggle (kept a Server Component so Lucide icons pass without a client boundary). It supported tap-overlay and X close but **not** Escape-to-close, body scroll-lock, or focus restoration — violating the Phase 1 overlay foundation (Escape/scroll-lock/focus-restore required for side drawers; public overlays already had it via `useOverlay`).
+- **Severity:** Medium (accessibility / overlay-consistency; admin-only, mobile).
+- **Fix:** Added `src/components/layout/AdminDrawerBehavior.tsx` — a small `"use client"` enhancer that listens for Escape (unchecks `#admin-drawer`), locks `body` scroll while the drawer is open, and restores focus to the "Open menu" trigger on close. Mounted inside `AdminMobileDrawer` (drawer stays a Server Component).
+- **Retest (live, 390px, super-admin):** open → `body.overflow=hidden`; Escape → drawer closes, scroll unlocks, focus returns to trigger. Typecheck/lint/build all green.
+
+---
+
 ## 1. Purpose
 
 This file exists to track:

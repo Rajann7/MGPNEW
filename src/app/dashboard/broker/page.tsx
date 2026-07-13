@@ -79,16 +79,17 @@ export default async function BrokerDashboardPage() {
       getLeadCounts(),
       getMyProposals("sent", 1, 1),
     ]);
+  // Failed queries render "—" with an honest note — never a fake zero.
   const propertiesCount = propertiesResult.success
     ? propertiesResult.data.total
-    : 0;
+    : null;
   const requirementsCount = requirementsResult.success
     ? requirementsResult.data.total
-    : 0;
-  const leadsTotal = leadCounts.success ? leadCounts.data.total : 0;
+    : null;
+  const leadsTotal = leadCounts.success ? leadCounts.data.total : null;
   const proposalsTotal = proposalsResult.success
     ? proposalsResult.data.total
-    : 0;
+    : null;
 
   return (
     <DashboardShellV2
@@ -102,23 +103,43 @@ export default async function BrokerDashboardPage() {
         stats={[
           {
             label: "Properties",
-            value: String(propertiesCount),
-            note: propertiesCount === 0 ? "None posted yet" : "Total listed",
+            value: propertiesCount === null ? "—" : String(propertiesCount),
+            note:
+              propertiesCount === null
+                ? "Couldn't load"
+                : propertiesCount === 0
+                  ? "None posted yet"
+                  : "Total listed",
           },
           {
             label: "Requirements",
-            value: String(requirementsCount),
-            note: requirementsCount === 0 ? "None posted yet" : "Total posted",
+            value: requirementsCount === null ? "—" : String(requirementsCount),
+            note:
+              requirementsCount === null
+                ? "Couldn't load"
+                : requirementsCount === 0
+                  ? "None posted yet"
+                  : "Total posted",
           },
           {
             label: "Leads",
-            value: String(leadsTotal),
-            note: leadsTotal === 0 ? "None yet" : "Total received",
+            value: leadsTotal === null ? "—" : String(leadsTotal),
+            note:
+              leadsTotal === null
+                ? "Couldn't load"
+                : leadsTotal === 0
+                  ? "None yet"
+                  : "Total received",
           },
           {
             label: "Proposals",
-            value: String(proposalsTotal),
-            note: proposalsTotal === 0 ? "None sent yet" : "Total sent",
+            value: proposalsTotal === null ? "—" : String(proposalsTotal),
+            note:
+              proposalsTotal === null
+                ? "Couldn't load"
+                : proposalsTotal === 0
+                  ? "None sent yet"
+                  : "Total sent",
           },
         ]}
       />

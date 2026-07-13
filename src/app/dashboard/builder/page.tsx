@@ -70,11 +70,14 @@ export default async function BuilderDashboardPage() {
     getLeadCounts(),
     getMyProposals("received", 1, 1),
   ]);
-  const projectsCount = projectsResult.success ? projectsResult.data.total : 0;
-  const leadsTotal = leadCounts.success ? leadCounts.data.total : 0;
+  // Failed queries render "—" with an honest note — never a fake zero.
+  const projectsCount = projectsResult.success
+    ? projectsResult.data.total
+    : null;
+  const leadsTotal = leadCounts.success ? leadCounts.data.total : null;
   const proposalsTotal = proposalsResult.success
     ? proposalsResult.data.total
-    : 0;
+    : null;
 
   return (
     <DashboardShellV2
@@ -88,19 +91,34 @@ export default async function BuilderDashboardPage() {
         stats={[
           {
             label: "Projects",
-            value: String(projectsCount),
-            note: projectsCount === 0 ? "None posted yet" : "Total listed",
+            value: projectsCount === null ? "—" : String(projectsCount),
+            note:
+              projectsCount === null
+                ? "Couldn't load"
+                : projectsCount === 0
+                  ? "None posted yet"
+                  : "Total listed",
           },
           { label: "Units", value: "—", note: "Not tracked yet" },
           {
             label: "Leads",
-            value: String(leadsTotal),
-            note: leadsTotal === 0 ? "None yet" : "Total received",
+            value: leadsTotal === null ? "—" : String(leadsTotal),
+            note:
+              leadsTotal === null
+                ? "Couldn't load"
+                : leadsTotal === 0
+                  ? "None yet"
+                  : "Total received",
           },
           {
             label: "Proposals",
-            value: String(proposalsTotal),
-            note: proposalsTotal === 0 ? "None received yet" : "Total received",
+            value: proposalsTotal === null ? "—" : String(proposalsTotal),
+            note:
+              proposalsTotal === null
+                ? "Couldn't load"
+                : proposalsTotal === 0
+                  ? "None received yet"
+                  : "Total received",
           },
         ]}
       />

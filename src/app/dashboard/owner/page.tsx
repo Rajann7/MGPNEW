@@ -23,6 +23,7 @@ import {
   StatCardGradientSkeletonGrid,
   type StatCardItem,
 } from "@/components/dashboard/StatCardGradient";
+import { InlineErrorBanner } from "@/components/ui/ErrorState";
 
 export const metadata: Metadata = {
   title: "Owner Dashboard",
@@ -133,13 +134,14 @@ async function loadOwnerOverviewData() {
       getCurrentBilling("owner"),
     ]);
 
+  // Failed queries must render "—" with an honest note — never a fake zero.
   const activeListings = propertiesResult.success
     ? propertiesResult.data.total
-    : 0;
+    : null;
   const newLeadsThisWeek = leadCounts.success
     ? leadCounts.data.newThisWeek
-    : 0;
-  const notContacted = leadCounts.success ? leadCounts.data.open : 0;
+    : null;
+  const notContacted = leadCounts.success ? leadCounts.data.open : null;
 
   const nowMs = Date.now();
   const upcomingVisits = siteVisitsResult.success
@@ -149,7 +151,7 @@ async function loadOwnerOverviewData() {
           v.scheduled_at &&
           new Date(v.scheduled_at).getTime() > nowMs
       ).length
-    : 0;
+    : null;
 
   const propertyUsage = billingResult.success
     ? billingResult.data.usage.find(
@@ -165,24 +167,41 @@ async function loadOwnerOverviewData() {
   const stats: StatCardItem[] = [
     {
       label: "Active Listings",
-      value: String(activeListings),
-      note: activeListings === 0 ? "None posted yet" : "Total listed",
+      value: activeListings === null ? "—" : String(activeListings),
+      note:
+        activeListings === null
+          ? "Couldn't load"
+          : activeListings === 0
+            ? "None posted yet"
+            : "Total listed",
       icon: Home,
     },
     {
       label: "New Leads This Week",
-      value: String(newLeadsThisWeek),
+      value: newLeadsThisWeek === null ? "—" : String(newLeadsThisWeek),
       note:
-        notContacted > 0
-          ? `${notContacted} not yet contacted`
-          : "All caught up",
+        newLeadsThisWeek === null
+          ? "Couldn't load"
+          : notContacted && notContacted > 0
+            ? `${notContacted} not yet contacted`
+            : "All caught up",
       icon: MessageCircle,
       highlight: true,
     },
     {
       label: "Site Visits Scheduled",
-      value: upcomingVisits > 0 ? String(upcomingVisits) : "—",
-      note: upcomingVisits > 0 ? "Upcoming" : "No visits scheduled yet",
+      value:
+        upcomingVisits === null
+          ? "—"
+          : upcomingVisits > 0
+            ? String(upcomingVisits)
+            : "—",
+      note:
+        upcomingVisits === null
+          ? "Couldn't load"
+          : upcomingVisits > 0
+            ? "Upcoming"
+            : "No visits scheduled yet",
       icon: CalendarClock,
     },
     propertyUsage
@@ -203,7 +222,7 @@ async function loadOwnerOverviewData() {
 
   const recentLeads = recentLeadsResult.success
     ? recentLeadsResult.data.items
-    : [];
+    : null;
 
   return { stats, recentLeads };
 }
@@ -219,7 +238,24 @@ async function OwnerOverviewData() {
   );
 }
 
-function RecentLeadsSection({ leads }: { leads: LeadRow[] }) {
+function RecentLeadsSection({ leads }: { leads: LeadRow[] | null }) {
+  // Query failure is shown as an honest error, never as "No leads yet".
+  if (leads === null) {
+    return (
+      <div className="rounded-3xl border border-border bg-surface overflow-hidden">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-border">
+          <h3 className="text-sm font-semibold text-ink">Recent Leads</h3>
+        </div>
+        <div className="p-4 sm:p-5">
+          <InlineErrorBanner message="Couldn't load recent leads. Check your connection." />
+        </div>
+      </div>
+    );
+  }
+  return <RecentLeadsTable leads={leads} />;
+}
+
+function RecentLeadsTable({ leads }: { leads: LeadRow[] }) {
   return (
     <div className="rounded-3xl border border-border bg-surface overflow-hidden">
       <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-border">

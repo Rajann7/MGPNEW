@@ -25,7 +25,7 @@ function matchesPathPrefix(pathname: string, base: string): boolean {
 // ============================================================
 
 export async function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const response = NextResponse.next({
     request: { headers: request.headers },
   });
@@ -71,7 +71,8 @@ export async function proxy(request: NextRequest) {
     // All other /admin/* routes require authentication
     if (!user) {
       const loginUrl = new URL("/admin/login", request.url);
-      loginUrl.searchParams.set("redirectTo", pathname);
+      // Same-origin relative path only — never a full URL (open-redirect safe).
+      loginUrl.searchParams.set("redirectTo", pathname + search);
       return NextResponse.redirect(loginUrl);
     }
 
@@ -84,7 +85,8 @@ export async function proxy(request: NextRequest) {
   if (AUTH_REQUIRED_PATHS.some((p) => matchesPathPrefix(pathname, p))) {
     if (!user) {
       const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirectTo", pathname);
+      // Same-origin relative path only — never a full URL (open-redirect safe).
+      loginUrl.searchParams.set("redirectTo", pathname + search);
       return NextResponse.redirect(loginUrl);
     }
     return response;

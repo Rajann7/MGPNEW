@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { useOverlay } from "@/components/ui/useOverlay";
 
 /**
  * Generic destructive-action confirmation, pixel-matched to the reference
@@ -31,13 +31,13 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open]);
+  // Shared overlay behavior: Escape (blocked while pending), scroll lock,
+  // focus trap, focus restoration.
+  const contentRef = useOverlay({
+    open,
+    onClose: onCancel,
+    closeOnEscape: !isPending,
+  });
 
   if (!open) return null;
 
@@ -49,9 +49,11 @@ export function ConfirmDialog({
         onClick={onCancel}
       />
       <div
+        ref={contentRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
+        tabIndex={-1}
         className="relative z-10 w-full bg-surface shadow-[0_12px_32px_rgba(0,0,0,0.2)] rounded-t-[20px] sm:w-full sm:max-w-[380px] sm:rounded-2xl p-6"
       >
         <div className="flex justify-center pb-2 sm:hidden">

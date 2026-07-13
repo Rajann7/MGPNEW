@@ -10,6 +10,13 @@ This file exists so another Claude account can continue the project without need
 
 ---
 
+## RESUME NOTE — 2026-07-13 · Phase 1 (Shared Foundations) VERIFIED **PASS**
+Phase 1 shared-foundations implementation was independently manual-verified (running app + live DB + 5 authority files), not just trusted from the implementation report. Migration `20260713150000_phase1_shared_foundations.sql` is **applied** (locations/provider_configs/notification_deliveries/background_jobs; providers carry env-var **names** not secrets; honest statuses only). Verified live: all 5 shells (Public/Owner/Broker/Builder/Admin) with locked nav, 9-breakpoint no-overflow sweep, two-user cross-RLS (no leak; contact numbers of other users not exposed), overlay foundation (scroll-lock/Escape/focus-restore), open-redirect protection both sides, session revoke→login redirect, honest empty states + real badges.
+One defect found & fixed: admin mobile drawer had no Escape/scroll-lock/focus-restore → added `src/components/layout/AdminDrawerBehavior.tsx` (see BUG-2026-07-13-01). Gates after fix: typecheck/lint/build all PASS. **Next:** Phase 2 (per `04_CLAUDE_5_PHASE_IMPLEMENTATION_AND_VERIFICATION_PROMPTS.md`).
+Note: verification self-healed the owner/broker test-account email passwords (dev-only, to documented values) to run cross-RLS — this revoked any existing browser sessions for those accounts (expected).
+
+---
+
 ## 1. How Claude Must Use This File
 
 Before starting any task, Claude must read:
@@ -3581,3 +3588,13 @@ with no breakpoint changes in that range so low risk).
 **Test data left in the dev DB** (not production): several `LIMITTEST`/`MANUALVERIFY`/`QA Verify` properties
 under the test owner account, in draft/submitted status — harmless dev artifacts, safe to leave or clean up
 later via the UI's own Delete action.
+
+---
+
+## RESUME GUIDE — 2026-07-13 · Phase 1 of five-file master plan: IMPLEMENTED (awaiting Prompt 1B verification)
+
+- Authority = the five root files `00_…` to `04_…` + `C:\mgpweb\newdesign` (14 bundled HTML files; decode by JSON.parse of `script[type="__bundler/template"]`). Fresh decode lives in the session scratchpad `design-extract/`; content unchanged vs 7 Jul extraction.
+- Phase 1 delivered: registry reconciliation (no unregistered screens), route audit (85 routes; dead DashboardShell removed), shared ErrorState + global error.tsx, fake-zero fixes on all role Overviews + admin, shared useOverlay hook (wired into ConfirmDialog/ReportModal/MobileFilterSheet), proxy.ts session refresh + redirectTo (verified live), migration `20260713150000_phase1_shared_foundations.sql` APPLIED to dev DB (locations hierarchy + seed, provider_configs, notification_deliveries, background_jobs/DLQ), QA Gujarati draft-property fixture.
+- Known gaps left for later phases (by design): requirement/[displayId], messages/[threadId], proposals/[proposalId], site-visits/analytics/settings routes (Phase 2–3); admin cms/support/settings placeholders (Phase 4–5); team-membership schema (Phase 3); provider admin still env-presence based until Phase 4 wires provider_configs.
+- No test runner exists in package.json (only lint/typecheck/build) — report honestly, don't claim test runs.
+- Next: user sends PROMPT 1B (Phase 1 manual verification) → fix/retest → PASS before Phase 2.

@@ -1,6 +1,23 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // DEV ONLY: allow the dev server to be opened from a phone/other device on
+  // the same Wi-Fi (LAN IP) instead of only localhost. Without this, Next 16
+  // blocks /_next/* dev resources (HMR + client bundles) for non-localhost
+  // origins, so the page never hydrates and clicks/onClick handlers do nothing.
+  // Wildcards cover the usual private ranges so a new DHCP IP keeps working.
+  // Ignored entirely in production builds.
+  allowedDevOrigins: [
+    "10.109.225.250",
+    "10.*.*.*",
+    "192.168.*.*",
+    "172.16.*.*",
+    "172.17.*.*",
+    "172.18.*.*",
+    "172.19.*.*",
+    "172.20.*.*",
+    "*.local",
+  ],
   images: {
     // Cloudflare R2 CDN domain will be added here in Phase 10 (Media/Storage)
     // Example: { hostname: "cdn.mygujaratproperty.com" }

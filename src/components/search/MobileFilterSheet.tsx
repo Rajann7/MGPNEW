@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
+import { useOverlay } from "@/components/ui/useOverlay";
 import {
   BHK_OPTIONS,
   PROPERTY_TYPES,
@@ -90,14 +91,13 @@ export function MobileFilterSheet({
 }: Props) {
   const [local, setLocal] = useState<MobileFilterState>(filters);
 
+  // Shared overlay behavior: Escape, scroll lock, focus trap, restoration.
+  const contentRef = useOverlay({ open, onClose });
+
   useEffect(() => {
     if (!open) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocal(filters);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
     // Re-seed only on open
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -129,9 +129,11 @@ export function MobileFilterSheet({
       />
 
       <div
+        ref={contentRef}
         role="dialog"
         aria-modal="true"
         aria-label="Filters"
+        tabIndex={-1}
         className={cn(
           "absolute bottom-0 left-0 right-0 flex max-h-[90vh] flex-col rounded-t-3xl bg-surface shadow-[0_-4px_32px_rgba(0,0,0,0.12)] transition-transform duration-300",
           "lg:bottom-auto lg:left-1/2 lg:right-auto lg:top-1/2 lg:max-h-[85vh] lg:w-[480px] lg:-translate-x-1/2 lg:rounded-2xl lg:shadow-[0_16px_48px_rgba(0,0,0,0.18)]",

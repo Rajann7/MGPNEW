@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Menu, X, ExternalLink } from "lucide-react";
 import type { AdminNavItem } from "./AdminSidebar";
 import { cn } from "@/lib/cn";
+import { AdminDrawerBehavior } from "./AdminDrawerBehavior";
 
 /**
  * Hamburger that toggles the drawer. Rendered inside the contextual header;
@@ -44,6 +45,7 @@ export function AdminMobileDrawer({
   return (
     <div className="contents lg:hidden">
       <input type="checkbox" id="admin-drawer" className="peer sr-only" />
+      <AdminDrawerBehavior />
 
       {/* Overlay (tap to close) */}
       <label

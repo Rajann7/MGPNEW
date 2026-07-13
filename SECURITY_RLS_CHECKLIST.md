@@ -2513,3 +2513,12 @@ Known: webhook not yet exercised against a live Razorpay test webhook (secret un
 
 ## 2026-07-08 — recently_viewed_items DELETE policy added
 Table `recently_viewed_items` previously had own-scoped SELECT/INSERT/UPDATE policies but **no DELETE policy** — the "Clear history" action and the >30-row trim silently deleted 0 rows under the user client. Added own-rows DELETE policy `recently_viewed_items: own delete` (`using profile_id = mgp_get_my_profile_id()`), migration `supabase/migrations/20260708090000_recently_viewed_delete_policy.sql`, applied to dev DB (verified in pg_policies). Scope unchanged/own-only — no privilege widening; a user can only delete their own recently-viewed rows.
+
+## 2026-07-13 — Phase 1 shared foundations (migration 20260713150000)
+
+- `locations`: RLS on; public SELECT of `is_active=true` rows only; writes service-role only.
+- `provider_configs`: RLS on with ZERO policies (service-role only). Stores env-var *names* and safe status — never secret values.
+- `notification_deliveries`: RLS on; recipient-scoped SELECT via notifications→profiles join on `auth.uid()`.
+- `background_jobs`: RLS on with ZERO policies (service-role only); unique partial index on live `idempotency_key`.
+- Verified: every table in `public` schema has `relrowsecurity=true` (query returned no exceptions).
+- `src/proxy.ts` validates return paths as same-origin relative only (open-redirect safe); authorization stays in server guards, the proxy only checks session presence.

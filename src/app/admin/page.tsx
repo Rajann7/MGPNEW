@@ -26,11 +26,14 @@ export default async function AdminDashboardPage() {
     getUserCounts(),
   ]);
 
+  // Failed count query renders "—" — never a fake zero.
   const pendingTotal = moderation.success
-    ? moderation.data.properties +
-      moderation.data.projects +
-      moderation.data.requirements
-    : 0;
+    ? String(
+        moderation.data.properties +
+          moderation.data.projects +
+          moderation.data.requirements
+      )
+    : "—";
 
   return (
     <AdminShell
