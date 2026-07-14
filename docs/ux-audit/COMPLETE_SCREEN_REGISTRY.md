@@ -69,28 +69,30 @@ Batch 1B (2026-07-14) live-audited this role. Routes not marked VERIFIED below w
 | OWN-16 | `/dashboard/owner/settings` | settings | VERIFIED (language selector real handler, honest Email/SMS/WhatsApp Setup-Required states, Back-header confirmed live) |
 | OWN-17 | `/dashboard/owner/verification` | settings | VERIFIED (honest "Not Started" + Setup Required copy, Back-header confirmed live) |
 
-## D. Broker Dashboard (`/dashboard/broker/**`) — 17 routes
+## D. Broker Dashboard (`/dashboard/broker/**`) — 18 routes
+
+Batch 1C (2026-07-14) live-audited this role.
 
 | ID | Route | Type | Status |
 |---|---|---|---|
-| BRK-01 | `/dashboard/broker` | dashboard-home | AUDITED (home layout aligned to owner pattern this session) |
-| BRK-02 | `/dashboard/broker/properties` | list | DISCOVERED |
-| BRK-03 | `/dashboard/broker/properties/new` | create | DISCOVERED |
-| BRK-04 | `/dashboard/broker/properties/[id]/edit` | edit | DISCOVERED |
-| BRK-05 | `/dashboard/broker/requirements` | list | DISCOVERED |
-| BRK-06 | `/dashboard/broker/requirements/new` | create | DISCOVERED |
-| BRK-07 | `/dashboard/broker/requirements/[id]/edit` | edit | DISCOVERED |
-| BRK-08 | `/dashboard/broker/leads` | list | DISCOVERED |
-| BRK-09 | `/dashboard/broker/proposals` | list | DISCOVERED |
-| BRK-10 | `/dashboard/broker/site-visits` | list | DISCOVERED |
-| BRK-11 | `/dashboard/broker/saved` | list | DISCOVERED |
-| BRK-12 | `/dashboard/broker/recently-viewed` | list | DISCOVERED |
-| BRK-13 | `/dashboard/broker/analytics` | dashboard | DISCOVERED |
-| BRK-14 | `/dashboard/broker/billing` | settings | DISCOVERED |
-| BRK-15 | `/dashboard/broker/notifications` | list | DISCOVERED |
-| BRK-16 | `/dashboard/broker/settings` | settings | DISCOVERED |
-| BRK-17 | `/dashboard/broker/verification` | settings | DISCOVERED |
-| BRK-18 | `/dashboard/broker/public-profile` | settings | DISCOVERED |
+| BRK-01 | `/dashboard/broker` | dashboard-home | VERIFIED (ISS-0010 hamburger-nav fix confirmed live, greeting/stat-card layout intact) |
+| BRK-02 | `/dashboard/broker/properties` | list | VERIFIED (honest first-use empty state with actionable CTA, Post Property link confirmed) |
+| BRK-03 | `/dashboard/broker/properties/new` | create | VERIFIED (fresh 8-step wizard starts correctly, no stray draft-resume card since broker has no draft) |
+| BRK-04 | `/dashboard/broker/properties/[id]/edit` | edit | BLOCKED_WITH_REASON (broker test account has 0 properties — no existing entity to open in edit mode; code path shared with OWN-04 which was VERIFIED) |
+| BRK-05 | `/dashboard/broker/requirements` | list | VERIFIED (ISS-0013 found+fixed here: static title was truncating at 375px) |
+| BRK-06 | `/dashboard/broker/requirements/new` | create | VERIFIED (7-step wizard renders correctly, Back→list confirmed) |
+| BRK-07 | `/dashboard/broker/requirements/[id]/edit` | edit | BLOCKED_WITH_REASON (broker test account has 0 requirements — same reasoning as BRK-04; shared code path with OWN-07 which was VERIFIED) |
+| BRK-08 | `/dashboard/broker/leads` | list | VERIFIED (Leads Received vs My Inquiries sections, honest "no fake leads" copy, card→Lead Detail navigation confirmed) |
+| BRK-09 | `/dashboard/broker/proposals` | list | VERIFIED (Received/Sent/Open-Requirements sections, Send Proposal modal open+Cancel confirmed live) |
+| BRK-10 | `/dashboard/broker/site-visits` | list | VERIFIED (Requested-state Reschedule/Cancel actions, real data) |
+| BRK-11 | `/dashboard/broker/saved` | list | VERIFIED (empty state, Back-header confirmed) |
+| BRK-12 | `/dashboard/broker/recently-viewed` | list | VERIFIED (real recently-viewed list, Back-header confirmed) |
+| BRK-13 | `/dashboard/broker/analytics` | dashboard | VERIFIED (real stats, honest "Not tracked yet" impressions state) |
+| BRK-14 | `/dashboard/broker/billing` | settings | VERIFIED (real free-plan usage data, Upgrade→/pricing link confirmed working) |
+| BRK-15 | `/dashboard/broker/notifications` | list | VERIFIED (ISS-0012 site_visit-click fix confirmed live for Broker too) |
+| BRK-16 | `/dashboard/broker/settings` | settings | VERIFIED (matches Owner pattern — language selector, honest provider Setup-Required states) |
+| BRK-17 | `/dashboard/broker/verification` | settings | VERIFIED (honest "Verified" state with trust-signal disclaimer, matches known test-account status) |
+| BRK-18 | `/dashboard/broker/public-profile` | settings | VERIFIED (honest Setup Required state) |
 
 ## E. Builder Dashboard (`/dashboard/builder/**`) — 19 routes
 

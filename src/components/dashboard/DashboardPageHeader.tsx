@@ -26,11 +26,11 @@ export function DashboardPageHeader({
     <div
       className={
         dense
-          ? "flex items-center justify-between mb-6 sm:mb-3 gap-3"
-          : "flex items-center justify-between mb-6 gap-3"
+          ? "flex flex-col items-start gap-3 mb-6 sm:mb-3 sm:flex-row sm:items-center sm:justify-between"
+          : "flex flex-col items-start gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between"
       }
     >
-      <div className="min-w-0">
+      <div className="min-w-0 w-full sm:w-auto">
         <h1 className="text-xl font-bold text-zinc-900 truncate">{title}</h1>
         <p className="text-sm text-zinc-500 mt-0.5">
           {count}{" "}
