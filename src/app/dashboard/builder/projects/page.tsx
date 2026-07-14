@@ -76,12 +76,20 @@ export default async function BuilderProjectsPage() {
               createdAt={project.created_at!}
               editHref={`/dashboard/builder/projects/${project.id}/edit`}
               extraActions={
-                <Link
-                  href={`/dashboard/builder/projects/${project.id}/units`}
-                  className="px-3 py-1.5 text-xs font-medium text-brand border border-brand/30 rounded-lg hover:bg-brand-soft transition-colors"
-                >
-                  Units
-                </Link>
+                <>
+                  <Link
+                    href={`/dashboard/builder/projects/${project.id}/units`}
+                    className="px-3 py-1.5 text-xs font-medium text-brand border border-brand/30 rounded-lg hover:bg-brand-soft transition-colors"
+                  >
+                    Units
+                  </Link>
+                  <Link
+                    href={`/dashboard/builder/projects/${project.id}/construction`}
+                    className="px-3 py-1.5 text-xs font-medium text-brand border border-brand/30 rounded-lg hover:bg-brand-soft transition-colors"
+                  >
+                    Construction
+                  </Link>
+                </>
               }
             />
           ))}

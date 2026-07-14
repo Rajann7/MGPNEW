@@ -73,9 +73,9 @@ export function getOwnerNav(
     },
     {
       label: "Site Visits",
-      href: "#",
+      href: "/dashboard/owner/site-visits",
       icon: CalendarClock,
-      disabled: true,
+      active: activeHref === "/dashboard/owner/site-visits",
     },
     {
       label: "Saved",
@@ -85,9 +85,9 @@ export function getOwnerNav(
     },
     {
       label: "Analytics",
-      href: "#",
+      href: "/dashboard/owner/analytics",
       icon: BarChart3,
-      disabled: true,
+      active: activeHref === "/dashboard/owner/analytics",
     },
     {
       label: "Billing",
@@ -97,9 +97,9 @@ export function getOwnerNav(
     },
     {
       label: "Settings",
-      href: "#",
+      href: "/dashboard/owner/settings",
       icon: Settings,
-      disabled: true,
+      active: activeHref === "/dashboard/owner/settings",
     },
     {
       label: "Verification",
@@ -164,9 +164,9 @@ export function getOwnerDrawerNav(
     },
     {
       label: "Site Visits",
-      href: "#",
+      href: "/dashboard/owner/site-visits",
       icon: CalendarClock,
-      disabled: true,
+      active: activeHref === "/dashboard/owner/site-visits",
     },
     {
       label: "Saved",
@@ -176,15 +176,15 @@ export function getOwnerDrawerNav(
     },
     {
       label: "Recently Viewed",
-      href: "#",
+      href: "/dashboard/owner/recently-viewed",
       icon: History,
-      disabled: true,
+      active: activeHref === "/dashboard/owner/recently-viewed",
     },
     {
       label: "Analytics",
-      href: "#",
+      href: "/dashboard/owner/analytics",
       icon: BarChart3,
-      disabled: true,
+      active: activeHref === "/dashboard/owner/analytics",
       dividerBefore: true,
     },
     {
@@ -201,9 +201,9 @@ export function getOwnerDrawerNav(
     },
     {
       label: "Settings",
-      href: "#",
+      href: "/dashboard/owner/settings",
       icon: Settings,
-      disabled: true,
+      active: activeHref === "/dashboard/owner/settings",
     },
     { label: "Support", href: "/support", icon: LifeBuoy },
   ];
@@ -248,16 +248,34 @@ export function getBrokerNav(activeHref: string): SidebarNavItem[] {
       active: activeHref.startsWith("/dashboard/messages"),
     },
     {
+      label: "Site Visits",
+      href: "/dashboard/broker/site-visits",
+      icon: CalendarClock,
+      active: activeHref === "/dashboard/broker/site-visits",
+    },
+    {
       label: "Saved Items",
       href: "/dashboard/broker/saved",
       icon: Bookmark,
       active: activeHref === "/dashboard/broker/saved",
     },
     {
+      label: "Recently Viewed",
+      href: "/dashboard/broker/recently-viewed",
+      icon: History,
+      active: activeHref === "/dashboard/broker/recently-viewed",
+    },
+    {
       label: "Notifications",
       href: "/dashboard/broker/notifications",
       icon: Bell,
       active: activeHref === "/dashboard/broker/notifications",
+    },
+    {
+      label: "Analytics",
+      href: "/dashboard/broker/analytics",
+      icon: BarChart3,
+      active: activeHref === "/dashboard/broker/analytics",
     },
     {
       label: "Billing",
@@ -276,6 +294,12 @@ export function getBrokerNav(activeHref: string): SidebarNavItem[] {
       href: "/dashboard/broker/public-profile",
       icon: Globe,
       active: activeHref === "/dashboard/broker/public-profile",
+    },
+    {
+      label: "Settings",
+      href: "/dashboard/broker/settings",
+      icon: Settings,
+      active: activeHref === "/dashboard/broker/settings",
     },
     {
       label: "Profile",
@@ -320,10 +344,22 @@ export function getBuilderNav(activeHref: string): SidebarNavItem[] {
       active: activeHref.startsWith("/dashboard/messages"),
     },
     {
-      label: "Ads / Promotions",
+      label: "Site Visits",
+      href: "/dashboard/builder/site-visits",
+      icon: CalendarClock,
+      active: activeHref === "/dashboard/builder/site-visits",
+    },
+    {
+      label: "Banner Ads",
       href: "/dashboard/builder/ads",
       icon: Megaphone,
       active: activeHref === "/dashboard/builder/ads",
+    },
+    {
+      label: "Analytics",
+      href: "/dashboard/builder/analytics",
+      icon: BarChart3,
+      active: activeHref === "/dashboard/builder/analytics",
     },
     {
       label: "Agents / Team",
@@ -354,6 +390,12 @@ export function getBuilderNav(activeHref: string): SidebarNavItem[] {
       href: "/dashboard/builder/public-profile",
       icon: Globe,
       active: activeHref === "/dashboard/builder/public-profile",
+    },
+    {
+      label: "Settings",
+      href: "/dashboard/builder/settings",
+      icon: Settings,
+      active: activeHref === "/dashboard/builder/settings",
     },
     {
       label: "Profile",

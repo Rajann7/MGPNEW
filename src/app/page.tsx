@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { getHomeFeatured } from "@/lib/home/featured";
+import { getPublicBanners } from "@/lib/banner/queries";
 import { PublicLayout } from "@/components/layout/PublicLayout";
 import { HomeHeroSearch } from "@/components/public/HomeHeroSearch";
+import { BannerCarousel } from "@/components/banner/BannerCarousel";
 import { HomeCategoryTiles } from "@/components/public/HomeCategoryTiles";
 import { HomeFeaturedProperties } from "@/components/public/HomeFeaturedProperties";
 import { HomeFeaturedProjects } from "@/components/public/HomeFeaturedProjects";
@@ -18,14 +20,16 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [profile, featured] = await Promise.all([
+  const [profile, featured, banners] = await Promise.all([
     getCurrentProfile(),
     getHomeFeatured(),
+    getPublicBanners(),
   ]);
 
   return (
     <PublicLayout profile={profile}>
       <HomeHeroSearch />
+      <BannerCarousel banners={banners} />
       <HomeCategoryTiles />
       <HomeFeaturedProperties items={featured.properties} />
       <HomeFeaturedProjects items={featured.projects} />

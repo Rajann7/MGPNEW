@@ -5,6 +5,7 @@ import { getAdminNav } from "@/lib/admin/navConfig";
 import { AdminShell } from "@/components/layout/AdminShell";
 import { Card } from "@/components/ui/Card";
 import { getModerationCounts } from "@/lib/actions/admin/moderation";
+import { countPendingBanners } from "@/lib/banner/queries";
 
 export const metadata: Metadata = {
   title: "Moderation — Admin — My Gujarat Property",
@@ -17,6 +18,7 @@ export default async function ModerationIndexPage() {
   const staff = await requireStaff();
   const permissionsByModule = await getStaffPermissionsByModule(staff.id);
   const counts = await getModerationCounts();
+  const pendingBanners = await countPendingBanners();
 
   const queues = [
     {
@@ -34,6 +36,11 @@ export default async function ModerationIndexPage() {
       href: "/admin/moderation/requirements",
       count: counts.success ? counts.data.requirements : 0,
     },
+    {
+      label: "Banner Ads",
+      href: "/admin/moderation/banner-ads",
+      count: pendingBanners ?? 0,
+    },
   ];
 
   return (
@@ -43,7 +50,7 @@ export default async function ModerationIndexPage() {
       staffName={staff.full_name}
       staffRole={staff.internal_role}
     >
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {queues.map((q) => (
           <Link key={q.href} href={q.href}>
             <Card interactive className="text-center">

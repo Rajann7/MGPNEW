@@ -147,7 +147,9 @@ async function loadOwnerOverviewData() {
   const upcomingVisits = siteVisitsResult.success
     ? siteVisitsResult.data.items.filter(
         (v) =>
-          (v.status === "scheduled" || v.status === "accepted") &&
+          (v.status === "scheduled" ||
+            v.status === "accepted" ||
+            v.status === "rescheduled") &&
           v.scheduled_at &&
           new Date(v.scheduled_at).getTime() > nowMs
       ).length
