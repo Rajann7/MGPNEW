@@ -5,6 +5,7 @@ import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicProjectBySlug,
   getPublicBuilderLinkByProfileId,
+  getPublicListingImages,
   getSimilarProjects,
 } from "@/lib/actions/public-search";
 import { getListingContactState } from "@/lib/actions/contact";
@@ -78,14 +79,16 @@ export default async function ProjectDetailPage({ params }: Props) {
   if (!project) notFound();
 
   const location = locationLabel(project.city_text, project.locality_text);
-  const [builder, saved, existingInquiry, similar] = await Promise.all([
-    getPublicBuilderLinkByProfileId(project.builder_profile_id),
-    isItemSaved("project", project.id),
-    profile
-      ? getMyInquiryForTarget("project", project.id)
-      : Promise.resolve(null),
-    getSimilarProjects({ excludeId: project.id, city: project.city_text }),
-  ]);
+  const [builder, saved, existingInquiry, similar, galleryImages] =
+    await Promise.all([
+      getPublicBuilderLinkByProfileId(project.builder_profile_id),
+      isItemSaved("project", project.id),
+      profile
+        ? getMyInquiryForTarget("project", project.id)
+        : Promise.resolve(null),
+      getSimilarProjects({ excludeId: project.id, city: project.city_text }),
+      getPublicListingImages("project", project.id),
+    ]);
   if (profile) void trackRecentlyViewed("project", project.id);
 
   // Masked-until-reveal (Batch 4 §102): builder contact requires the
@@ -221,7 +224,12 @@ export default async function ProjectDetailPage({ params }: Props) {
     {
       id: "gallery",
       label: "Gallery",
-      content: <DetailGallery mediaCount={project.media_count ?? 0} />,
+      content: (
+        <DetailGallery
+          mediaCount={project.media_count ?? 0}
+          images={galleryImages}
+        />
+      ),
     },
   ];
 

@@ -6,17 +6,21 @@ import { X, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
 
 /**
  * Fullscreen photo gallery overlay (design Batch 4 · d-gallery).
- * Real media/R2 CDN is not connected yet (Prompt 10), so this operates over
- * honest placeholder tiles — one per real media_count slot, never a fake photo.
+ * Renders the listing's real public images when available (resolved from
+ * `media-public` Storage URLs); a listing that reports a media_count but has no
+ * resolvable URL falls back to an honest placeholder tile — never a fake photo.
  * Wired: keyboard (←/→/Esc), click nav, desktop thumbnail strip, mobile
  * swipe + dot indicators.
  */
 export function FullscreenGallery({
   count,
+  images = [],
   initialIndex = 0,
   onClose,
 }: {
   count: number;
+  /** Ordered public image URLs (cover first). Empty => placeholder tiles. */
+  images?: string[];
   initialIndex?: number;
   onClose: () => void;
 }) {
@@ -62,7 +66,7 @@ export function FullscreenGallery({
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
         <span className="text-sm font-medium text-white/90">
-          {index + 1} / {count} · caption coming soon
+          {index + 1} / {count}
         </span>
         <div className="flex items-center gap-3">
           <span className="hidden items-center gap-1.5 text-xs text-white/50 sm:flex">
@@ -99,10 +103,20 @@ export function FullscreenGallery({
             <ChevronLeft className="h-5 w-5" />
           </button>
         )}
-        <div className="flex h-[55vh] w-full max-w-3xl flex-col items-center justify-center gap-2 rounded-xl bg-white/5 text-white/40">
-          <ImageIcon className="h-12 w-12" aria-hidden="true" />
-          <p className="text-xs font-medium">Photos coming soon</p>
-        </div>
+        {images[index] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={images[index]}
+            alt={`Photo ${index + 1} of ${count}`}
+            draggable={false}
+            className="max-h-[75vh] w-auto max-w-full rounded-xl object-contain"
+          />
+        ) : (
+          <div className="flex h-[55vh] w-full max-w-3xl flex-col items-center justify-center gap-2 rounded-xl bg-white/5 text-white/40">
+            <ImageIcon className="h-12 w-12" aria-hidden="true" />
+            <p className="text-xs font-medium">Photo not available</p>
+          </div>
+        )}
         {count > 1 && (
           <button
             type="button"
@@ -124,12 +138,22 @@ export function FullscreenGallery({
               type="button"
               onClick={() => setIndex(i)}
               aria-label={`Go to photo ${i + 1}`}
-              className={`h-10 w-14 flex-shrink-0 rounded-md bg-white/10 transition-opacity ${
+              className={`h-10 w-14 flex-shrink-0 overflow-hidden rounded-md bg-white/10 transition-opacity ${
                 i === index
                   ? "opacity-100 outline outline-2 outline-offset-1 outline-white"
                   : "opacity-50 hover:opacity-75"
               }`}
-            />
+            >
+              {images[i] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={images[i]}
+                  alt=""
+                  draggable={false}
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </button>
           ))}
         </div>
       )}

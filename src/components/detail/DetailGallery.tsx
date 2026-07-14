@@ -5,17 +5,27 @@ import { Images } from "lucide-react";
 import { FullscreenGallery } from "@/components/detail/FullscreenGallery";
 
 /**
- * Media upload/storage (Cloudflare R2/CDN) is not connected yet (Prompt 10).
- * cover_media_id/media_count exist on public-safe views but there is no public
- * media URL resolver yet, so every tile is a neutral placeholder — never a
- * fake photo or broken <img>. Layout matches design Batch 4 (d-prop):
- * desktop 2fr/1fr/1fr x 150/150 grid with a "View all N photos" pill on the
- * last tile; mobile a swipeable placeholder strip with a counter + dots.
+ * Real public-image gallery (design Batch 4 · d-prop). Images are the public
+ * Storage URLs of the listing's `media-public` rows (resolved server-side via
+ * getPublicListingImages, RLS-gated to published listings). When a listing has
+ * no photos, every tile is a neutral placeholder — never a fake photo or broken
+ * <img>. Layout: desktop 2fr/1fr/1fr × 150/150 grid with a "View all N photos"
+ * pill on the last tile; mobile a swipeable strip with a counter + dots.
  */
-export function DetailGallery({ mediaCount }: { mediaCount: number }) {
+export function DetailGallery({
+  mediaCount,
+  images = [],
+}: {
+  mediaCount: number;
+  /** Ordered public image URLs (cover first). Empty => placeholder tiles. */
+  images?: string[];
+}) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [mobileIndex, setMobileIndex] = useState(0);
-  const count = Math.max(0, mediaCount);
+  // Prefer the real resolved image URLs; fall back to the honest media_count
+  // (a listing may report media before URLs are resolvable) but never invent one.
+  const count = images.length > 0 ? images.length : Math.max(0, mediaCount);
+  const hasImages = images.length > 0;
 
   if (count === 0) {
     return (
@@ -43,9 +53,19 @@ export function DetailGallery({ mediaCount }: { mediaCount: number }) {
           type="button"
           onClick={() => setGalleryOpen(true)}
           aria-label="Open photo 1"
-          className="row-span-2 flex items-center justify-center border border-zinc-100 bg-zinc-50 text-zinc-400 hover:bg-zinc-100"
+          className="row-span-2 flex items-center justify-center overflow-hidden border border-zinc-100 bg-zinc-50 text-zinc-400 hover:bg-zinc-100"
         >
-          <PlaceholderIcon className="h-9 w-9" />
+          {hasImages ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={images[0]}
+              alt="Listing photo 1"
+              draggable={false}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <PlaceholderIcon className="h-9 w-9" />
+          )}
         </button>
         {tiles.slice(1).map((i) => {
           const isLast = i === tiles.length - 1 && count > tileCount;
@@ -55,9 +75,19 @@ export function DetailGallery({ mediaCount }: { mediaCount: number }) {
               type="button"
               onClick={() => setGalleryOpen(true)}
               aria-label={isLast ? `View all ${count} photos` : `Open photo ${i + 1}`}
-              className="relative flex items-center justify-center border border-zinc-100 bg-zinc-50 text-zinc-400 hover:bg-zinc-100"
+              className="relative flex items-center justify-center overflow-hidden border border-zinc-100 bg-zinc-50 text-zinc-400 hover:bg-zinc-100"
             >
-              <PlaceholderIcon className="h-6 w-6" />
+              {hasImages && images[i] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={images[i]}
+                  alt={`Listing photo ${i + 1}`}
+                  draggable={false}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <PlaceholderIcon className="h-6 w-6" />
+              )}
               {isLast && (
                 <span className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 text-xs font-semibold text-zinc-900 shadow-sm">
@@ -69,7 +99,7 @@ export function DetailGallery({ mediaCount }: { mediaCount: number }) {
             </button>
           );
         })}
-        {/* Fill remaining grid slots if fewer than 5 placeholder photos exist */}
+        {/* Fill remaining grid slots if fewer than 5 photos exist */}
         {Array.from({ length: Math.max(0, 5 - tileCount) }).map((_, i) => (
           <div
             key={`fill-${i}`}
@@ -86,9 +116,19 @@ export function DetailGallery({ mediaCount }: { mediaCount: number }) {
           type="button"
           onClick={() => setGalleryOpen(true)}
           aria-label={`Open photo ${mobileIndex + 1} of ${count}`}
-          className="flex h-full w-full items-center justify-center text-zinc-400"
+          className="flex h-full w-full items-center justify-center overflow-hidden text-zinc-400"
         >
-          <PlaceholderIcon className="h-9 w-9" />
+          {hasImages ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={images[mobileIndex] ?? images[0]}
+              alt={`Listing photo ${mobileIndex + 1}`}
+              draggable={false}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <PlaceholderIcon className="h-9 w-9" />
+          )}
         </button>
         <span className="absolute right-2.5 top-2.5 rounded-md bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">
           {mobileIndex + 1}/{count}
@@ -113,6 +153,7 @@ export function DetailGallery({ mediaCount }: { mediaCount: number }) {
       {galleryOpen && (
         <FullscreenGallery
           count={count}
+          images={images}
           initialIndex={0}
           onClose={() => setGalleryOpen(false)}
         />

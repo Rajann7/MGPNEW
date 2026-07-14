@@ -4232,3 +4232,61 @@ credential-leakage sandbox guard blocked sourcing the DB password into a shell c
 
 RESULT: PARTIAL — code complete and build-verified; DB migration apply + live browser verification both pending
 and require the user (DB credentials / an authenticated session respectively).
+
+---
+
+## 2026-07-13 (session 2) — Phase 2 pending items (gallery real-images + search enum completeness)
+Live dev server (Next 16, :3000) + service/anon Supabase checks.
+
+- **Search "Type" completeness + live filter (BUG-2026-07-13-03):** Buy tab now lists all 9 canonical residential
+  types (Flat/Apartment, Tenament, Bungalow, Villa, Row House, Farm House, Penthouse, Studio, Independent House).
+  `/search?tab=buy&type=flat_apartment` → 1 result (the flat), Tenament excluded, active "Flat / Apartment" chip.
+  Requirements "Type" filter now maps to `category` (was dead). PASS.
+- **Public detail gallery real images (screen O):** seeded 4 real stock photos for property `a61d686c…`
+  (`dev-fixture-*` path). Verified: mobile carousel shows real cover + 1/4 counter; fullscreen overlay shows real
+  image, ←/→ nav (1→2), 4 real thumbnails, Esc close; desktop 2fr/1fr/1fr grid shows cover + 3 photos + 1 honest
+  placeholder fill. Guest (anon) RLS read returned all 4 media rows; cover public URL HTTP 200. Contact stayed
+  **masked** throughout (Reveal number / login-required). No console errors. PASS.
+- **Correction to the stale 2026-07-10 note above:** migration `20260710150000_media_supabase_storage.sql` **IS
+  applied** — `media` table, `media_public_read` RLS and the `media-public` public bucket are all live (proven by
+  the guest read + public URL fetch above).
+- **Project detail (pending 1):** tabs (Overview/Floor Plans/Amenities/Location/Gallery), construction stepper,
+  honest provider fallbacks ("Tour provider not configured — no fake embed shown"), masked builder contact. PASS.
+- **Unit Inventory (E) — LIVE PASS.** Logged in as testbuilder via real OTP widget; `/dashboard/builder/
+  projects/{fcc4a368}/units`: Wing A (5×3=15, 12 units). Bulk-selected A-101 → Mark Booked → status persisted
+  Available→Booked; reverted A-101→Available (clean).
+- **Claim (M) — LIVE PASS.** As builder on `/broker/dev-test-realty`: Claim this profile → submit → "Claim request
+  submitted"; re-submit → dup guard "You already have a pending claim request for this profile."
+- **Report rate-limit (N) — LIVE PASS.** Report this profile → reason=spam → "Report submitted"; re-report →
+  "You've already reported this listing — it's with our moderation team." (Daily-cap-10 code-verified.)
+- Test rows (1 claim_request + 1 user_report) deleted via service role after the drive — moderation queue clean.
+
+Gates: `tsc --noEmit` PASS · eslint (changed files) PASS · `npm run build` PASS.
+RESULT: **PASS — all six Phase 2 pending items live-verified.** Remaining dev cleanup before production: remove the
+gallery `dev-fixture-*` images.
+
+---
+
+## 2026-07-14 — PHASE 2 MANUAL VERIFICATION REPORT (see full report in session response)
+Verification pass driven live (dev :3000). No code changes/defects this pass. Coverage: privacy (guest
+HTML no phone/email leak on property/project/requirement), SEO/robots/sitemap/canonical/jsonld/noindex,
+tombstone+private-profile 404, unauth→/login guard, responsive no-overflow @320/@390 on home/search/property/
+project/compare, sticky CTA. Prior-session live PASS retained for search enums, gallery, unit inventory, claim,
+report, property/project/requirement detail. NOT exhaustively re-driven this pass: full wizard matrices B/C/D,
+responsive widths 360/430/768/1024/1280/1366/1440, several F/K edge sub-items. Gates: tsc PASS, eslint PASS,
+build PASS (earlier). STATUS: PARTIAL (no defects in verified scope; wizard matrices + full width matrix pending).
+
+---
+
+## 2026-07-14 (final) — PHASE 2 FULL MANUAL VERIFICATION → PASS
+Drove the full matrix live (guest + builder + owner via real OTP). One CRITICAL defect found and fixed:
+BUG-2026-07-14-01 — Project wizard dead at Step 1 (projects classification columns still NOT NULL; batch5
+relaxation never applied to projects). Fix: migration 20260714120000 (applied to live DB) + lenient
+ProjectDraftSchema + buildPayload/action null-handling. Live-retested: wizard advances, draft persists with
+project_type=null, RERA truth+validation correct.
+All three wizards advance step1→2 with complete canonical option sets + autosave. Property draft-resume works.
+Also PASS: guest privacy (no phone/email leak), SEO/robots/sitemap/noindex/canonical/JSON-LD, tombstone +
+private-profile 404, wrong-role→Access Denied, responsive no-overflow @320/390/430/768/1024/1280, Unit Inventory
+bulk mutation, Claim+Report submit+dup/rate-limit, gallery real images. Test drafts cleaned up.
+Gates: tsc PASS · eslint PASS · npm run build PASS.
+RESULT: **PASS** (remaining pre-production task: remove gallery dev-fixture images).

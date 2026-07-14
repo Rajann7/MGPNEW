@@ -4,6 +4,7 @@ import { getCurrentProfile } from "@/lib/auth/session";
 import { DetailShell } from "@/components/detail/DetailShell";
 import {
   getPublicPropertyBySlug,
+  getPublicListingImages,
   getSimilarProperties,
 } from "@/lib/actions/public-search";
 import { getListingContactState } from "@/lib/actions/contact";
@@ -67,7 +68,7 @@ export default async function PropertyDetailPage({ params }: Props) {
   if (!property) notFound();
 
   const location = locationLabel(property.city_text, property.locality_text);
-  const [saved, existingInquiry, similar] = await Promise.all([
+  const [saved, existingInquiry, similar, galleryImages] = await Promise.all([
     isItemSaved("property", property.id),
     profile
       ? getMyInquiryForTarget("property", property.id)
@@ -77,6 +78,7 @@ export default async function PropertyDetailPage({ params }: Props) {
       city: property.city_text,
       purpose: property.purpose,
     }),
+    getPublicListingImages("property", property.id),
   ]);
   if (profile) void trackRecentlyViewed("property", property.id);
 
@@ -152,7 +154,10 @@ export default async function PropertyDetailPage({ params }: Props) {
 
         <div className="mt-3 lg:grid lg:grid-cols-[1fr_320px] lg:items-start lg:gap-8">
           <div className="min-w-0">
-            <DetailGallery mediaCount={property.media_count ?? 0} />
+            <DetailGallery
+              mediaCount={property.media_count ?? 0}
+              images={galleryImages}
+            />
 
             <div className="mt-5 flex flex-col gap-1.5">
               <div className="flex items-center gap-1.5 flex-wrap">

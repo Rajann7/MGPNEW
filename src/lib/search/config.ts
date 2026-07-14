@@ -1,3 +1,7 @@
+import { PROPERTY_TYPES_BY_CATEGORY } from "@/lib/validators/property";
+import { PROJECT_TYPES } from "@/lib/validators/project";
+import { REQUIREMENT_CATEGORIES } from "@/lib/validators/requirement";
+
 export type Purpose =
   "buy" | "rent" | "commercial" | "land" | "projects" | "pg" | "requirements";
 
@@ -65,71 +69,99 @@ export function getTabConfig(purpose: Purpose): SearchTab {
   return SEARCH_TABS.find((t) => t.purpose === purpose) ?? SEARCH_TABS[0];
 }
 
+// ---------------------------------------------------------------------------
+// Search "Type" filter options — sourced 1:1 from the canonical enums, NOT a
+// hand-typed sample (CLAUDE.md "DESIGN LISTS ARE SAMPLES — BUILD THE COMPLETE
+// REAL SET"). Every option value is already a canonical enum value, so it maps
+// straight through to the real column filter (no dead options). Each tab shows
+// the COMPLETE set for its scope category (see TAB_SCOPE): buy/rent →
+// residential, commercial → commercial, land → land_plot, pg → pg_hostel_room,
+// projects → project_type enum, requirements → requirement category enum.
+// If a canonical enum grows, these lists grow automatically.
+// ---------------------------------------------------------------------------
+
+// Human labels for canonical enum values. Any value missing here falls back to
+// a title-cased version of the enum value, so a new enum member is never hidden.
+const TYPE_LABELS: Record<string, string> = {
+  // residential (property_type)
+  flat_apartment: "Flat / Apartment",
+  tenament: "Tenament",
+  bungalow: "Bungalow",
+  villa: "Villa",
+  row_house: "Row House",
+  farm_house: "Farm House",
+  penthouse: "Penthouse",
+  studio: "Studio",
+  independent_house: "Independent House",
+  // commercial (property_type)
+  shop: "Shop",
+  office: "Office Space",
+  showroom: "Showroom",
+  commercial_land: "Commercial Land",
+  commercial_building: "Commercial Building",
+  co_working_space: "Co-working Space",
+  warehouse_commercial: "Warehouse (Commercial)",
+  // land_plot (property_type)
+  residential_plot: "Residential Plot",
+  commercial_plot: "Commercial Plot",
+  industrial_plot: "Industrial Plot",
+  agricultural_land: "Agricultural Land",
+  non_agricultural_land: "NA Land",
+  farm_land: "Farm Land",
+  open_land: "Open Land",
+  // pg_hostel_room (property_type)
+  pg: "Paying Guest (PG)",
+  hostel: "Hostel",
+  room: "Room",
+  shared_room: "Shared Room",
+  single_room: "Single Room",
+  paying_guest: "Co-living / PG",
+  // project_type
+  apartment_project: "Apartment Project",
+  villa_project: "Villa Project",
+  plotting_project: "Plotted Development",
+  commercial_project: "Commercial Project",
+  industrial_project: "Industrial Project",
+  township_project: "Township",
+  mixed_use_project: "Mixed-use Project",
+  society_project: "Society Project",
+  industrial_zone_project: "Industrial Zone",
+  // requirement category
+  residential: "Residential",
+  commercial: "Commercial",
+  industrial: "Industrial",
+  land_plot: "Land / Plot",
+  pg_hostel_room: "PG / Hostel / Room",
+  business: "Business",
+  project: "Project",
+};
+
+function titleCase(v: string): string {
+  return v
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function toOptions(
+  values: readonly string[]
+): { value: string; label: string }[] {
+  return values.map((v) => ({ value: v, label: TYPE_LABELS[v] ?? titleCase(v) }));
+}
+
 export const PROPERTY_TYPES: Record<
   Purpose,
   { value: string; label: string }[]
 > = {
-  buy: [
-    { value: "flat", label: "Flat / Apartment" },
-    { value: "house", label: "Independent House" },
-    { value: "villa", label: "Villa" },
-    { value: "bungalow", label: "Bungalow" },
-    { value: "row-house", label: "Row House" },
-    { value: "penthouse", label: "Penthouse" },
-    { value: "studio", label: "Studio" },
-    { value: "farm-house", label: "Farm House" },
-    { value: "plot", label: "Plot" },
-    { value: "residential-land", label: "Residential Land" },
-  ],
-  rent: [
-    { value: "flat", label: "Flat / Apartment" },
-    { value: "house", label: "Independent House" },
-    { value: "villa", label: "Villa" },
-    { value: "room", label: "Room" },
-    { value: "shared-room", label: "Shared Room" },
-  ],
-  commercial: [
-    { value: "shop", label: "Shop" },
-    { value: "office", label: "Office Space" },
-    { value: "showroom", label: "Showroom" },
-    { value: "warehouse", label: "Warehouse" },
-    { value: "industrial-shed", label: "Industrial Shed" },
-    { value: "factory", label: "Factory" },
-    { value: "co-working", label: "Co-working Space" },
-    { value: "restaurant-space", label: "Restaurant / Cafe Space" },
-    { value: "clinic-space", label: "Clinic / Medical Space" },
-    { value: "godown", label: "Godown" },
-    { value: "commercial-land", label: "Commercial Land" },
-  ],
-  land: [
-    { value: "residential-plot", label: "Residential Plot" },
-    { value: "commercial-plot", label: "Commercial Plot" },
-    { value: "industrial-land", label: "Industrial Land" },
-    { value: "agricultural-land", label: "Agricultural Land" },
-    { value: "farm-land", label: "Farm Land" },
-    { value: "na-land", label: "NA Land" },
-    { value: "open-land", label: "Open Land" },
-    { value: "investment-land", label: "Investment Land" },
-  ],
-  projects: [
-    { value: "residential-project", label: "Residential Project" },
-    { value: "commercial-project", label: "Commercial Project" },
-    { value: "township", label: "Township" },
-    { value: "plotted-development", label: "Plotted Development" },
-  ],
-  pg: [
-    { value: "boys-pg", label: "Boys PG" },
-    { value: "girls-pg", label: "Girls PG" },
-    { value: "co-living", label: "Co-living" },
-    { value: "student-hostel", label: "Student Hostel" },
-    { value: "working-hostel", label: "Working Hostel" },
-  ],
-  requirements: [
-    { value: "residential", label: "Residential" },
-    { value: "commercial", label: "Commercial" },
-    { value: "land", label: "Land / Plot" },
-    { value: "pg", label: "PG / Hostel" },
-  ],
+  buy: toOptions(PROPERTY_TYPES_BY_CATEGORY.residential),
+  rent: toOptions(PROPERTY_TYPES_BY_CATEGORY.residential),
+  commercial: toOptions(PROPERTY_TYPES_BY_CATEGORY.commercial),
+  land: toOptions(PROPERTY_TYPES_BY_CATEGORY.land_plot),
+  projects: toOptions(PROJECT_TYPES),
+  pg: toOptions(PROPERTY_TYPES_BY_CATEGORY.pg_hostel_room),
+  // Requirements filter by canonical requirement CATEGORY (the real filterable
+  // column on public_requirements_view); the backend maps this to `category`.
+  requirements: toOptions(REQUIREMENT_CATEGORIES),
 };
 
 export const BHK_OPTIONS = [

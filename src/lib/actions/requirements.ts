@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentProfile } from "@/lib/auth/session";
 import {
   canCreateRequirement,
@@ -486,4 +487,158 @@ export async function getMyRequirements(
   }
 
   return { success: true, data: { items: data ?? [], total: count ?? 0 } };
+}
+
+// ============================================================
+// Public Requirement Detail (B4-S03) — scoped-visibility fetch
+//   Locked audience rule (CLAUDE.md §3A conflict #1 +
+//   20260704120000_requirement_audience_verified_pro_only.sql):
+//   the FULL requirement (description, requester, proposal entry) is
+//   visible to VERIFIED brokers/builders and the owner-of-record only.
+//   Guests / ineligible users see a minimal locked teaser.
+// ============================================================
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Stable human display code derived from the real id (no fake sequence). */
+function requirementDisplayCode(id: string): string {
+  const n = parseInt(id.replace(/-/g, "").slice(0, 8), 16) % 9000;
+  return `REQ-${n + 1000}`;
+}
+
+/** "Meera Patel" -> "M****a P." — requester identity masked until accepted. */
+function maskRequesterName(fullName: string | null | undefined): string {
+  const name = (fullName ?? "").trim();
+  if (!name) return "Requirement poster";
+  const [first, ...rest] = name.split(/\s+/);
+  const last = rest.length ? rest[rest.length - 1] : "";
+  const maskedFirst =
+    first.length <= 2
+      ? `${first[0] ?? ""}*`
+      : `${first[0]}****${first[first.length - 1]}`;
+  return last ? `${maskedFirst} ${last[0].toUpperCase()}.` : maskedFirst;
+}
+
+export interface RequirementDetailView {
+  id: string;
+  slug: string | null;
+  displayCode: string;
+  title: string;
+  status: string;
+  purpose: string;
+  category: string;
+  requirement_type: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  rent_min: number | null;
+  rent_max: number | null;
+  area_min: number | null;
+  area_max: number | null;
+  area_unit: string | null;
+  bedrooms_min: number | null;
+  bedrooms_max: number | null;
+  possession_timeline: string | null;
+  city_text: string | null;
+  preferred_localities_text: string | null;
+  /** Full text only when eligible; truncated teaser otherwise. */
+  description: string | null;
+  created_at: string;
+  poster_role: string;
+  requesterMaskedName: string;
+  /** true → verified broker/builder or owner-of-record: full view + propose. */
+  eligible: boolean;
+  isOwnerOfRecord: boolean;
+  canPropose: boolean;
+}
+
+/**
+ * Fetch a published requirement for the public detail route (B4-S03).
+ * Returns `null` only when no published/approved/public requirement matches
+ * (route → notFound). Eligibility is decided by the DB's own RLS: an
+ * eligible caller can read the base row through their session client; anyone
+ * else only receives the teaser projection assembled with the service role.
+ */
+export async function getRequirementDetail(
+  slugOrId: string
+): Promise<RequirementDetailView | null> {
+  const admin = createServiceClient();
+
+  const base = admin
+    .from("requirements")
+    .select(
+      "id, slug, title, status, purpose, category, requirement_type, budget_min, budget_max, rent_min, rent_max, area_min, area_max, area_unit, bedrooms_min, bedrooms_max, possession_timeline, city_text, preferred_localities_text, description, created_at, public_role, created_by_profile_id"
+    )
+    .eq("status", "published")
+    .eq("approval_status", "approved")
+    .eq("visibility_status", "public")
+    .is("deleted_at", null);
+
+  const { data: req } = await (UUID_RE.test(slugOrId)
+    ? base.eq("id", slugOrId).maybeSingle()
+    : base.eq("slug", slugOrId).maybeSingle());
+
+  if (!req) return null;
+
+  const profile = await getCurrentProfile();
+
+  // Eligibility = the caller can read the base row under their OWN RLS.
+  let eligible = false;
+  if (profile) {
+    const supabase = await createClient();
+    const { data: full } = await supabase
+      .from("requirements")
+      .select("id")
+      .eq("id", req.id)
+      .maybeSingle();
+    eligible = !!full;
+  }
+
+  const isOwnerOfRecord = profile?.id === req.created_by_profile_id;
+
+  // Requester name (masked) via service role — never the raw identity.
+  const { data: requester } = await admin
+    .from("profiles")
+    .select("full_name")
+    .eq("id", req.created_by_profile_id)
+    .maybeSingle();
+
+  const teaserDescription = req.description
+    ? req.description.slice(0, 120) + (req.description.length > 120 ? "…" : "")
+    : null;
+
+  return {
+    id: req.id,
+    slug: req.slug,
+    displayCode: requirementDisplayCode(req.id),
+    title: req.title,
+    status: req.status,
+    purpose: req.purpose,
+    category: req.category,
+    requirement_type: req.requirement_type,
+    budget_min: req.budget_min,
+    budget_max: req.budget_max,
+    rent_min: req.rent_min,
+    rent_max: req.rent_max,
+    area_min: req.area_min,
+    area_max: req.area_max,
+    area_unit: req.area_unit,
+    bedrooms_min: req.bedrooms_min,
+    bedrooms_max: req.bedrooms_max,
+    possession_timeline: req.possession_timeline,
+    city_text: req.city_text,
+    // exact preferred localities are eligible-only
+    preferred_localities_text: eligible ? req.preferred_localities_text : null,
+    description: eligible ? req.description : teaserDescription,
+    created_at: req.created_at,
+    poster_role: req.public_role,
+    requesterMaskedName: maskRequesterName(requester?.full_name),
+    eligible,
+    isOwnerOfRecord,
+    // brokers/builders can propose (not to their own requirement)
+    canPropose:
+      eligible &&
+      !isOwnerOfRecord &&
+      (profile?.public_role === "broker" || profile?.public_role === "builder"),
+  };
 }

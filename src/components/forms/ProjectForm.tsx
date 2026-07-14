@@ -174,9 +174,11 @@ export function ProjectForm({ existing, mode }: Props) {
   function buildPayload() {
     return {
       project_name: form.project_name,
-      project_type: form.project_type as Project["project_type"],
-      category: form.category as Project["category"],
-      purpose: form.purpose as Project["purpose"],
+      // Empty string -> undefined so the lenient draft schema accepts a partial
+      // Step-1 draft (project_type is only chosen on Step 2). BUG-2026-07-14-01.
+      project_type: (form.project_type || undefined) as Project["project_type"],
+      category: (form.category || undefined) as Project["category"],
+      purpose: (form.purpose || undefined) as Project["purpose"],
       short_description: form.short_description || undefined,
       description: form.description || undefined,
       price_min: form.price_min ? parseFloat(form.price_min) : undefined,

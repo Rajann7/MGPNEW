@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { PublicRequirementCard } from "@/lib/actions/public-search";
 import {
   formatBudgetRange,
@@ -6,9 +7,11 @@ import {
 } from "@/lib/search/format";
 
 /**
- * Requirements are scoped-public (see brain.md Prompt 05 decision): shown as
- * a read-only card only, no dedicated detail page, never the poster's
- * contact/identity. Visual language matches PropertyResultCard/ProjectResultCard.
+ * Requirements are scoped-public (see brain.md Prompt 05 decision): the card
+ * never shows the poster's contact/identity. It links to the scoped-visibility
+ * Requirement Detail (B4-S03), which itself gates the full view + proposal to
+ * verified brokers/builders and shows a locked teaser to everyone else.
+ * Visual language matches PropertyResultCard/ProjectResultCard.
  */
 export function RequirementResultCard({
   requirement,
@@ -21,7 +24,9 @@ export function RequirementResultCard({
       : formatBudgetRange(requirement.budget_min, requirement.budget_max);
 
   return (
-    <div className="rounded-card border border-dashed border-border bg-surface-muted/60 p-3.5">
+    <Link
+      href={`/requirement/${requirement.slug ?? requirement.id}`}
+      className="block rounded-card border border-dashed border-border bg-surface-muted/60 p-3.5 transition-colors hover:border-brand/40">
       <div className="flex items-center justify-between">
         <p className="text-sm font-bold text-brand">{budget}</p>
         <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[10px] font-medium text-ink-soft">
@@ -42,7 +47,7 @@ export function RequirementResultCard({
         <Fact capitalize>{labelize(requirement.category)}</Fact>
         <Fact capitalize>Posted by {labelize(requirement.poster_role)}</Fact>
       </div>
-    </div>
+    </Link>
   );
 }
 

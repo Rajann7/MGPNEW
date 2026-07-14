@@ -1,6 +1,5 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 import { expandSearchTerms } from "@/lib/search/config";
 
 // ============================================================
@@ -15,6 +14,51 @@ import { expandSearchTerms } from "@/lib/search/config";
 
 export const PAGE_SIZE = 20;
 export const MAX_PAGE = 500; // hard cap to prevent unbounded deep pagination
+
+// The search filter UI (src/lib/search/config.ts PROPERTY_TYPES) uses a
+// hyphenated, human vocabulary ("flat", "row-house", "co-working") that does
+// NOT match the canonical property_type enum stored in the DB
+// (src/lib/validators/property.ts PROPERTY_TYPES_BY_CATEGORY: "flat_apartment",
+// "row_house", "co_working_space"). Without normalization the type filter
+// silently matched zero rows. Most values differ only by hyphen→underscore;
+// the rest are explicit renames to the nearest canonical enum value.
+const PROPERTY_TYPE_ALIASES: Record<string, string> = {
+  flat: "flat_apartment",
+  house: "independent_house",
+  "residential-land": "non_agricultural_land",
+  "co-working": "co_working_space",
+  warehouse: "warehouse_commercial",
+  godown: "warehouse",
+  "na-land": "non_agricultural_land",
+  "investment-land": "open_land",
+  "restaurant-space": "commercial_building",
+  "clinic-space": "commercial_building",
+  "boys-pg": "pg",
+  "girls-pg": "pg",
+  "co-living": "paying_guest",
+  "student-hostel": "hostel",
+  "working-hostel": "hostel",
+};
+
+/** Map a search-UI property-type value to the canonical property_type enum. */
+export function normalizePropertyType(v: string): string {
+  const t = v.trim();
+  return PROPERTY_TYPE_ALIASES[t] ?? t.replace(/-/g, "_");
+}
+
+// The projects filter UI (config PROJECT tab) offers category/format intents
+// ("residential-project", "township") that do not match the canonical
+// project_type enum (src/lib/validators/project.ts). Map each to the correct
+// column + canonical value so the filter actually restricts results.
+const PROJECT_TYPE_FILTER: Record<
+  string,
+  { col: "category" | "project_type"; value: string }
+> = {
+  "residential-project": { col: "category", value: "residential" },
+  "commercial-project": { col: "category", value: "commercial" },
+  township: { col: "project_type", value: "township_project" },
+  "plotted-development": { col: "project_type", value: "plotting_project" },
+};
 
 export type SearchEntity = "property" | "project" | "requirement" | "all";
 
@@ -248,7 +292,7 @@ export async function searchPublicListings(
     if (params.type) {
       const types = params.type
         .split(",")
-        .map((t) => t.trim())
+        .map((t) => normalizePropertyType(t))
         .filter(Boolean)
         .slice(0, 20);
       if (types.length === 1) q = q.eq("property_type", types[0]);
@@ -329,7 +373,13 @@ export async function searchPublicListings(
     }
     if (params.purpose) q = q.eq("purpose", params.purpose);
     if (params.category) q = q.eq("category", params.category);
-    if (params.type) q = q.eq("project_type", params.type);
+    if (params.type) {
+      // The projects filter UI offers category/format intents that don't match
+      // the canonical project_type enum; map them to the correct column/value.
+      const m = PROJECT_TYPE_FILTER[params.type.trim()];
+      if (m) q = q.eq(m.col, m.value);
+      else q = q.eq("project_type", params.type.trim().replace(/-/g, "_"));
+    }
     if (params.city) q = q.ilike("city_text", `%${params.city}%`);
     if (params.locality) q = q.ilike("locality_text", `%${params.locality}%`);
     if (params.price_min !== undefined)
@@ -385,6 +435,17 @@ export async function searchPublicListings(
     if (params.q) q = q.ilike("title", `%${params.q}%`);
     if (params.purpose) q = q.eq("purpose", params.purpose);
     if (params.category) q = q.eq("category", params.category);
+    // The Requirements tab has no fixed category scope; its "Type" filter offers
+    // the canonical requirement-category enum, so apply it against `category`.
+    if (params.type) {
+      const cats = params.type
+        .split(",")
+        .map((t) => t.trim().replace(/-/g, "_"))
+        .filter(Boolean)
+        .slice(0, 10);
+      if (cats.length === 1) q = q.eq("category", cats[0]);
+      else if (cats.length > 1) q = q.in("category", cats);
+    }
     if (params.city) q = q.ilike("city_text", `%${params.city}%`);
     if (params.posted_by) q = q.eq("poster_role", params.posted_by);
     if (params.budget_min !== undefined)
@@ -408,6 +469,40 @@ export async function searchPublicListings(
     pageSize: PAGE_SIZE,
     hasMore,
   };
+}
+
+// ============================================================
+// Public media resolver — ordered public image URLs for a published listing.
+// Reads the `media` table through the anon client, which is gated by the
+// `media_public_read` RLS policy (bucket = 'media-public' AND parent listing
+// visibility_status = 'public'). Only images are returned; brochure PDFs live
+// in the private bucket and are never resolved to a public URL. Cover first,
+// then sort_order. Bounded. Empty array => detail gallery shows its honest
+// "photos not added yet" placeholder (never a fake/broken image).
+// ============================================================
+export async function getPublicListingImages(
+  ownerType: "property" | "project",
+  ownerId: string,
+  limit = 30
+): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("media")
+    .select("storage_path, is_cover, sort_order")
+    .eq("owner_type", ownerType)
+    .eq("owner_id", ownerId)
+    .eq("kind", "image")
+    .eq("bucket", "media-public")
+    .order("is_cover", { ascending: false })
+    .order("sort_order", { ascending: true })
+    .limit(limit);
+
+  const rows = (data ?? []) as { storage_path: string }[];
+  return rows.map(
+    (r) =>
+      supabase.storage.from("media-public").getPublicUrl(r.storage_path).data
+        .publicUrl
+  );
 }
 
 // ============================================================

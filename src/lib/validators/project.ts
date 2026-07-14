@@ -40,9 +40,13 @@ export const ProjectDraftSchema = z.object({
     .string()
     .min(3, "Project name must be at least 3 characters")
     .max(200),
-  project_type: z.enum(PROJECT_TYPES),
-  category: z.enum(PROJECT_CATEGORIES),
-  purpose: z.enum(PROJECT_PURPOSES),
+  // Draft is intentionally lenient (parity with PropertyDraftSchema): a project
+  // draft is created after Step 1 (name/purpose/category), but project_type is
+  // only collected on Step 2 — so classification must not block first-step
+  // persistence. ProjectSubmitSchema re-requires all three. (BUG-2026-07-14-01)
+  project_type: z.enum(PROJECT_TYPES).nullable().optional(),
+  category: z.enum(PROJECT_CATEGORIES).nullable().optional(),
+  purpose: z.enum(PROJECT_PURPOSES).nullable().optional(),
   short_description: z.string().max(300).optional(),
   description: z.string().max(10000).optional(),
 
@@ -138,6 +142,10 @@ export type ProjectWingInput = z.infer<typeof ProjectWingSchema>;
 
 export const ProjectSubmitSchema = ProjectDraftSchema.extend({
   project_name: z.string().min(3).max(200),
+  // Submit re-requires the classification that the draft allowed to be blank.
+  project_type: z.enum(PROJECT_TYPES),
+  category: z.enum(PROJECT_CATEGORIES),
+  purpose: z.enum(PROJECT_PURPOSES),
   city_text: z.string().min(2, "City is required").max(100),
   construction_status: z.enum([
     "pre_launch",
