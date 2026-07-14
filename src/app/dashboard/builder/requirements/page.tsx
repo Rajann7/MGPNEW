@@ -19,14 +19,18 @@ export default async function BuilderMatchingRequirementsPage() {
     <DashboardShellV2
       title="Matching Requirements"
       navItems={getBuilderNav("/dashboard/builder/requirements")}
-      mobileBackHref="/dashboard/builder"
+      mobileDrawerNav={getBuilderNav("/dashboard/builder/requirements")}
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/requirements")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"
     >
       <RequirementProposeClient
         items={result.success ? result.data.items : []}
-        emptyMessage="Publish a project first — matches are based on your published projects' city and category. No fake matches are ever shown."
+        emptyMessage={
+          result.success && result.data.hasPublishedProjects
+            ? "No matching requirements yet — matches are based on your published projects' city and category. No fake matches are ever shown."
+            : "Publish a project first — matches are based on your published projects' city and category. No fake matches are ever shown."
+        }
       />
     </DashboardShellV2>
   );

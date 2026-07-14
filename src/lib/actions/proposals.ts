@@ -288,7 +288,7 @@ export interface MatchingRequirement {
 }
 
 export async function getMatchingRequirements(): Promise<
-  ActionResult<{ items: MatchingRequirement[] }>
+  ActionResult<{ items: MatchingRequirement[]; hasPublishedProjects: boolean }>
 > {
   const profile = await getCurrentProfile();
   if (!profile) return { success: false, error: "AUTH_REQUIRED" };
@@ -312,7 +312,10 @@ export async function getMatchingRequirements(): Promise<
   ) as string[];
 
   if (cities.length === 0) {
-    return { success: true, data: { items: [] } };
+    return {
+      success: true,
+      data: { items: [], hasPublishedProjects: false },
+    };
   }
 
   const { data: requirements } = await admin
@@ -338,7 +341,7 @@ export async function getMatchingRequirements(): Promise<
       : `Same city (${r.city_text}) as your projects`,
   }));
 
-  return { success: true, data: { items } };
+  return { success: true, data: { items, hasPublishedProjects: true } };
 }
 
 // ============================================================

@@ -20,6 +20,7 @@ export default async function OwnerNotificationsPage() {
       title="Notifications"
       navItems={getOwnerNav("/dashboard/owner/notifications")}
       mobileBackHref="/dashboard/owner"
+      hideMobileTabBar
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/notifications")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

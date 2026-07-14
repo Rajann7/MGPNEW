@@ -26,13 +26,15 @@ export default async function BuilderAgentsPage() {
     <DashboardShellV2
       title="Agents / Team"
       navItems={getBuilderNav("/dashboard/builder/agents")}
-      mobileBackHref="/dashboard/builder"
+      mobileDrawerNav={getBuilderNav("/dashboard/builder/agents")}
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/agents")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"
     >
       {!res.success ? (
-        <Alert tone="danger">Couldn&apos;t load your team. Please refresh.</Alert>
+        <Alert tone="danger">
+          Couldn&apos;t load your team. Please refresh.
+        </Alert>
       ) : (
         <TeamClient initialMembers={res.data.items} />
       )}

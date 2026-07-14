@@ -25,6 +25,7 @@ export default async function GstProfilePage() {
       title="Billing / GST Details"
       navItems={getNavForRole(profile.public_role, "/dashboard/billing/gst")}
       mobileBackHref={`/dashboard/${profile.public_role}`}
+      hideMobileTabBar
       mobileTabs={getMobileTabsForRole(
         profile.public_role,
         "/dashboard/billing/gst"

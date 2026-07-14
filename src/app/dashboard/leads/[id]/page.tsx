@@ -64,6 +64,7 @@ export default async function LeadDetailPage({
       userName={profile.display_name ?? profile.full_name}
       userRole={getRoleLabel(profile.public_role)}
       mobileBackHref={activeHref}
+      hideMobileTabBar
     >
       <LeadDetailClient
         lead={detail.data.lead}

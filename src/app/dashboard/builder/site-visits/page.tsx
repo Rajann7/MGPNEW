@@ -24,7 +24,7 @@ export default async function BuilderSiteVisitsPage() {
     <DashboardShellV2
       title="Site Visits"
       breadcrumb={["Dashboard", "Site Visits"]}
-      mobileBackHref="/dashboard/builder"
+      mobileDrawerNav={getBuilderNav("/dashboard/builder/site-visits")}
       navItems={getBuilderNav("/dashboard/builder/site-visits")}
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/site-visits")}
       userName={profile.display_name ?? profile.full_name}

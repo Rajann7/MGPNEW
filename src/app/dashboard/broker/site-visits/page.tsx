@@ -24,7 +24,7 @@ export default async function BrokerSiteVisitsPage() {
     <DashboardShellV2
       title="Site Visits"
       breadcrumb={["Dashboard", "Site Visits"]}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/site-visits")}
       navItems={getBrokerNav("/dashboard/broker/site-visits")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/site-visits")}
       userName={profile.display_name ?? profile.full_name}

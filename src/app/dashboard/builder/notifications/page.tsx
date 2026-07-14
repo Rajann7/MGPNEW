@@ -19,7 +19,7 @@ export default async function BuilderNotificationsPage() {
     <DashboardShellV2
       title="Notifications"
       navItems={getBuilderNav("/dashboard/builder/notifications")}
-      mobileBackHref="/dashboard/builder"
+      mobileDrawerNav={getBuilderNav("/dashboard/builder/notifications")}
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/notifications")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

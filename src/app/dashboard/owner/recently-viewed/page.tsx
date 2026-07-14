@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/session";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import {
   getOwnerNav,
+  getOwnerDrawerNav,
   getMobileTabs,
 } from "@/components/dashboard/navConfig";
 import { ClearHistoryButton } from "@/components/public/ClearHistoryButton";
@@ -36,8 +37,8 @@ export default async function OwnerRecentlyViewedPage() {
     <DashboardShellV2
       title="Recently Viewed"
       breadcrumb={["Dashboard", "Recently Viewed"]}
-      mobileBackHref="/dashboard/owner"
       navItems={getOwnerNav("/dashboard/owner/recently-viewed")}
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/recently-viewed")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/recently-viewed")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

@@ -1,7 +1,11 @@
 import { Metadata } from "next";
 import { requireRole } from "@/lib/auth/session";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
-import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import {
+  getOwnerNav,
+  getOwnerDrawerNav,
+  getMobileTabs,
+} from "@/components/dashboard/navConfig";
 import { VerificationStatusPanel } from "@/components/dashboard/VerificationStatusPanel";
 
 export const metadata: Metadata = {
@@ -16,7 +20,7 @@ export default async function OwnerVerificationPage() {
     <DashboardShellV2
       title="Verification"
       navItems={getOwnerNav("/dashboard/owner/verification")}
-      mobileBackHref="/dashboard/owner"
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/verification")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/verification")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

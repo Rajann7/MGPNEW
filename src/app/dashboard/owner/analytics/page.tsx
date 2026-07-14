@@ -2,7 +2,11 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 import { requireRole } from "@/lib/auth/session";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
-import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import {
+  getOwnerNav,
+  getOwnerDrawerNav,
+  getMobileTabs,
+} from "@/components/dashboard/navConfig";
 import { AnalyticsOverview } from "@/components/dashboard/AnalyticsOverview";
 import { StatCardGradientSkeletonGrid } from "@/components/dashboard/StatCardGradient";
 
@@ -19,8 +23,8 @@ export default async function OwnerAnalyticsPage() {
     <DashboardShellV2
       title="Analytics"
       breadcrumb={["Dashboard", "Analytics"]}
-      mobileBackHref="/dashboard/owner"
       navItems={getOwnerNav("/dashboard/owner/analytics")}
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/analytics")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/analytics")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth/session";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
 import {
   getOwnerNav,
+  getOwnerDrawerNav,
   getBrokerNav,
   getBuilderNav,
   getMobileTabs,
@@ -29,12 +30,18 @@ export default async function ProfilePage() {
       : role === "broker"
         ? getBrokerNav
         : getBuilderNav;
+  const getDrawerNav =
+    role === "owner"
+      ? getOwnerDrawerNav
+      : role === "broker"
+        ? getBrokerNav
+        : getBuilderNav;
 
   return (
     <DashboardShellV2
       title="My Profile"
       navItems={getNav("/profile")}
-      mobileBackHref={`/dashboard/${role}`}
+      mobileDrawerNav={getDrawerNav("/profile")}
       mobileTabs={getMobileTabs(role, "/profile")}
       userName={profile.display_name ?? profile.full_name}
       userRole={ROLE_LABEL_MAP[profile.public_role] ?? profile.public_role}

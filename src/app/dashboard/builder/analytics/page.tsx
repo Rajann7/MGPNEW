@@ -19,7 +19,7 @@ export default async function BuilderAnalyticsPage() {
     <DashboardShellV2
       title="Project Analytics"
       breadcrumb={["Dashboard", "Analytics"]}
-      mobileBackHref="/dashboard/builder"
+      mobileDrawerNav={getBuilderNav("/dashboard/builder/analytics")}
       navItems={getBuilderNav("/dashboard/builder/analytics")}
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/analytics")}
       userName={profile.display_name ?? profile.full_name}

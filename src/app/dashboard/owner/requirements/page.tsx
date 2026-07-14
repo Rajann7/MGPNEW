@@ -4,7 +4,11 @@ import { requireRole } from "@/lib/auth/session";
 import { getMyRequirements } from "@/lib/actions/requirements";
 import { getProposalCountsByRequirement } from "@/lib/actions/proposals";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
-import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import {
+  getOwnerNav,
+  getOwnerDrawerNav,
+  getMobileTabs,
+} from "@/components/dashboard/navConfig";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { OwnerEntityCard } from "@/components/dashboard/OwnerEntityCard";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -39,12 +43,8 @@ export default async function OwnerRequirementsPage() {
     <DashboardShellV2
       title="My Requirements"
       breadcrumb={["Dashboard", "My Requirements"]}
-      mobileBackHref="/dashboard/owner"
-      mobileBackAction={{
-        href: "/dashboard/owner/requirements/new",
-        label: "Post Requirement",
-      }}
       navItems={getOwnerNav("/dashboard/owner/requirements")}
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/requirements")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/requirements")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

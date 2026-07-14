@@ -1,7 +1,11 @@
 import { Metadata } from "next";
 import { requireRole } from "@/lib/auth/session";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
-import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import {
+  getOwnerNav,
+  getOwnerDrawerNav,
+  getMobileTabs,
+} from "@/components/dashboard/navConfig";
 import { LeadListClient } from "@/components/leads/LeadListClient";
 import { LeadsTable, LeadsEmptyState } from "@/components/leads/LeadsTable";
 import { LeadStageTabs, type LeadStageTab } from "@/components/leads/LeadStageTabs";
@@ -53,8 +57,8 @@ export default async function OwnerLeadsPage({
     <DashboardShellV2
       title="Leads"
       breadcrumb={["Dashboard", "Leads"]}
-      mobileBackHref="/dashboard/owner"
       navItems={getOwnerNav("/dashboard/owner/leads")}
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/leads")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/leads")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

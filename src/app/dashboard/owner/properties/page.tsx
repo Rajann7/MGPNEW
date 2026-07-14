@@ -7,7 +7,11 @@ import {
 } from "@/lib/actions/properties";
 import { getLeadCountsByTarget } from "@/lib/actions/leads";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
-import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import {
+  getOwnerNav,
+  getOwnerDrawerNav,
+  getMobileTabs,
+} from "@/components/dashboard/navConfig";
 import { DashboardPageHeader } from "@/components/dashboard/DashboardPageHeader";
 import { StatusTabs, type StatusTab } from "@/components/dashboard/StatusTabs";
 import { OwnerEntityCard } from "@/components/dashboard/OwnerEntityCard";
@@ -112,12 +116,8 @@ export default async function OwnerPropertiesPage({
     <DashboardShellV2
       title="My Properties"
       breadcrumb={["Dashboard", "My Properties"]}
-      mobileBackHref="/dashboard/owner"
-      mobileBackAction={{
-        href: "/dashboard/owner/properties/new",
-        label: "Post Property",
-      }}
       navItems={getOwnerNav("/dashboard/owner/properties")}
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/properties")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/properties")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

@@ -33,6 +33,7 @@ export default async function EditBannerAdPage({
       title="Edit Banner Ad"
       navItems={getBuilderNav("/dashboard/builder/ads")}
       mobileBackHref="/dashboard/builder/ads"
+      hideMobileTabBar
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/ads")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

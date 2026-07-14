@@ -1,7 +1,11 @@
 import { Metadata } from "next";
 import { requireRole } from "@/lib/auth/session";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
-import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import {
+  getOwnerNav,
+  getOwnerDrawerNav,
+  getMobileTabs,
+} from "@/components/dashboard/navConfig";
 import { SavedItemsClient } from "@/components/saved/SavedItemsClient";
 import { listSavedItems } from "@/lib/actions/saved";
 
@@ -19,7 +23,7 @@ export default async function OwnerSavedPage() {
     <DashboardShellV2
       title="Saved Items"
       navItems={getOwnerNav("/dashboard/owner/saved")}
-      mobileBackHref="/dashboard/owner"
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/saved")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/saved")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

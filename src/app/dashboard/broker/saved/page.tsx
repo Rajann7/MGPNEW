@@ -19,7 +19,7 @@ export default async function BrokerSavedPage() {
     <DashboardShellV2
       title="Saved Items"
       navItems={getBrokerNav("/dashboard/broker/saved")}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/saved")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/saved")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

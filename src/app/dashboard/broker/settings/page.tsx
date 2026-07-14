@@ -17,7 +17,7 @@ export default async function BrokerSettingsPage() {
     <DashboardShellV2
       title="Settings"
       breadcrumb={["Dashboard", "Settings"]}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/settings")}
       navItems={getBrokerNav("/dashboard/broker/settings")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/settings")}
       userName={profile.display_name ?? profile.full_name}

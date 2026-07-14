@@ -26,7 +26,7 @@ export default async function BrokerLeadsPage() {
     <DashboardShellV2
       title="Leads / CRM"
       navItems={getBrokerNav("/dashboard/broker/leads")}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/leads")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/leads")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

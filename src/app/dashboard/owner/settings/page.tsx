@@ -1,7 +1,11 @@
 import { Metadata } from "next";
 import { requireRole } from "@/lib/auth/session";
 import { DashboardShellV2 } from "@/components/dashboard/DashboardShellV2";
-import { getOwnerNav, getMobileTabs } from "@/components/dashboard/navConfig";
+import {
+  getOwnerNav,
+  getOwnerDrawerNav,
+  getMobileTabs,
+} from "@/components/dashboard/navConfig";
 import { SettingsClient } from "@/components/dashboard/SettingsClient";
 
 export const metadata: Metadata = {
@@ -17,8 +21,8 @@ export default async function OwnerSettingsPage() {
     <DashboardShellV2
       title="Settings"
       breadcrumb={["Dashboard", "Settings"]}
-      mobileBackHref="/dashboard/owner"
       navItems={getOwnerNav("/dashboard/owner/settings")}
+      mobileDrawerNav={getOwnerDrawerNav("/dashboard/owner/settings")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/settings")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

@@ -19,7 +19,7 @@ export default async function BrokerAnalyticsPage() {
     <DashboardShellV2
       title="Analytics"
       breadcrumb={["Dashboard", "Analytics"]}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/analytics")}
       navItems={getBrokerNav("/dashboard/broker/analytics")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/analytics")}
       userName={profile.display_name ?? profile.full_name}

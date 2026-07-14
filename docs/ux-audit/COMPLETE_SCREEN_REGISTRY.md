@@ -96,27 +96,29 @@ Batch 1C (2026-07-14) live-audited this role.
 
 ## E. Builder Dashboard (`/dashboard/builder/**`) — 19 routes
 
+Batch 1D (2026-07-14) live-audited this role. All mobile-header classifications below reflect the corrected root/child rule (see [UX_DECISION_LOG.md](UX_DECISION_LOG.md)).
+
 | ID | Route | Type | Status |
 |---|---|---|---|
-| BLD-01 | `/dashboard/builder` | dashboard-home | AUDITED (home layout aligned to owner pattern this session) |
-| BLD-02 | `/dashboard/builder/projects` | list | DISCOVERED |
-| BLD-03 | `/dashboard/builder/projects/new` | create | DISCOVERED |
-| BLD-04 | `/dashboard/builder/projects/[id]/edit` | edit | DISCOVERED |
-| BLD-05 | `/dashboard/builder/projects/[id]/units` | list | DISCOVERED |
-| BLD-06 | `/dashboard/builder/projects/[id]/construction` | detail | DISCOVERED |
-| BLD-07 | `/dashboard/builder/requirements` | list | DISCOVERED |
-| BLD-08 | `/dashboard/builder/leads` | list | DISCOVERED |
-| BLD-09 | `/dashboard/builder/agents` | list | DISCOVERED |
-| BLD-10 | `/dashboard/builder/ads` | list | DISCOVERED |
-| BLD-11 | `/dashboard/builder/ads/new` | create | DISCOVERED |
-| BLD-12 | `/dashboard/builder/ads/[id]/edit` | edit | DISCOVERED |
-| BLD-13 | `/dashboard/builder/site-visits` | list | DISCOVERED |
-| BLD-14 | `/dashboard/builder/analytics` | dashboard | DISCOVERED |
-| BLD-15 | `/dashboard/builder/billing` | settings | DISCOVERED |
-| BLD-16 | `/dashboard/builder/notifications` | list | DISCOVERED |
-| BLD-17 | `/dashboard/builder/settings` | settings | DISCOVERED |
-| BLD-18 | `/dashboard/builder/verification` | settings | DISCOVERED |
-| BLD-19 | `/dashboard/builder/public-profile` | settings | DISCOVERED |
+| BLD-01 | `/dashboard/builder` | dashboard-home | VERIFIED (hamburger drawer confirmed live, ISS-0010) |
+| BLD-02 | `/dashboard/builder/projects` | list (root) | VERIFIED (real 2-project list, Units/Construction/Edit actions, drawer nav confirmed) |
+| BLD-03 | `/dashboard/builder/projects/new` | create (child) | VERIFIED (9-step wizard, ISS-0014/0015 header fix confirmed, single clean header no duplication) |
+| BLD-04 | `/dashboard/builder/projects/[id]/edit` | edit (child) | VERIFIED (ISS-0014 P0 navigation-trap fix confirmed live — real mobile header now present) |
+| BLD-05 | `/dashboard/builder/projects/[id]/units` | list (child) | VERIFIED (real wing/floor/unit config form, live calculation) |
+| BLD-06 | `/dashboard/builder/projects/[id]/construction` | detail (child) | VERIFIED (real milestone tracker, honest "nothing is auto-generated" copy) |
+| BLD-07 | `/dashboard/builder/requirements` | list (root) | VERIFIED (ISS-0016 misleading empty-state fix confirmed live) |
+| BLD-08 | `/dashboard/builder/leads` | list (root) | VERIFIED (Project Leads / My Inquiries sections, honest empty state) |
+| BLD-09 | `/dashboard/builder/agents` | list (root) | VERIFIED (real team member, permission chips, ISS-0017 dropdown-clipping fix confirmed live) |
+| BLD-10 | `/dashboard/builder/ads` | list (root) | VERIFIED (honest Razorpay Setup-Required disclaimer, no-fake-analytics copy) |
+| BLD-11 | `/dashboard/builder/ads/new` | create (child) | VERIFIED (real project selector, live Gujarat city-targeting list) |
+| BLD-12 | `/dashboard/builder/ads/[id]/edit` | edit (child) | DISCOVERED (not live-tested this batch — no existing ad to edit) |
+| BLD-13 | `/dashboard/builder/site-visits` | list (root) | VERIFIED (real Accepted/Rescheduled visits) |
+| BLD-14 | `/dashboard/builder/analytics` | dashboard (root) | VERIFIED (real unit counts from BLD-05 config, honest impressions state) |
+| BLD-15 | `/dashboard/builder/billing` | settings (root) | VERIFIED (real free-plan data; ISS-0018 usage-counter gap found+logged, not fixed) |
+| BLD-16 | `/dashboard/builder/notifications` | list (root) | VERIFIED (root for Builder per its own nav list, unlike Owner) |
+| BLD-17 | `/dashboard/builder/settings` | settings (root) | VERIFIED (real language toggle tested, save confirmation) |
+| BLD-18 | `/dashboard/builder/verification` | settings (root) | VERIFIED (honest "Not Started" Setup-Required state) |
+| BLD-19 | `/dashboard/builder/public-profile` | settings (root) | VERIFIED (ISS-0019 stale-copy issue found+logged, not fixed — needs DB-layer investigation) |
 
 ## F. Admin / Staff (`/admin/**`) — 20 routes
 

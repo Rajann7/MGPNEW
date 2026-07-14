@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ShieldCheck, Check } from "lucide-react";
+import Link from "next/link";
+import { ShieldCheck, Check, ArrowLeft } from "lucide-react";
 import {
   createProjectDraft,
   updateProjectDraft,
@@ -316,7 +317,37 @@ export function ProjectForm({ existing, mode }: Props) {
   const reraValid = !form.rera_number || RERA_PATTERN.test(form.rera_number);
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-2xl pb-20 lg:pb-0">
+      {/* Mobile/tablet contextual header — WizardShell hides the dashboard's
+       * own topbar/bottom-nav on mobile in favor of this, same as
+       * PropertyForm (§12-14). Without it this screen was a dead end below
+       * `lg`: no title, no Back, no bottom nav — nothing to leave by except
+       * the browser Back button. */}
+      <div className="-mx-4 mb-4 flex h-14 items-center justify-between border-b border-zinc-100 bg-white px-4 lg:hidden">
+        {step > 1 ? (
+          <button
+            type="button"
+            onClick={handleBack}
+            aria-label="Back"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        ) : (
+          <Link
+            href="/dashboard/builder/projects"
+            aria-label="Back to My Projects"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+        )}
+        <span className="truncate text-sm font-semibold text-zinc-900">
+          {mode === "edit" ? "Edit Project" : "Post a Project"}
+        </span>
+        <span className="w-8" aria-hidden="true" />
+      </div>
+
       <Stepper steps={STEPS} current={step} />
 
       {serverError && (

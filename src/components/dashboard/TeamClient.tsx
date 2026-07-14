@@ -287,7 +287,7 @@ function MemberMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-20 mt-1 w-40 rounded-xl border border-border bg-surface py-1 shadow-lg">
+          <div className="absolute left-0 z-20 mt-1 w-40 rounded-xl border border-border bg-surface py-1 shadow-lg">
             {member.status !== "active" && (
               <button type="button" disabled={disabled} onClick={() => { setOpen(false); onStatus(member, "active"); }} className="block w-full px-3 py-2 text-left text-xs text-ink hover:bg-bg disabled:opacity-50">
                 Activate

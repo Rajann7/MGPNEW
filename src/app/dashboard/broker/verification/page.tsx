@@ -16,7 +16,7 @@ export default async function BrokerVerificationPage() {
     <DashboardShellV2
       title="Verification"
       navItems={getBrokerNav("/dashboard/broker/verification")}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/verification")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/verification")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

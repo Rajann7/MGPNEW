@@ -34,7 +34,7 @@ export default async function BrokerRecentlyViewedPage() {
     <DashboardShellV2
       title="Recently Viewed"
       breadcrumb={["Dashboard", "Recently Viewed"]}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/recently-viewed")}
       navItems={getBrokerNav("/dashboard/broker/recently-viewed")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/recently-viewed")}
       userName={profile.display_name ?? profile.full_name}
@@ -49,8 +49,8 @@ export default async function BrokerRecentlyViewedPage() {
           <History className="mb-3 h-9 w-9 text-muted" aria-hidden="true" />
           <p className="text-sm font-semibold text-ink">Nothing viewed yet</p>
           <p className="mt-1 max-w-xs text-xs text-muted">
-            Listings and projects you open will show up here so you can jump back
-            to them.
+            Listings and projects you open will show up here so you can jump
+            back to them.
           </p>
           <Link
             href="/search"
@@ -88,7 +88,10 @@ export default async function BrokerRecentlyViewedPage() {
                 "flex items-center gap-3 rounded-2xl border border-border bg-surface p-3";
               return href ? (
                 <li key={it.id}>
-                  <Link href={href} className={`${cls} transition-colors hover:bg-bg`}>
+                  <Link
+                    href={href}
+                    className={`${cls} transition-colors hover:bg-bg`}
+                  >
                     {inner}
                   </Link>
                 </li>

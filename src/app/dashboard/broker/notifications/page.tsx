@@ -19,7 +19,7 @@ export default async function BrokerNotificationsPage() {
     <DashboardShellV2
       title="Notifications"
       navItems={getBrokerNav("/dashboard/broker/notifications")}
-      mobileBackHref="/dashboard/broker"
+      mobileDrawerNav={getBrokerNav("/dashboard/broker/notifications")}
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/notifications")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

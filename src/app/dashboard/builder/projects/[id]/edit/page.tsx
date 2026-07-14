@@ -71,7 +71,7 @@ export default async function EditProjectPage({
 
   return (
     <WizardShell {...shellProps}>
-      <div className="mb-6 hidden sm:block">
+      <div className="mb-6 hidden lg:block">
         <h1 className="text-xl font-bold text-ink">Edit Project</h1>
         <p className="text-sm text-ink-soft">
           {["published", "paused", "rejected"].includes(project.status ?? "")

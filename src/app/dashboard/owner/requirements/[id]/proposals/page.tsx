@@ -38,6 +38,7 @@ export default async function RequirementProposalsPage({
       title="Proposals"
       breadcrumb={["Dashboard", "My Requirements", "Proposals"]}
       mobileBackHref="/dashboard/owner/requirements"
+      hideMobileTabBar
       navItems={getOwnerNav("/dashboard/owner/requirements")}
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/requirements")}
       userName={profile.display_name ?? profile.full_name}

@@ -17,7 +17,7 @@ export default async function BuilderSettingsPage() {
     <DashboardShellV2
       title="Settings"
       breadcrumb={["Dashboard", "Settings"]}
-      mobileBackHref="/dashboard/builder"
+      mobileDrawerNav={getBuilderNav("/dashboard/builder/settings")}
       navItems={getBuilderNav("/dashboard/builder/settings")}
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/settings")}
       userName={profile.display_name ?? profile.full_name}

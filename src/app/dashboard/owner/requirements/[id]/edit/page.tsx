@@ -29,6 +29,7 @@ export default async function EditRequirementPage({
   const shellProps = {
     navItems: getOwnerNav("/dashboard/owner/requirements"),
     mobileBackHref: "/dashboard/owner/requirements",
+    hideMobileTabBar: true,
     mobileTabs: getMobileTabs("owner", "/dashboard/owner/requirements"),
     userName: profile.display_name ?? profile.full_name,
     userRole: "Owner",
