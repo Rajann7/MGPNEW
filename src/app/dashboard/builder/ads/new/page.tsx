@@ -23,6 +23,7 @@ export default async function NewBannerAdPage() {
     <DashboardShellV2
       title="New Banner Ad"
       navItems={getBuilderNav("/dashboard/builder/ads")}
+      mobileBackHref="/dashboard/builder/ads"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/ads")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

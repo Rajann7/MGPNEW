@@ -30,6 +30,7 @@ export default async function OwnerBillingPage() {
     <DashboardShellV2
       title="Billing / Plan"
       navItems={getOwnerNav("/dashboard/owner/billing")}
+      mobileBackHref="/dashboard/owner"
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/billing")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

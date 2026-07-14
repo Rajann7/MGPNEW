@@ -19,6 +19,7 @@ export default async function BuilderNotificationsPage() {
     <DashboardShellV2
       title="Notifications"
       navItems={getBuilderNav("/dashboard/builder/notifications")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/notifications")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"
@@ -26,6 +27,7 @@ export default async function BuilderNotificationsPage() {
       <NotificationListClient
         items={result.success ? result.data.items : []}
         unreadCount={result.success ? result.data.unreadCount : 0}
+        role="builder"
       />
     </DashboardShellV2>
   );

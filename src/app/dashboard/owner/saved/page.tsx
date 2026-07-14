@@ -19,6 +19,7 @@ export default async function OwnerSavedPage() {
     <DashboardShellV2
       title="Saved Items"
       navItems={getOwnerNav("/dashboard/owner/saved")}
+      mobileBackHref="/dashboard/owner"
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/saved")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

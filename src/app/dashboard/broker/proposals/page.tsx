@@ -28,6 +28,7 @@ export default async function BrokerProposalsPage() {
     <DashboardShellV2
       title="Proposals"
       navItems={getBrokerNav("/dashboard/broker/proposals")}
+      mobileBackHref="/dashboard/broker"
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/proposals")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

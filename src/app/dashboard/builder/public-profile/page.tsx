@@ -35,6 +35,7 @@ export default async function BuilderPublicProfilePage() {
     <DashboardShellV2
       title="Company Microsite"
       navItems={getBuilderNav("/dashboard/builder/public-profile")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/public-profile")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

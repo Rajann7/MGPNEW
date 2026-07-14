@@ -16,6 +16,7 @@ export default async function NewProjectPage() {
   const profile = await requireRole("builder");
   const shellProps = {
     navItems: getBuilderNav("/dashboard/builder/projects"),
+    mobileBackHref: "/dashboard/builder/projects",
     mobileTabs: getMobileTabs("builder", "/dashboard/builder/projects"),
     userName: profile.display_name ?? profile.full_name,
     userRole: "Builder / Developer",

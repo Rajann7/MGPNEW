@@ -323,6 +323,9 @@ export default async function ProjectDetailPage({ params }: Props) {
                   contact={contactState}
                   revealTargetType="project"
                   existingInquiry={existingInquiry}
+                  isOwnListing={Boolean(
+                    profile && project.builder_profile_id === profile.id
+                  )}
                 />
               </div>
             </div>

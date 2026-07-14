@@ -26,6 +26,7 @@ export default async function BuilderAgentsPage() {
     <DashboardShellV2
       title="Agents / Team"
       navItems={getBuilderNav("/dashboard/builder/agents")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/agents")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

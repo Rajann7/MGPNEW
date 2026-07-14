@@ -19,6 +19,7 @@ export default async function BrokerPublicProfilePage() {
     <DashboardShellV2
       title="Public Profile"
       navItems={getBrokerNav("/dashboard/broker/public-profile")}
+      mobileBackHref="/dashboard/broker"
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/public-profile")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

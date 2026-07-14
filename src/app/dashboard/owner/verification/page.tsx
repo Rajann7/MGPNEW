@@ -16,6 +16,7 @@ export default async function OwnerVerificationPage() {
     <DashboardShellV2
       title="Verification"
       navItems={getOwnerNav("/dashboard/owner/verification")}
+      mobileBackHref="/dashboard/owner"
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/verification")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"

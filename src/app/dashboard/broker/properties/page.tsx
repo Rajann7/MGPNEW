@@ -34,6 +34,7 @@ export default async function BrokerPropertiesPage() {
     <DashboardShellV2
       title="My Listings"
       navItems={getBrokerNav("/dashboard/broker/properties")}
+      mobileBackHref="/dashboard/broker"
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/properties")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

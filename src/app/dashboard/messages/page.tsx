@@ -23,6 +23,7 @@ export default async function MessagesPage() {
     <DashboardShellV2
       title="Messages"
       navItems={getNavForRole(profile.public_role, "/dashboard/messages")}
+      mobileBackHref={`/dashboard/${profile.public_role}`}
       mobileTabs={getMobileTabsForRole(
         profile.public_role,
         "/dashboard/messages"

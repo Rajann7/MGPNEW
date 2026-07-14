@@ -270,6 +270,9 @@ export default async function PropertyDetailPage({ params }: Props) {
               poster={posterInfo}
               contact={contactState}
               revealTargetType="property"
+              isOwnListing={Boolean(
+                profile && property.owner_profile_id === profile.id
+              )}
             />
           </div>
         </div>

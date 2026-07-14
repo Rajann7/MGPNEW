@@ -51,6 +51,13 @@ interface Props {
   revealTargetType: RevealTargetType;
   /** The viewer's existing inquiry on this listing (server-fetched), if any. */
   existingInquiry?: MyInquiryStatus | null;
+  /** True when the logged-in viewer is the poster of this exact listing.
+   * Server already rejects self-enquiry/self-reveal (SELF_ACTION /
+   * "cannot inquire about your own listing"), but the CTA bar must not let
+   * a poster fill out the whole enquiry form only to be rejected at submit —
+   * that's a dead-end. Hide Call/Enquire/Reveal proactively instead,
+   * mirroring the existing isRestrictedRole honest-disabled pattern. */
+  isOwnListing?: boolean;
 }
 
 /** Ported enquiry flow from the previous project: "Send Enquiry" opens a form
@@ -69,6 +76,7 @@ export function DetailCTABar({
   contact,
   revealTargetType,
   existingInquiry = null,
+  isOwnListing = false,
 }: Props) {
   const router = useRouter();
   const { openAuth } = useAuthModal();
@@ -222,48 +230,57 @@ export function DetailCTABar({
           </div>
         </div>
 
-        {revealedPhone ? (
-          // Explicit reveal completed — the real number, never a placeholder.
-          <a
-            href={`tel:${revealedPhone}`}
-            className="mt-3.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            <Phone className="h-4 w-4" />
-            {revealedPhone}
-          </a>
+        {isOwnListing ? (
+          <p className="mt-3.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-center text-xs text-zinc-500">
+            This is your listing — Call and Enquire are shown to other
+            visitors only.
+          </p>
         ) : (
           <>
-            {contact.masked && (
-              <p className="mt-3.5 text-center text-sm font-medium tracking-wide text-zinc-500">
-                {contact.masked}
+            {revealedPhone ? (
+              // Explicit reveal completed — the real number, never a placeholder.
+              <a
+                href={`tel:${revealedPhone}`}
+                className="mt-3.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              >
+                <Phone className="h-4 w-4" />
+                {revealedPhone}
+              </a>
+            ) : (
+              <>
+                {contact.masked && (
+                  <p className="mt-3.5 text-center text-sm font-medium tracking-wide text-zinc-500">
+                    {contact.masked}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRevealClick()}
+                  disabled={revealPending}
+                  className="mt-2 w-full rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+                >
+                  {revealPending ? "Revealing…" : "Reveal number"}
+                </button>
+                {revealNote && (
+                  <p className="mt-1.5 text-[11px] text-zinc-400">{revealNote}</p>
+                )}
+              </>
+            )}
+
+            <div className="mt-3">
+              {inquiryStatus ?? (isRestrictedRole ? null : enquireButton("w-full"))}
+            </div>
+            {isRestrictedRole && !inquiry && (
+              <p className="mt-2 text-[11px] text-zinc-500">
+                Enquiries can be sent from Owner accounts only.
               </p>
             )}
-            <button
-              type="button"
-              onClick={() => handleRevealClick()}
-              disabled={revealPending}
-              className="mt-2 w-full rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
-            >
-              {revealPending ? "Revealing…" : "Reveal number"}
-            </button>
-            {revealNote && (
-              <p className="mt-1.5 text-[11px] text-zinc-400">{revealNote}</p>
+            {!viewer.isLoggedIn && (
+              <p className="mt-2 text-[11px] text-zinc-400">
+                Login required to send an enquiry or view contact details.
+              </p>
             )}
           </>
-        )}
-
-        <div className="mt-3">
-          {inquiryStatus ?? (isRestrictedRole ? null : enquireButton("w-full"))}
-        </div>
-        {isRestrictedRole && !inquiry && (
-          <p className="mt-2 text-[11px] text-zinc-500">
-            Enquiries can be sent from Owner accounts only.
-          </p>
-        )}
-        {!viewer.isLoggedIn && (
-          <p className="mt-2 text-[11px] text-zinc-400">
-            Login required to send an enquiry or view contact details.
-          </p>
         )}
       </div>
 
@@ -273,39 +290,47 @@ export function DetailCTABar({
           actions on this screen (real bug: tray intercepted all clicks on
           this bar when any items were in the visitor's compare list). */}
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-zinc-100 bg-white/95 px-4 py-3 shadow-[0_-2px_12px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden">
-        {inquiryStatus ?? (
-          <div className="flex items-center gap-2.5">
-            {revealedPhone ? (
-              <a
-                href={`tel:${revealedPhone}`}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
-              >
-                <Phone className="h-4 w-4" />
-                Call
-              </a>
-            ) : (
-              // Not yet revealed: Call triggers the reveal/auth flow first —
-              // no tel: URI ever sits in the initial DOM (spec §60).
-              <button
-                type="button"
-                onClick={() => handleRevealClick(true)}
-                disabled={revealPending}
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
-              >
-                <Phone className="h-4 w-4" />
-                {revealPending ? "…" : "Call"}
-              </button>
-            )}
-            {isRestrictedRole ? (
-              <div className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-center">
-                <p className="text-xs text-zinc-500">Owner accounts only</p>
-              </div>
-            ) : (
-              enquireButton("flex-1")
-            )}
+        {isOwnListing ? (
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-center">
+            <p className="text-xs text-zinc-500">
+              This is your listing — Call/Enquire show to other visitors only.
+            </p>
           </div>
+        ) : (
+          inquiryStatus ?? (
+            <div className="flex items-center gap-2.5">
+              {revealedPhone ? (
+                <a
+                  href={`tel:${revealedPhone}`}
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50"
+                >
+                  <Phone className="h-4 w-4" />
+                  Call
+                </a>
+              ) : (
+                // Not yet revealed: Call triggers the reveal/auth flow first —
+                // no tel: URI ever sits in the initial DOM (spec §60).
+                <button
+                  type="button"
+                  onClick={() => handleRevealClick(true)}
+                  disabled={revealPending}
+                  className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-200 px-4 py-2.5 text-sm font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+                >
+                  <Phone className="h-4 w-4" />
+                  {revealPending ? "…" : "Call"}
+                </button>
+              )}
+              {isRestrictedRole ? (
+                <div className="flex-1 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-center">
+                  <p className="text-xs text-zinc-500">Owner accounts only</p>
+                </div>
+              ) : (
+                enquireButton("flex-1")
+              )}
+            </div>
+          )
         )}
-        {!revealedPhone && revealNote && (
+        {!isOwnListing && !revealedPhone && revealNote && (
           <p className="mt-1.5 text-center text-[11px] text-zinc-400">
             {revealNote}
           </p>

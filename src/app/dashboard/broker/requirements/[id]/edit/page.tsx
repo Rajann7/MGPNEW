@@ -22,6 +22,7 @@ export default async function EditBrokerRequirementPage({
     <DashboardShellV2
       title="Edit Requirement"
       navItems={getBrokerNav("/dashboard/broker/requirements")}
+      mobileBackHref="/dashboard/broker/requirements"
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/requirements")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

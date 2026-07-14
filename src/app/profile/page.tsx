@@ -34,6 +34,7 @@ export default async function ProfilePage() {
     <DashboardShellV2
       title="My Profile"
       navItems={getNav("/profile")}
+      mobileBackHref={`/dashboard/${role}`}
       mobileTabs={getMobileTabs(role, "/profile")}
       userName={profile.display_name ?? profile.full_name}
       userRole={ROLE_LABEL_MAP[profile.public_role] ?? profile.public_role}

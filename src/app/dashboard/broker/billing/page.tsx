@@ -30,6 +30,7 @@ export default async function BrokerBillingPage() {
     <DashboardShellV2
       title="Billing / Plan"
       navItems={getBrokerNav("/dashboard/broker/billing")}
+      mobileBackHref="/dashboard/broker"
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/billing")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"

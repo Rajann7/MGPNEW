@@ -16,6 +16,7 @@ export default async function BuilderVerificationPage() {
     <DashboardShellV2
       title="Verification / RERA"
       navItems={getBuilderNav("/dashboard/builder/verification")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/verification")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

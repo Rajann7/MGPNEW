@@ -30,6 +30,7 @@ export default async function BuilderBillingPage() {
     <DashboardShellV2
       title="Billing / Plan"
       navItems={getBuilderNav("/dashboard/builder/billing")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/billing")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

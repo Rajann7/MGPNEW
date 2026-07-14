@@ -16,6 +16,7 @@ export default async function NewRequirementPage() {
   const profile = await requireRole("owner");
   const shellProps = {
     navItems: getOwnerNav("/dashboard/owner/requirements"),
+    mobileBackHref: "/dashboard/owner/requirements",
     mobileTabs: getMobileTabs("owner", "/dashboard/owner/requirements"),
     userName: profile.display_name ?? profile.full_name,
     userRole: "Owner",

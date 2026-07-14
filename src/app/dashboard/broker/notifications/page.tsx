@@ -19,6 +19,7 @@ export default async function BrokerNotificationsPage() {
     <DashboardShellV2
       title="Notifications"
       navItems={getBrokerNav("/dashboard/broker/notifications")}
+      mobileBackHref="/dashboard/broker"
       mobileTabs={getMobileTabs("broker", "/dashboard/broker/notifications")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Broker / Agent"
@@ -26,6 +27,7 @@ export default async function BrokerNotificationsPage() {
       <NotificationListClient
         items={result.success ? result.data.items : []}
         unreadCount={result.success ? result.data.unreadCount : 0}
+        role="broker"
       />
     </DashboardShellV2>
   );

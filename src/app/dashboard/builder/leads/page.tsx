@@ -26,6 +26,7 @@ export default async function BuilderLeadsPage() {
     <DashboardShellV2
       title="Project Leads"
       navItems={getBuilderNav("/dashboard/builder/leads")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/leads")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

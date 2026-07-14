@@ -19,6 +19,7 @@ export default async function BuilderMatchingRequirementsPage() {
     <DashboardShellV2
       title="Matching Requirements"
       navItems={getBuilderNav("/dashboard/builder/requirements")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/requirements")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

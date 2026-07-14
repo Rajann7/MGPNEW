@@ -19,6 +19,7 @@ export default async function OwnerNotificationsPage() {
     <DashboardShellV2
       title="Notifications"
       navItems={getOwnerNav("/dashboard/owner/notifications")}
+      mobileBackHref="/dashboard/owner"
       mobileTabs={getMobileTabs("owner", "/dashboard/owner/notifications")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Owner"
@@ -26,6 +27,7 @@ export default async function OwnerNotificationsPage() {
       <NotificationListClient
         items={result.success ? result.data.items : []}
         unreadCount={result.success ? result.data.unreadCount : 0}
+        role="owner"
       />
     </DashboardShellV2>
   );

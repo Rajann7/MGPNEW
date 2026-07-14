@@ -28,6 +28,7 @@ export default async function BuilderBannerAdsPage() {
     <DashboardShellV2
       title="Banner Ads"
       navItems={getBuilderNav("/dashboard/builder/ads")}
+      mobileBackHref="/dashboard/builder"
       mobileTabs={getMobileTabs("builder", "/dashboard/builder/ads")}
       userName={profile.display_name ?? profile.full_name}
       userRole="Builder / Developer"

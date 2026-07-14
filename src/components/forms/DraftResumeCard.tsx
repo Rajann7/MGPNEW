@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import type { Property } from "@/types";
 
 const TOTAL_STEPS = 9;
@@ -21,6 +21,7 @@ export function DraftResumeCard({
   startNewHref?: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const stepsDone = Math.min(TOTAL_STEPS, Math.max(1, draft.current_step ?? 1));
   const lastEdited = draft.updated_at
     ? new Date(draft.updated_at).toLocaleDateString("en-IN", {
@@ -32,12 +33,13 @@ export function DraftResumeCard({
     : null;
 
   function handleContinue() {
-    if (continueHref) router.push(continueHref);
-    else router.push(`?draft=${draft.id}`);
+    // A bare query-string href (no pathname) is unreliable with the App
+    // Router's client-side push — confirmed dead click in live verification
+    // (Batch 1B, ISS-0006). Always resolve against the current pathname.
+    router.push(continueHref ?? `${pathname}?draft=${draft.id}`);
   }
   function handleStartNew() {
-    if (startNewHref) router.push(startNewHref);
-    else router.push("?fresh=1");
+    router.push(startNewHref ?? `${pathname}?fresh=1`);
   }
 
   return (

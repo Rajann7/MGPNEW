@@ -15,9 +15,14 @@ import type { AppNotification } from "@/types";
 export function NotificationListClient({
   items,
   unreadCount,
+  role,
 }: {
   items: AppNotification[];
   unreadCount: number;
+  /** Current viewer's public role — used to build a safe fallback
+   * destination for notification types with no single-entity detail route
+   * (site visits, proposals). Never guessed from notification content. */
+  role: "owner" | "broker" | "builder";
 }) {
   const router = useRouter();
   const [list, setList] = useState(items);
@@ -33,8 +38,23 @@ export function NotificationListClient({
           )
         );
       }
+      // Every notification must navigate somewhere real (no dead clicks).
+      // "lead"/"message_thread" have a direct detail route; the rest have
+      // no single-entity detail page in this build, so they route to the
+      // nearest real list that shows the item — an honest fallback, never
+      // a no-op (CLAUDE.md notification rules: click must navigate).
       if (n.target_type === "lead" || n.target_type === "message_thread") {
         router.push(`/dashboard/leads/${n.target_id}`);
+      } else if (n.target_type === "site_visit") {
+        router.push(`/dashboard/${role}/site-visits`);
+      } else if (n.target_type === "proposal") {
+        router.push(
+          role === "broker"
+            ? "/dashboard/broker/proposals"
+            : `/dashboard/${role}/requirements`
+        );
+      } else {
+        router.push(`/dashboard/${role}`);
       }
     });
   }
