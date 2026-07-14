@@ -39,11 +39,11 @@ Do not mark `VERIFIED` without an actual browser-driven verification pass record
 
 | ID | Route | Role | Type | Status |
 |---|---|---|---|---|
-| SHR-01 | `/dashboard` | All-authenticated | system (role redirect) | DISCOVERED |
-| SHR-02 | `/dashboard/messages` | All-authenticated | list | DISCOVERED (nav-fix applied/build-verified only, not live-clicked-through) |
+| SHR-01 | `/dashboard` | All-authenticated | system (role redirect) | NOT_APPLICABLE (pure server-side redirect dispatcher, no UI to audit — code-reviewed in Phase 0, confirms `getCurrentProfile()` + `redirect()`, no further live verification needed) |
+| SHR-02 | `/dashboard/messages` | All-authenticated | list | VERIFIED (thread list, opened "Test Broker" thread → routes to Lead Detail messages panel, sent a real test message successfully, Back header confirmed live) |
 | SHR-03 | `/dashboard/leads/[id]` | All-authenticated | detail | VERIFIED (Batch 1B — ISS-0007 fixed: mobile Back header added; content/CRM-stage/contact-hidden state confirmed live as Owner) |
 | SHR-04 | `/dashboard/billing/gst` | All-authenticated | settings | VERIFIED (Batch 1B — real form, ISS-0009 Back-header fix confirmed live) |
-| SHR-05 | `/profile` | All-authenticated | settings | DISCOVERED (ISS-0009 nav-fix applied/build-verified only, not live-clicked-through) |
+| SHR-05 | `/profile` | All-authenticated | settings | VERIFIED (real profile data, masked mobile for privacy, honest "Edit Profile — Coming Soon" disabled state, Back→`/dashboard/owner` confirmed live) |
 
 ## C. Owner Dashboard (`/dashboard/owner/**`) — 16 routes
 
@@ -54,10 +54,10 @@ Batch 1B (2026-07-14) live-audited this role. Routes not marked VERIFIED below w
 | OWN-01 | `/dashboard/owner` | dashboard-home | VERIFIED (login redirect, refresh, cross-role guard, greeting/stat-card layout all confirmed live) |
 | OWN-02 | `/dashboard/owner/properties` | list | VERIFIED (status tabs, View→detail, ISS-0005 self-listing CTA fix confirmed live at 375px+1440px) |
 | OWN-03 | `/dashboard/owner/properties/new` | create | VERIFIED (draft-resume Continue/Start New flow fully tested; see ISS-0006 methodology correction) |
-| OWN-04 | `/dashboard/owner/properties/[id]/edit` | edit | DISCOVERED (not live-tested this batch) |
+| OWN-04 | `/dashboard/owner/properties/[id]/edit` | edit | VERIFIED (resumes at correct wizard step for the draft, in-wizard Back/Continue/Save Draft all confirmed live, header Back correctly returns to properties list) |
 | OWN-05 | `/dashboard/owner/requirements` | list | VERIFIED (overflow menu → View proposals/Edit/Close, back nav confirmed live) |
-| OWN-06 | `/dashboard/owner/requirements/new` | create | DISCOVERED (mobileBackHref fix applied + build-verified only; form fields not live-submitted) |
-| OWN-07 | `/dashboard/owner/requirements/[id]/edit` | edit | DISCOVERED (mobileBackHref fix applied + build-verified only; not live-clicked-through) |
+| OWN-06 | `/dashboard/owner/requirements/new` | create | VERIFIED (7-step wizard: filled title, Continue advanced to step 2 with autosave "Saving…" indicator, in-wizard Back returned to step 1 with data preserved, header Back confirmed live) |
+| OWN-07 | `/dashboard/owner/requirements/[id]/edit` | edit | VERIFIED (edit form loads correctly pre-filled with existing data at step 1 of 7, header title/back confirmed live) |
 | OWN-08 | `/dashboard/owner/requirements/[id]/proposals` | list | VERIFIED (proposal card, Sent status, Mark Viewed/Shortlist actions, Back nav confirmed live) |
 | OWN-09 | `/dashboard/owner/leads` | list | VERIFIED (stage tabs, card→detail navigation confirmed live) |
 | OWN-10 | `/dashboard/owner/site-visits` | list | VERIFIED (Upcoming/Past tabs, Accept/Reject/Reschedule/Cancel actions visible, honest cancellation reason shown) |
