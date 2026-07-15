@@ -9,15 +9,21 @@ import {
 } from "@/lib/billing/subscription";
 import { getUsageSummary } from "@/lib/billing/gates";
 import { isValidGstinFormat } from "@/lib/billing/gst";
-import { isRazorpayConfigured } from "@/lib/razorpay/client";
+import { isRazorpayConfigured, getRazorpayMode } from "@/lib/razorpay/client";
+import { computeGst } from "@/lib/billing/gst";
 import type {
   ActionResult,
   Plan,
   Subscription,
   Invoice,
+  InvoiceLineItem,
   Payment,
+  PaymentOrder,
   GstProfile,
   Trial,
+  Refund,
+  AddOn,
+  AddOnPurchase,
 } from "@/types";
 
 /** Error code returned when the billing schema hasn't been applied yet. */
@@ -34,7 +40,13 @@ function isMissingTable(code?: string): boolean {
 
 export async function getPublicPlans(
   role?: string
-): Promise<ActionResult<{ plans: Plan[]; razorpayConfigured: boolean }>> {
+): Promise<
+  ActionResult<{
+    plans: Plan[];
+    razorpayConfigured: boolean;
+    razorpayMode: "test" | "live" | null;
+  }>
+> {
   const supabase = await createClient();
   let query = supabase
     .from("plans")
@@ -54,6 +66,81 @@ export async function getPublicPlans(
     data: {
       plans: (data ?? []) as Plan[],
       razorpayConfigured: isRazorpayConfigured(),
+      razorpayMode: getRazorpayMode(),
+    },
+  };
+}
+
+// ============================================================
+// previewCheckoutTotal — real server-computed GST breakdown shown
+// to the user BEFORE they pay (transparency only; the webhook's
+// generateInvoiceForPayment() is the actual source of truth at
+// issuance time — this preview can differ by a few paise from the
+// final invoice only if the buyer changes their GST state between
+// preview and payment, which is expected and disclosed).
+// ============================================================
+
+export interface CheckoutPreview {
+  planName: string;
+  grossAmount: number;
+  discountAmount: number;
+  payableAmount: number;
+  taxableAmount: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  totalWithGst: number;
+  gstRatePercent: number;
+  intraState: boolean;
+}
+
+export async function previewCheckoutTotal(
+  planId: string,
+  discountAmount = 0
+): Promise<ActionResult<CheckoutPreview>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: plan, error } = await admin
+    .from("plans")
+    .select("*")
+    .eq("id", planId)
+    .maybeSingle();
+  if (error && isMissingTable(error.code)) return SETUP;
+  if (!plan) return { success: false, error: "PLAN_NOT_FOUND" };
+  const p = plan as Plan;
+
+  const { data: gst } = await admin
+    .from("gst_profiles")
+    .select("state_code")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+
+  const payable =
+    Math.round((p.price_amount - discountAmount + Number.EPSILON) * 100) /
+    100;
+  const breakdown = computeGst(
+    payable,
+    p.gst_rate_percent,
+    p.gst_inclusive,
+    gst?.state_code ?? null
+  );
+
+  return {
+    success: true,
+    data: {
+      planName: p.name,
+      grossAmount: p.price_amount,
+      discountAmount,
+      payableAmount: payable,
+      taxableAmount: breakdown.taxableAmount,
+      cgst: breakdown.cgst,
+      sgst: breakdown.sgst,
+      igst: breakdown.igst,
+      totalWithGst: breakdown.total,
+      gstRatePercent: breakdown.ratePercent,
+      intraState: breakdown.intraState,
     },
   };
 }
@@ -375,7 +462,8 @@ export async function cancelSubscription(): Promise<ActionResult<null>> {
 
 export async function requestRefund(
   paymentId: string,
-  reason: string
+  reason: string,
+  partialAmount?: number
 ): Promise<ActionResult<null>> {
   const profile = await getCurrentProfile();
   if (!profile) return { success: false, error: "AUTH_REQUIRED" };
@@ -385,7 +473,7 @@ export async function requestRefund(
   const admin = createServiceClient();
   const { data: payment } = await admin
     .from("payments")
-    .select("id, profile_id, amount, status")
+    .select("id, profile_id, amount, status, created_at")
     .eq("id", paymentId)
     .maybeSingle();
   if (!payment) return { success: false, error: "SETUP_REQUIRED" };
@@ -394,10 +482,33 @@ export async function requestRefund(
   if (!["captured", "verified"].includes(payment.status))
     return { success: false, error: "REFUND_NOT_SUPPORTED" };
 
+  // Eligibility window: refund requests accepted within 30 days of payment
+  // (matches the Refund Policy at /legal/refund).
+  const REFUND_WINDOW_DAYS = 30;
+  const ageDays =
+    (Date.now() - new Date(payment.created_at).getTime()) /
+    (1000 * 60 * 60 * 24);
+  if (ageDays > REFUND_WINDOW_DAYS)
+    return { success: false, error: "REFUND_WINDOW_EXPIRED" };
+
+  // One open (non-terminal) refund request per payment at a time.
+  const { data: existing } = await admin
+    .from("refunds")
+    .select("id")
+    .eq("payment_id", paymentId)
+    .in("status", ["requested", "approved", "processing"])
+    .maybeSingle();
+  if (existing) return { success: false, error: "REFUND_ALREADY_REQUESTED" };
+
+  const amount =
+    partialAmount !== undefined && partialAmount > 0
+      ? Math.min(Math.round((partialAmount + Number.EPSILON) * 100) / 100, payment.amount)
+      : payment.amount;
+
   const { error } = await admin.from("refunds").insert({
     payment_id: paymentId,
     profile_id: profile.id,
-    amount: payment.amount,
+    amount,
     reason: reason.trim().slice(0, 1000),
     status: "requested",
     requested_by: profile.id,
@@ -410,6 +521,143 @@ export async function requestRefund(
     action: "refund_requested",
     entity_type: "payment",
     entity_id: paymentId,
+    metadata_safe: { amount, full: amount === payment.amount },
   });
   return { success: true, data: null };
+}
+
+// ============================================================
+// getMyRefunds — refund request tracker, own only
+// ============================================================
+
+export async function getMyRefunds(): Promise<
+  ActionResult<{ items: Refund[] }>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("refunds")
+    .select("*")
+    .eq("profile_id", profile.id)
+    .order("created_at", { ascending: false });
+  if (error)
+    return isMissingTable(error.code)
+      ? SETUP
+      : { success: false, error: "UNKNOWN_ERROR" };
+  return { success: true, data: { items: (data ?? []) as Refund[] } };
+}
+
+// ============================================================
+// getPendingPaymentOrder — most recent non-terminal payment_order
+// for the current profile (drives the "payment pending" banner /
+// resume-checkout state on the billing dashboard).
+// ============================================================
+
+const PENDING_ORDER_STATUSES = [
+  "created",
+  "checkout_started",
+  "payment_authorized",
+];
+
+export async function getPendingPaymentOrder(): Promise<
+  ActionResult<{ order: PaymentOrder | null }>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("payment_orders")
+    .select("*")
+    .eq("profile_id", profile.id)
+    .in("status", PENDING_ORDER_STATUSES)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error)
+    return isMissingTable(error.code)
+      ? SETUP
+      : { success: false, error: "UNKNOWN_ERROR" };
+  return { success: true, data: { order: (data as PaymentOrder) ?? null } };
+}
+
+// ============================================================
+// Add-ons — public catalog + own purchases
+// ============================================================
+
+export async function getPublicAddOns(
+  role: string
+): Promise<ActionResult<{ items: AddOn[] }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("add_ons")
+    .select("*")
+    .eq("is_active", true)
+    .eq("is_public", true)
+    .eq("role", role)
+    .order("display_order");
+  if (error)
+    return isMissingTable(error.code)
+      ? SETUP
+      : { success: false, error: "UNKNOWN_ERROR" };
+  return { success: true, data: { items: (data ?? []) as AddOn[] } };
+}
+
+export async function getMyAddOnPurchases(): Promise<
+  ActionResult<{ items: (AddOnPurchase & { addOnName: string })[] }>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("add_on_purchases")
+    .select("*, add_ons(name)")
+    .eq("profile_id", profile.id)
+    .order("created_at", { ascending: false });
+  if (error)
+    return isMissingTable(error.code)
+      ? SETUP
+      : { success: false, error: "UNKNOWN_ERROR" };
+  const items = (data ?? []).map((row) => {
+    const r = row as AddOnPurchase & { add_ons: { name: string } | null };
+    return { ...r, addOnName: r.add_ons?.name ?? "Add-on" };
+  });
+  return { success: true, data: { items } };
+}
+
+// ============================================================
+// getInvoiceDetail — own only, immutable historical snapshot + line items
+// ============================================================
+
+export async function getInvoiceDetail(
+  invoiceId: string
+): Promise<
+  ActionResult<{ invoice: Invoice; lineItems: InvoiceLineItem[] }>
+> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+  const supabase = await createClient();
+  const { data: invoice, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+  if (!invoice) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if ((invoice as Invoice).profile_id !== profile.id)
+    return { success: false, error: "FORBIDDEN" };
+
+  const { data: lineItems } = await supabase
+    .from("invoice_line_items")
+    .select("*")
+    .eq("invoice_id", invoiceId)
+    .order("id");
+
+  return {
+    success: true,
+    data: {
+      invoice: invoice as Invoice,
+      lineItems: (lineItems ?? []) as InvoiceLineItem[],
+    },
+  };
 }

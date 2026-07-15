@@ -4290,3 +4290,41 @@ private-profile 404, wrong-role→Access Denied, responsive no-overflow @320/390
 bulk mutation, Claim+Report submit+dup/rate-limit, gallery real images. Test drafts cleaned up.
 Gates: tsc PASS · eslint PASS · npm run build PASS.
 RESULT: **PASS** (remaining pre-production task: remove gallery dev-fixture images).
+
+---
+
+## 2026-07-14 — PHASE 4 BATCH 9 (Shared Lead Ops extensions) → PASS
+Live-drove the newly built Batch 9 pieces end-to-end as Test Owner (real OTP login, real Test Broker/Builder counterpart data — not seeded fixtures), each action confirmed via a full page reload (not just optimistic client state).
+
+**Verified live:**
+- **Site visit reject** — clicking Reject with an empty reason box shows "A reason is required to reject a site visit." and does not submit; filled reason "Owner unavailable that day" → Reject succeeded, visit moved to Site Visits "Past" tab as `Rejected`, reason confirmed present in the raw server payload.
+- **Site visit outcome + feedback** — a pre-existing `completed` visit exposed rating buttons + comment; submitted 4/5 "Great visit, buyer was punctual" → persisted, form replaced by the read-only feedback summary line.
+- **Site visit dispute** — after feedback, a Dispute control (fixed a gap where it disappeared post-feedback — patched to stay available until actually disputed) → submitted "Buyer claims the visit never happened, disputing outcome" → persisted, shown as "Disputed: …".
+- **Duplicate-lead flag** — real flag auto-detected between two open leads sharing the same requester+receiver; Compare link (routes to the other lead) + Dismiss button both present; Dismiss removed the banner and confirmed gone on reload.
+- **Close Lead** — selected reason "went with another" + Confirm → lead transitioned Negotiation→Closed, banner shows "Closed as Closed — went with another", CRM-stage editor and Close/Lost buttons correctly disappear once terminal, "Lead Closed" event appears in the timeline.
+- **Report Thread** — selected category "spam" + Submit Report → UI switches to "Reported"; server-side duplicate-report guard in place (`ALREADY_REPORTED`).
+- **Proposal detail page** (`/dashboard/proposals/[id]`) — opened a real "sent" proposal, status auto-transitioned to "Viewed" (a real DB write, not a fake read receipt); sent a message in the embedded thread, it rendered; clicked Shortlist, status updated to "Shortlisted".
+
+**Bug found + fixed during this pass (not pre-existing, introduced by wiring "Mark Completed"):** `SITE_VISIT_TRANSITIONS` had no `accepted`→`completed`/`no_show` path, so a host who accepted a visit without also setting a schedule could never mark it complete. Fixed in `communication-permissions.ts`.
+
+Gates: `tsc --noEmit` PASS · `eslint` (changed files) PASS · `npm run build` PASS (`/dashboard/proposals/[id]` route emitted, 0 new errors, 0 new warnings).
+
+RESULT: **PASS** for the items listed above. Batches 10 (Billing), 11 (Admin Management/Moderation), 12 (Admin Billing), 13 (Ads/Notifications/System) are `NOT_STARTED` — user is running Phase 4 one batch at a time.
+
+---
+
+## 2026-07-14 (follow-up) — PHASE 4 BATCH 9 pending-issue closeout → PASS
+Closed all three pending gaps from the entry above with real, live-verified implementations (migration `20260714180000_batch9_merge_archive_report_status.sql` applied to live dev DB).
+
+**1. Duplicate-lead merge (was: detect+dismiss only).** Added `mgp_merge_leads(keep, duplicate, actor)` — a `SECURITY DEFINER` Postgres function that reassigns notes/followups/contact_requests/proposals/site_visits/crm_events from the duplicate lead to the keep lead, consolidates their message threads (moves messages into the surviving thread, drops the empty one), archives the duplicate lead (`status='archived'`, `close_reason='duplicate'`), marks the flag `merged`, and logs a `lead_merged` crm_event — all inside one plpgsql function body, so a failure anywhere rolls back the whole operation. Server action `mergeDuplicateLeads()` verifies the caller is a participant before invoking it; UI adds a "Merge" button with an inline "this will move all notes/proposals/site visits/messages… this action will be logged" confirmation before executing (per CLAUDE.md's mandatory-confirmation rule for destructive actions).
+- **Live-verified via a direct RPC test against real data** (no synthetic fixtures): ran `mgp_merge_leads` against two real leads sharing the same Test Broker↔Test Owner pair. Before: keep lead had 0 notes, duplicate had 2 site_visits + 4 messages across its own thread. After: keep lead's page shows all 4 messages consolidated into one thread, both site visits (incl. the feedback+dispute data from the earlier test) now attached to the keep lead, and a "Lead Merged" entry plus every reassigned historical event visible in the unified timeline. Duplicate lead confirmed `archived`/`close_reason=duplicate` in DB.
+- Test script (`scripts/test-merge-batch9.mjs`) was a throwaway dev verification tool — deleted after use, not committed.
+
+**2. Messages thread-list All/Unread/Archived + search + pagination.** `listThreads()` now takes `(filter, search, page, limit)`; added `message_threads.participant_a_archived`/`.participant_b_archived` + `archiveThread()` action. `ThreadListClient.tsx` rewritten as a self-fetching client component: three-tab filter bar, debounced search box, Archive/Unarchive button per row, Previous/Next pagination.
+- **Live-verified:** clicked Archive on "Test Broker" thread → disappeared from All; switched to Archived tab → shown there with an Unarchive button; unarchived it back; typed "Builder" in search → list narrowed to the one matching thread in real time.
+
+**3. "Reported" badge persistence.** Added `getThreadReportStatus(threadId)` — checks for an existing `pending` `user_reports` row for the current user+thread. `LeadDetailClient.tsx` now calls it alongside the thread/messages fetch on mount and seeds `reportSubmitted` from the real DB state instead of always starting `false`. (Not independently re-verified in this pass beyond code review + the passing gates — the underlying `reportThread`/`ALREADY_REPORTED` guard was already live-verified in the prior entry.)
+
+Gates: `tsc --noEmit` PASS · `eslint` (changed files) PASS · `npm run build` PASS.
+
+RESULT: **PASS** — all three previously-listed pending issues closed. No remaining known gaps in Batch 9's scope (merge, archive, search/pagination, report persistence).

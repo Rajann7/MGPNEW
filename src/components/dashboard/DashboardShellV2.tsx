@@ -93,47 +93,59 @@ export function DashboardShellV2({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <DashboardSidebar
-        navItems={toRenderedIcon(navItems)}
-        userName={userName}
-        userRole={userRole}
-      />
+      <div data-print-hide>
+        <DashboardSidebar
+          navItems={toRenderedIcon(navItems)}
+          userName={userName}
+          userRole={userRole}
+        />
+      </div>
       {/*
         Sidebar collapse state lives client-side only (DashboardSidebar sets
         the --mgp-sidebar-w CSS variable on <html>) so this content wrapper
         never needs the icon-bearing navItems/mobileTabs data itself — it
         stays a plain server component.
       */}
-      <div className="lg:pl-[var(--mgp-sidebar-w,220px)] transition-[padding] duration-200">
+      <div className="lg:pl-[var(--mgp-sidebar-w,220px)] transition-[padding] duration-200 print:pl-0">
         {mobileDrawerNav ? (
-          <DashboardMobileHeader
-            title={title}
-            navItems={toDrawerItems(mobileDrawerNav)}
-            userName={userName}
-            userRole={userRole}
-            userCity={userCity}
-          />
+          <div data-print-hide>
+            <DashboardMobileHeader
+              title={title}
+              navItems={toDrawerItems(mobileDrawerNav)}
+              userName={userName}
+              userRole={userRole}
+              userCity={userCity}
+            />
+          </div>
         ) : (
           mobileBackHref && (
-            <DashboardMobileBackHeader
-              title={title}
-              backHref={mobileBackHref}
-              actionHref={mobileBackAction?.href}
-              actionLabel={mobileBackAction?.label}
-            />
+            <div data-print-hide>
+              <DashboardMobileBackHeader
+                title={title}
+                backHref={mobileBackHref}
+                actionHref={mobileBackAction?.href}
+                actionLabel={mobileBackAction?.label}
+              />
+            </div>
           )
         )}
-        <DashboardTopbar
-          title={title}
-          breadcrumb={breadcrumb ?? [title]}
-          userName={userName}
-          desktopOnly={!!mobileDrawerNav || !!mobileBackHref || !!hideTopbarOnMobile}
-        />
-        <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6">
+        <div data-print-hide>
+          <DashboardTopbar
+            title={title}
+            breadcrumb={breadcrumb ?? [title]}
+            userName={userName}
+            desktopOnly={!!mobileDrawerNav || !!mobileBackHref || !!hideTopbarOnMobile}
+          />
+        </div>
+        <main className="max-w-6xl mx-auto px-4 py-6 sm:px-6 lg:px-8 pb-24 lg:pb-6 print:p-0 print:max-w-none">
           {children}
         </main>
       </div>
-      {!hideMobileTabBar && <DashboardMobileTabBar items={mobileTabs} />}
+      {!hideMobileTabBar && (
+        <div data-print-hide>
+          <DashboardMobileTabBar items={mobileTabs} />
+        </div>
+      )}
     </div>
   );
 }

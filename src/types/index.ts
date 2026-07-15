@@ -679,6 +679,8 @@ export interface Lead {
   phone_source: "profile" | "alternate";
   alternate_phone_used: boolean;
   interest_type: string;
+  close_reason: string | null;
+  close_reason_detail: string | null;
   last_activity_at: string;
   created_at: string;
   updated_at: string;
@@ -800,6 +802,8 @@ export interface MessageThread {
   participant_b_profile_id: string;
   participant_a_last_read_at: string | null;
   participant_b_last_read_at: string | null;
+  participant_a_archived: boolean;
+  participant_b_archived: boolean;
   is_blocked: boolean;
   last_message_at: string | null;
   created_at: string;
@@ -841,6 +845,14 @@ export interface SiteVisit {
   meeting_note: string | null;
   status: SiteVisitStatus;
   cancel_reason: string | null;
+  reject_reason: string | null;
+  feedback_rating: number | null;
+  feedback_comment: string | null;
+  feedback_submitted_by: string | null;
+  feedback_submitted_at: string | null;
+  dispute_reason: string | null;
+  disputed_by: string | null;
+  disputed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -889,7 +901,11 @@ export type NotificationType =
   | "site_visit_scheduled"
   | "site_visit_rescheduled"
   | "site_visit_cancelled"
-  | "followup_due";
+  | "followup_due"
+  | "lead_lost"
+  | "lead_closed"
+  | "site_visit_disputed"
+  | "site_visit_feedback";
 
 export interface AppNotification {
   id: string;
@@ -1032,6 +1048,7 @@ export interface PaymentOrder {
   purpose: "subscription" | "add_on" | "renewal";
   plan_id: string | null;
   add_on_id: string | null;
+  add_on_purchase_id: string | null;
   coupon_id: string | null;
   amount_gross: number;
   discount_amount: number;
@@ -1112,6 +1129,59 @@ export interface Invoice {
   updated_at: string;
 }
 
+export interface InvoiceLineItem {
+  id: string;
+  invoice_id: string;
+  description: string;
+  quantity: number;
+  unit_amount: number;
+  taxable_amount: number;
+  gst_rate_percent: number;
+  line_total: number;
+}
+
+export type RefundStatus =
+  | "requested"
+  | "approved"
+  | "processing"
+  | "processed"
+  | "failed"
+  | "rejected"
+  | "cancelled";
+
+export interface Refund {
+  id: string;
+  payment_id: string;
+  profile_id: string;
+  amount: number;
+  reason: string | null;
+  status: RefundStatus;
+  provider_refund_id: string | null;
+  requested_by: string | null;
+  approved_by_staff_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type AddOnPurchaseStatus =
+  | "pending_activation"
+  | "active"
+  | "consumed"
+  | "expired"
+  | "cancelled";
+
+export interface AddOnPurchase {
+  id: string;
+  profile_id: string;
+  add_on_id: string;
+  payment_id: string | null;
+  quantity: number;
+  status: AddOnPurchaseStatus;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GstProfile {
   id: string;
   profile_id: string;
@@ -1168,6 +1238,8 @@ export interface AddOn {
   currency: string;
   quantity_grant: number;
   feature_key: string;
+  gst_rate_percent: number;
+  gst_inclusive: boolean;
   is_active: boolean;
   is_public: boolean;
   is_placeholder_pricing: boolean;

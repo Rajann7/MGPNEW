@@ -2383,6 +2383,31 @@ Formal verification confirms the following Prompt 08 features are DONE and verif
 
 No feature marked done that is not built. Future/deferred items kept honest (SETUP_REQUIRED / PARTIAL).
 
+## Phase 4 — Batch 9: Shared Lead Ops Extensions [2026-07-14]
+
+**Phase status:** `DONE` for the items below — real DB migration applied + live-verified as Owner (receiver side) against real broker/builder leads/proposals/site-visits data. Batches 10–13 (Billing, Admin Management/Moderation, Admin Billing, Ads/Notifications/System) are `NOT_STARTED` — out of scope for this pass, explicitly deferred by user request (one batch at a time).
+
+The Batch 9 spec's foundation (lead detail workspace, notes/reminders, contact reveal, proposal send/status, message threads, site-visit request/respond/reschedule/cancel) already existed from Prompt 08 — see F08 entries above. This pass closed the genuinely missing pieces only.
+
+| ID | Feature/Module | Route/Path | Status | QA Result | Notes |
+| --- | --- | --- | --- | --- | --- |
+| B9-001 | Close/Lost with structured reason | `closeLead()` in `src/lib/actions/leads.ts`, `leads.close_reason`/`.close_reason_detail` | `DONE` | PASS | Receiver-only, 10-value enum reason + optional detail, blocked from an already-terminal status; live-verified: lead moved Negotiation→Closed with reason "went with another", badge + banner updated |
+| B9-002 | Duplicate-lead detection + dismiss + merge | `getPossibleDuplicateLeads()`/`dismissDuplicateLeadFlag()`/`mergeDuplicateLeads()`, `lead_duplicate_flags` table, `mgp_merge_leads()` SQL function | `DONE` | PASS | Detects other open leads between the same requester/receiver pair, upserts a flag, shows Compare/Merge/Dismiss. **Merge is a real transactional SQL function** (SECURITY DEFINER, single plpgsql body → atomic rollback on failure) reassigning notes/followups/contact_requests/proposals/site_visits/crm_events, consolidating message threads, archiving the duplicate (`close_reason='duplicate'`), logging `lead_merged`. Live-verified via direct RPC test against real data: 4 messages + 2 site visits (incl. feedback/dispute) correctly consolidated |
+| B9-003 | Proposal full detail + embedded thread | `/dashboard/proposals/[id]`, `getProposalDetail()`, `ProposalDetailClient.tsx` | `DONE` | PASS | Standalone page (was previously list-only); sender/recipient view, auto "sent"→"viewed" transition (real, not a fake read-receipt), status actions (Shortlist/Negotiate/Accept/Reject/Withdraw), embedded lead-linked message thread; live-verified: viewed a real proposal, sent a message in the embedded thread, shortlisted it |
+| B9-004 | Report Thread (message abuse report) | `reportThread()` in `src/lib/actions/messages.ts`, reuses `user_reports` | `DONE` | PASS | Participant-only, category enum, one-open-report-per-reporter-per-thread guard (`ALREADY_REPORTED`); live-verified on the lead-detail embedded thread |
+| B9-005 | Site visit reject reason (required) | `respondSiteVisit()` reject path, `site_visits.reject_reason` | `DONE` | PASS | Client + server both enforce a non-empty reason before reject; live-verified guard blocks empty submit, then succeeds with reason persisted and visible on Past visits |
+| B9-006 | Site visit duplicate-request guard | `requestSiteVisit()` | `DONE` | PASS | Blocks a second open request (`requested/accepted/scheduled/rescheduled`) on the same lead with `DUPLICATE_REQUEST` |
+| B9-007 | Site visit outcome (completed/no-show) | `markSiteVisitOutcome()` wired into `LeadDetailClient.tsx` host card | `DONE` | PASS | Was previously a server action with no UI trigger; fixed a real gap in `SITE_VISIT_TRANSITIONS` (`accepted`→`completed`/`no_show` was missing) discovered while wiring this |
+| B9-008 | Site visit feedback | `submitSiteVisitFeedback()`, `site_visits.feedback_rating`/`.feedback_comment` | `DONE` | PASS | 1–5 rating + optional comment, either participant, only after completed/no_show; live-verified 4/5 + comment persisted |
+| B9-009 | Site visit dispute | `disputeSiteVisitOutcome()`, `site_visits.dispute_reason` | `DONE` | PASS | Flags a conflicting outcome for Admin/Support review (resolution UI is Batch 11 scope, not built here — this only records the dispute); live-verified reason persisted and shown |
+| B9-010 | Notification type coverage | `notifications_notification_type_check` widened, `NotificationType` TS union | `DONE` | PASS | Added `lead_lost`/`lead_closed`/`site_visit_disputed`/`site_visit_feedback` (feedback type reserved, not yet emitted) |
+
+**DB changes:** YES — `supabase/migrations/20260714170000_batch9_lead_ops_extensions.sql` (additive: `leads.close_reason`/`.close_reason_detail`, `site_visits.reject_reason`/`.feedback_*`/`.dispute_*`, new `lead_duplicate_flags` table, widened `notifications` check constraint). Applied to live dev DB.
+**RLS changes:** YES — `lead_duplicate_flags` participant-scoped read policy (same pattern as `leads`). All writes go through the service-role client with in-code ownership/participant checks, consistent with the rest of this table family.
+**Bug fixed during this pass:** `SITE_VISIT_TRANSITIONS` in `src/lib/permissions/communication-permissions.ts` didn't allow `accepted`→`completed`/`no_show` — a host who accepted a visit without setting a schedule had no way to ever mark it complete. Fixed as part of wiring the "Mark Completed"/"No-show" buttons.
+**Gates:** `tsc --noEmit` PASS · eslint (changed files) PASS · `npm run build` PASS (`/dashboard/proposals/[id]` route emitted). Live-verified in browser as Test Owner against real Test Broker/Builder data (not seeded fixtures) — full loop: reject w/ reason → feedback → dispute → close/lost → duplicate dismiss → report thread → proposal detail + embedded thread + status transitions, all confirmed via page reload (not just optimistic UI).
+**Next:** Batch 10 (Billing & Payments) — or user's choice of remaining Batch 11/12/13, per the earlier scoping question.
+
 ## Prompt 09 — Billing / Payment / Subscription / Trial / GST [2026-07-02]
 
 | Feature | Route/Module | Status | Notes |

@@ -9,7 +9,7 @@ import {
   isRazorpayConfigured,
   verifyPaymentSignature,
 } from "@/lib/razorpay/client";
-import type { ActionResult, Plan, Coupon } from "@/types";
+import type { ActionResult, Plan, Coupon, AddOn } from "@/types";
 
 function isMissingTable(code?: string): boolean {
   return code === "42P01" || code === "PGRST205";
@@ -253,6 +253,136 @@ export async function createCheckoutOrder(
       amountPaise,
       currency: "INR",
       planName: p.name,
+    },
+  };
+}
+
+// ============================================================
+// create_addon_checkout_order — same server-priced/webhook-only-
+// activation pattern as the plan checkout, for a la carte add-ons
+// (e.g. extra listing boost credits). No coupon support for
+// add-ons this phase (coupons are plan-scoped in the schema).
+// ============================================================
+
+export async function createAddOnCheckoutOrder(
+  addOnId: string,
+  quantity = 1
+): Promise<ActionResult<CheckoutOrder>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+  if (
+    profile.account_status === "suspended" ||
+    profile.account_status === "banned"
+  )
+    return { success: false, error: "FORBIDDEN" };
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20)
+    return { success: false, error: "VALIDATION_ERROR" };
+
+  if (!isRazorpayConfigured())
+    return { success: false, error: "PAYMENT_PROVIDER_SETUP_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: addOn, error: addOnErr } = await admin
+    .from("add_ons")
+    .select("*")
+    .eq("id", addOnId)
+    .maybeSingle();
+  if (addOnErr && isMissingTable(addOnErr.code))
+    return { success: false, error: "SETUP_REQUIRED" };
+  if (!addOn) return { success: false, error: "ENTITY_NOT_FOUND" };
+  const a = addOn as AddOn;
+  if (!a.is_active) return { success: false, error: "PLAN_NOT_ACTIVE" };
+  if (a.role !== profile.public_role)
+    return { success: false, error: "ROLE_NOT_ALLOWED" };
+  if (a.price_amount <= 0)
+    return { success: false, error: "PLAN_NOT_ACTIVE" };
+
+  const payable = Math.round((a.price_amount * quantity + Number.EPSILON) * 100) / 100;
+  const amountPaise = Math.round(payable * 100);
+  if (amountPaise < 100)
+    return { success: false, error: "PAYMENT_ORDER_FAILED" };
+
+  const idempotencyKey = randomUUID();
+  const { data: order, error: orderErr } = await admin
+    .from("payment_orders")
+    .insert({
+      profile_id: profile.id,
+      role: a.role,
+      purpose: "add_on",
+      add_on_id: a.id,
+      amount_gross: payable,
+      discount_amount: 0,
+      amount_payable: payable,
+      amount_payable_paise: amountPaise,
+      status: "created",
+      idempotency_key: idempotencyKey,
+    })
+    .select("id")
+    .single();
+  if (orderErr || !order) {
+    if (isMissingTable(orderErr?.code))
+      return { success: false, error: "SETUP_REQUIRED" };
+    return { success: false, error: "PAYMENT_ORDER_FAILED" };
+  }
+
+  const rzpOrder = await createRazorpayOrder({
+    amountPaise,
+    receipt: order.id,
+    notes: {
+      profile_id: profile.id,
+      add_on_code: a.add_on_code,
+      payment_order_id: order.id,
+      quantity: String(quantity),
+    },
+  });
+  if (!rzpOrder) {
+    await admin
+      .from("payment_orders")
+      .update({ status: "payment_failed" })
+      .eq("id", order.id);
+    return { success: false, error: "PAYMENT_ORDER_FAILED" };
+  }
+
+  // Create the pending purchase row FIRST, then link it to the order so the
+  // webhook (which only ever sees the payment_order) can unambiguously
+  // activate the exact same purchase — no heuristic matching.
+  const { data: purchase } = await admin
+    .from("add_on_purchases")
+    .insert({
+      profile_id: profile.id,
+      add_on_id: a.id,
+      quantity,
+      status: "pending_activation",
+    })
+    .select("id")
+    .single();
+
+  await admin
+    .from("payment_orders")
+    .update({
+      provider_order_id: rzpOrder.id,
+      add_on_purchase_id: purchase?.id ?? null,
+    })
+    .eq("id", order.id);
+
+  await admin.from("billing_audit_logs").insert({
+    actor_type: "user",
+    actor_id: profile.id,
+    action: "addon_checkout_order_created",
+    entity_type: "payment_order",
+    entity_id: order.id,
+    metadata_safe: { add_on_code: a.add_on_code, quantity, amount: payable },
+  });
+
+  return {
+    success: true,
+    data: {
+      paymentOrderId: order.id,
+      razorpayOrderId: rzpOrder.id,
+      razorpayKeyId: getPublicKeyId()!,
+      amountPaise,
+      currency: "INR",
+      planName: `${a.name} x${quantity}`,
     },
   };
 }

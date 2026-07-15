@@ -134,7 +134,11 @@ export async function activateSubscriptionFromPayment(
     .maybeSingle();
   if (!order) return { ok: false };
   const o = order as PaymentOrder;
-  if (o.purpose !== "subscription") return { ok: true }; // add-on activation handled separately (foundation)
+  if (o.purpose === "add_on") {
+    const ok = await activateAddOnPurchase(paymentId, o);
+    return { ok };
+  }
+  if (o.purpose !== "subscription") return { ok: true };
 
   const { data: plan } = await admin
     .from("plans")
@@ -216,6 +220,69 @@ export async function activateSubscriptionFromPayment(
 }
 
 /**
+ * Activate a pending add-on purchase from a VERIFIED payment (webhook-only,
+ * mirrors activateSubscriptionFromPayment's idempotency pattern: a purchase
+ * can only move pending_activation -> active once, and only the linked
+ * purchase row from THIS order is touched — no heuristic matching).
+ */
+async function activateAddOnPurchase(
+  paymentId: string,
+  order: PaymentOrder
+): Promise<boolean> {
+  const admin = createServiceClient();
+  if (!order.add_on_purchase_id) return false;
+
+  const { data: purchase } = await admin
+    .from("add_on_purchases")
+    .select("id, status")
+    .eq("id", order.add_on_purchase_id)
+    .maybeSingle();
+  if (!purchase) return false;
+  if (purchase.status === "active") return true; // already activated (idempotent replay)
+  if (purchase.status !== "pending_activation") return false;
+
+  const { error } = await admin
+    .from("add_on_purchases")
+    .update({ status: "active", payment_id: paymentId })
+    .eq("id", purchase.id);
+  if (error) return false;
+
+  await logBillingAudit(
+    "addon_activated",
+    "add_on_purchase",
+    purchase.id,
+    "webhook",
+    undefined,
+    { paymentId }
+  );
+
+  // Invoice generation for add-ons reuses the same GST breakdown, tagged by
+  // a null subscription_id (add-on invoices aren't tied to a subscription).
+  const { data: addOn } = await admin
+    .from("add_ons")
+    .select("*")
+    .eq("id", order.add_on_id)
+    .maybeSingle();
+  if (addOn) {
+    await generateInvoiceForPayment(
+      paymentId,
+      order,
+      // generateInvoiceForPayment only reads plan.name/billing_cycle/gst_*
+      // fields — an add-on's real GST columns satisfy that same contract.
+      {
+        name: addOn.name,
+        billing_cycle: "one_time",
+        gst_rate_percent: addOn.gst_rate_percent,
+        gst_inclusive: addOn.gst_inclusive,
+      } as Plan,
+      null
+    );
+  }
+
+  return true;
+}
+
+/**
  * Generate a GST invoice with a sequential FY-based number for a verified
  * payment. Snapshots the buyer GST profile. Idempotent (checked by caller).
  */
@@ -223,7 +290,7 @@ export async function generateInvoiceForPayment(
   paymentId: string,
   order: PaymentOrder,
   plan: Plan,
-  subscriptionId: string
+  subscriptionId: string | null
 ): Promise<string | null> {
   const admin = createServiceClient();
 

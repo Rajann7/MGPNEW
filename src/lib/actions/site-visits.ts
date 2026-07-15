@@ -37,6 +37,15 @@ export async function requestSiteVisit(
   if (l.target_type === "requirement")
     return { success: false, error: "VALIDATION_ERROR" };
 
+  // Duplicate-request guard: block a second open request on the same lead.
+  const { data: openVisit } = await admin
+    .from("site_visits")
+    .select("id")
+    .eq("lead_id", leadId)
+    .in("status", ["requested", "accepted", "scheduled", "rescheduled"])
+    .maybeSingle();
+  if (openVisit) return { success: false, error: "DUPLICATE_REQUEST" };
+
   const { data: siteVisit, error } = await admin
     .from("site_visits")
     .insert({
@@ -86,10 +95,13 @@ export async function requestSiteVisit(
 export async function respondSiteVisit(
   siteVisitId: string,
   action: "accept" | "reject",
-  scheduledAt?: string
+  scheduledAt?: string,
+  rejectReason?: string
 ): Promise<ActionResult<null>> {
   const profile = await getCurrentProfile();
   if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+  if (action === "reject" && (!rejectReason || rejectReason.trim().length < 1))
+    return { success: false, error: "VALIDATION_ERROR" };
 
   const admin = createServiceClient();
   const { data: visit } = await admin
@@ -112,6 +124,10 @@ export async function respondSiteVisit(
     .update({
       status: newStatus,
       scheduled_at: scheduledAt ?? (visit as SiteVisit).scheduled_at,
+      reject_reason:
+        action === "reject"
+          ? rejectReason!.trim().slice(0, 500)
+          : (visit as SiteVisit).reject_reason,
     })
     .eq("id", siteVisitId);
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
@@ -288,6 +304,115 @@ export async function markSiteVisitOutcome(
     entityId: siteVisitId,
     eventType: `site_visit_${outcome}`,
     actorProfileId: profile.id,
+  });
+  return { success: true, data: null };
+}
+
+// ============================================================
+// submitSiteVisitFeedback — either participant, only after
+// completed/no_show; one submission per participant slot kept
+// simple as a single shared feedback field this phase.
+// ============================================================
+
+export async function submitSiteVisitFeedback(
+  siteVisitId: string,
+  rating: number,
+  comment?: string
+): Promise<ActionResult<null>> {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5)
+    return { success: false, error: "VALIDATION_ERROR" };
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: visit } = await admin
+    .from("site_visits")
+    .select("*")
+    .eq("id", siteVisitId)
+    .maybeSingle();
+  if (!visit) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (!isSiteVisitParticipant(profile, visit as SiteVisit))
+    return { success: false, error: "NOT_PARTICIPANT" };
+  if (!["completed", "no_show"].includes((visit as SiteVisit).status))
+    return { success: false, error: "INVALID_STATUS_TRANSITION" };
+
+  const { error } = await admin
+    .from("site_visits")
+    .update({
+      feedback_rating: rating,
+      feedback_comment: comment?.trim().slice(0, 1000) || null,
+      feedback_submitted_by: profile.id,
+      feedback_submitted_at: new Date().toISOString(),
+    })
+    .eq("id", siteVisitId);
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+
+  await logCrmEvent({
+    entityType: "site_visit",
+    entityId: siteVisitId,
+    eventType: "site_visit_feedback_submitted",
+    actorProfileId: profile.id,
+    metadataSafe: { rating },
+  });
+  return { success: true, data: null };
+}
+
+// ============================================================
+// disputeSiteVisitOutcome — either participant, flags a
+// conflicting/disputed outcome for Admin/Support review. This
+// only records the dispute; resolution happens in Admin
+// (Batch 11 Support queue), never auto-resolved here.
+// ============================================================
+
+export async function disputeSiteVisitOutcome(
+  siteVisitId: string,
+  reason: string
+): Promise<ActionResult<null>> {
+  if (!reason || reason.trim().length < 5)
+    return { success: false, error: "VALIDATION_ERROR" };
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: visit } = await admin
+    .from("site_visits")
+    .select("*")
+    .eq("id", siteVisitId)
+    .maybeSingle();
+  if (!visit) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (!isSiteVisitParticipant(profile, visit as SiteVisit))
+    return { success: false, error: "NOT_PARTICIPANT" };
+  if (!["completed", "no_show"].includes((visit as SiteVisit).status))
+    return { success: false, error: "INVALID_STATUS_TRANSITION" };
+  if ((visit as SiteVisit).dispute_reason)
+    return { success: false, error: "ALREADY_DISPUTED" };
+
+  const { error } = await admin
+    .from("site_visits")
+    .update({
+      dispute_reason: reason.trim().slice(0, 1000),
+      disputed_by: profile.id,
+      disputed_at: new Date().toISOString(),
+    })
+    .eq("id", siteVisitId);
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+
+  await logCrmEvent({
+    entityType: "site_visit",
+    entityId: siteVisitId,
+    eventType: "site_visit_disputed",
+    actorProfileId: profile.id,
+  });
+  const otherId =
+    (visit as SiteVisit).requester_profile_id === profile.id
+      ? (visit as SiteVisit).host_profile_id
+      : (visit as SiteVisit).requester_profile_id;
+  await createNotification({
+    recipientProfileId: otherId,
+    type: "site_visit_disputed",
+    title: "Site visit outcome disputed",
+    targetType: "site_visit",
+    targetId: siteVisitId,
   });
   return { success: true, data: null };
 }

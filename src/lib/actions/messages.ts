@@ -181,18 +181,25 @@ export async function markThreadRead(
 }
 
 // ============================================================
-// listThreads — with counterpart name + real unread count
+// listThreads — with counterpart name + real unread count.
+// Supports All/Unread/Archived filtering and search (client
+// receives all matching rows; filtering by counterpart name/
+// preview text happens here since neither is a plain column).
 // ============================================================
 
 export interface ThreadRow extends MessageThread {
   counterpartName: string;
   unreadCount: number;
   lastMessagePreview: string | null;
+  isArchivedByMe: boolean;
 }
 
-export async function listThreads(): Promise<
-  ActionResult<{ items: ThreadRow[] }>
-> {
+export async function listThreads(
+  filter: "all" | "unread" | "archived" = "all",
+  search?: string,
+  page = 1,
+  limit = 20
+): Promise<ActionResult<{ items: ThreadRow[]; total: number }>> {
   const profile = await getCurrentProfile();
   if (!profile) return { success: false, error: "AUTH_REQUIRED" };
 
@@ -208,7 +215,7 @@ export async function listThreads(): Promise<
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
 
   const admin = createServiceClient();
-  const items: ThreadRow[] = await Promise.all(
+  let items: ThreadRow[] = await Promise.all(
     (data as MessageThread[]).map(async (thread) => {
       const isParticipantA = thread.participant_a_profile_id === profile.id;
       const counterpartId = isParticipantA
@@ -217,6 +224,9 @@ export async function listThreads(): Promise<
       const myLastRead = isParticipantA
         ? thread.participant_a_last_read_at
         : thread.participant_b_last_read_at;
+      const isArchivedByMe = isParticipantA
+        ? thread.participant_a_archived
+        : thread.participant_b_archived;
 
       let unreadQuery = admin
         .from("messages")
@@ -239,11 +249,64 @@ export async function listThreads(): Promise<
         counterpartName: await getProfileSafeName(counterpartId),
         unreadCount: unreadCount ?? 0,
         lastMessagePreview: lastMsg?.body?.slice(0, 100) ?? null,
+        isArchivedByMe: isArchivedByMe ?? false,
       };
     })
   );
 
-  return { success: true, data: { items } };
+  if (filter === "unread") items = items.filter((t) => t.unreadCount > 0 && !t.isArchivedByMe);
+  else if (filter === "archived") items = items.filter((t) => t.isArchivedByMe);
+  else items = items.filter((t) => !t.isArchivedByMe);
+
+  if (search && search.trim().length > 0) {
+    const q = search.trim().toLowerCase();
+    items = items.filter(
+      (t) =>
+        t.counterpartName.toLowerCase().includes(q) ||
+        (t.lastMessagePreview ?? "").toLowerCase().includes(q)
+    );
+  }
+
+  const total = items.length;
+  const offset = (page - 1) * limit;
+  const paged = items.slice(offset, offset + limit);
+
+  return { success: true, data: { items: paged, total } };
+}
+
+// ============================================================
+// archiveThread / unarchiveThread — per-participant, own side only
+// ============================================================
+
+export async function archiveThread(
+  threadId: string,
+  archived: boolean
+): Promise<ActionResult<null>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: thread } = await admin
+    .from("message_threads")
+    .select("*")
+    .eq("id", threadId)
+    .maybeSingle();
+  if (!thread) return { success: false, error: "THREAD_NOT_FOUND" };
+  if (!isThreadParticipant(profile, thread as MessageThread))
+    return { success: false, error: "NOT_PARTICIPANT" };
+
+  const isParticipantA =
+    (thread as MessageThread).participant_a_profile_id === profile.id;
+  const { error } = await admin
+    .from("message_threads")
+    .update(
+      isParticipantA
+        ? { participant_a_archived: archived }
+        : { participant_b_archived: archived }
+    )
+    .eq("id", threadId);
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+  return { success: true, data: null };
 }
 
 // ============================================================
@@ -281,6 +344,83 @@ export async function listMessages(
     success: true,
     data: { items: (data ?? []) as Message[], total: count ?? 0 },
   };
+}
+
+// ============================================================
+// reportThread — participant-only, reuses user_reports
+// (target_type='thread'). Rate-limited to one open report per
+// reporter per thread — matches the property/project report
+// duplicate-guard pattern elsewhere in the app.
+// ============================================================
+
+const REPORT_CATEGORIES = [
+  "spam",
+  "fraud",
+  "abuse",
+  "harassment",
+  "contact_abuse",
+  "other",
+] as const;
+
+export async function reportThread(
+  threadId: string,
+  category: string,
+  description?: string
+): Promise<ActionResult<null>> {
+  if (!(REPORT_CATEGORIES as readonly string[]).includes(category))
+    return { success: false, error: "VALIDATION_ERROR" };
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: thread } = await admin
+    .from("message_threads")
+    .select("*")
+    .eq("id", threadId)
+    .maybeSingle();
+  if (!thread) return { success: false, error: "THREAD_NOT_FOUND" };
+  if (!isThreadParticipant(profile, thread as MessageThread))
+    return { success: false, error: "NOT_PARTICIPANT" };
+
+  const { data: existing } = await admin
+    .from("user_reports")
+    .select("id")
+    .eq("reporter_profile_id", profile.id)
+    .eq("target_type", "thread")
+    .eq("target_id", threadId)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (existing) return { success: false, error: "ALREADY_REPORTED" };
+
+  const { error } = await admin.from("user_reports").insert({
+    reporter_profile_id: profile.id,
+    target_type: "thread",
+    target_id: threadId,
+    category,
+    description: description?.trim().slice(0, 1000) || null,
+  });
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+
+  return { success: true, data: null };
+}
+
+export async function getThreadReportStatus(
+  threadId: string
+): Promise<ActionResult<{ reported: boolean }>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data } = await admin
+    .from("user_reports")
+    .select("id")
+    .eq("reporter_profile_id", profile.id)
+    .eq("target_type", "thread")
+    .eq("target_id", threadId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  return { success: true, data: { reported: !!data } };
 }
 
 // ============================================================

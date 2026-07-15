@@ -12,6 +12,7 @@ import { logCrmEvent } from "@/lib/crm/events";
 import { createNotification } from "@/lib/notifications/create";
 import { normalizeMobile } from "@/lib/validators/auth";
 import { INTEREST_VALUES } from "@/lib/leads/inquiry-config";
+import { isValidCloseReason } from "@/lib/leads/close-reasons";
 import type {
   ActionResult,
   Lead,
@@ -658,6 +659,225 @@ export async function getLeadTimeline(
 
   if (error) return { success: false, error: "UNKNOWN_ERROR" };
   return { success: true, data: { items: (data ?? []) as CrmEvent[] } };
+}
+
+// ============================================================
+// closeLead — receiver-only, structured Close/Lost with reason
+// ============================================================
+
+export async function closeLead(
+  leadId: string,
+  outcome: "lost" | "closed",
+  reason: string,
+  detail?: string
+): Promise<ActionResult<null>> {
+  if (!isValidCloseReason(reason))
+    return { success: false, error: "VALIDATION_ERROR" };
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: lead } = await admin
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (!lead) return { success: false, error: "LEAD_NOT_FOUND" };
+  if (!isLeadReceiver(profile, lead as Lead))
+    return { success: false, error: "FORBIDDEN" };
+
+  const terminal = ["converted", "lost", "closed", "spam", "blocked", "archived"];
+  if (terminal.includes((lead as Lead).status))
+    return { success: false, error: "INVALID_STATUS_TRANSITION" };
+
+  const { error } = await admin
+    .from("leads")
+    .update({
+      status: outcome,
+      crm_stage: outcome,
+      close_reason: reason,
+      close_reason_detail: detail?.trim().slice(0, 1000) || null,
+      last_activity_at: new Date().toISOString(),
+    })
+    .eq("id", leadId);
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+
+  await logCrmEvent({
+    entityType: "lead",
+    entityId: leadId,
+    eventType: outcome === "lost" ? "lead_lost" : "lead_closed",
+    actorProfileId: profile.id,
+    metadataSafe: { reason },
+  });
+  await createNotification({
+    recipientProfileId: (lead as Lead).requester_profile_id,
+    type: outcome === "lost" ? "lead_lost" : "lead_closed",
+    title: outcome === "lost" ? "Lead marked as lost" : "Lead closed",
+    targetType: "lead",
+    targetId: leadId,
+  });
+
+  return { success: true, data: null };
+}
+
+// ============================================================
+// getPossibleDuplicateLeads — same requester+receiver pair,
+// different target, both still open. Detect + dismiss only —
+// merge is deferred (transactional safety across notes/
+// proposals/site-visits is out of scope for this pass).
+// ============================================================
+
+export interface DuplicateLeadFlag {
+  id: string;
+  duplicateOfLeadId: string;
+  duplicateOfTargetTitle: string;
+  detectedReason: string;
+  status: "open" | "dismissed";
+  createdAt: string;
+}
+
+export async function getPossibleDuplicateLeads(
+  leadId: string
+): Promise<ActionResult<{ items: DuplicateLeadFlag[] }>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: lead } = await admin
+    .from("leads")
+    .select("*")
+    .eq("id", leadId)
+    .maybeSingle();
+  if (!lead) return { success: false, error: "LEAD_NOT_FOUND" };
+  if (!isLeadParticipant(profile, lead as Lead))
+    return { success: false, error: "NOT_PARTICIPANT" };
+  const l = lead as Lead;
+
+  // Detect on the fly: other open leads between the same pair.
+  const { data: candidates } = await admin
+    .from("leads")
+    .select("*")
+    .eq("requester_profile_id", l.requester_profile_id)
+    .eq("receiver_profile_id", l.receiver_profile_id)
+    .neq("id", leadId)
+    .not("status", "in", "(converted,lost,closed,spam,blocked,archived)");
+
+  for (const c of candidates ?? []) {
+    await admin
+      .from("lead_duplicate_flags")
+      .upsert(
+        {
+          lead_id: leadId,
+          duplicate_of_lead_id: c.id,
+          detected_reason: "Same requester and receiver, another open lead",
+        },
+        { onConflict: "lead_id,duplicate_of_lead_id", ignoreDuplicates: true }
+      );
+  }
+
+  const { data: flags, error } = await admin
+    .from("lead_duplicate_flags")
+    .select("*")
+    .eq("lead_id", leadId)
+    .eq("status", "open")
+    .order("created_at", { ascending: false });
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+
+  const items: DuplicateLeadFlag[] = await Promise.all(
+    (flags ?? []).map(async (f) => {
+      const { data: dupLead } = await admin
+        .from("leads")
+        .select("target_type, target_id")
+        .eq("id", f.duplicate_of_lead_id)
+        .maybeSingle();
+      const summary = dupLead
+        ? await getTargetSummary(
+            dupLead.target_type as LeadTargetType,
+            dupLead.target_id
+          )
+        : null;
+      return {
+        id: f.id,
+        duplicateOfLeadId: f.duplicate_of_lead_id,
+        duplicateOfTargetTitle: summary?.title ?? "Listing unavailable",
+        detectedReason: f.detected_reason,
+        status: f.status,
+        createdAt: f.created_at,
+      };
+    })
+  );
+
+  return { success: true, data: { items } };
+}
+
+export async function mergeDuplicateLeads(
+  flagId: string
+): Promise<ActionResult<{ keepLeadId: string }>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: flag } = await admin
+    .from("lead_duplicate_flags")
+    .select("id, lead_id, duplicate_of_lead_id, status")
+    .eq("id", flagId)
+    .maybeSingle();
+  if (!flag) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (flag.status !== "open") return { success: false, error: "ALREADY_RESOLVED" };
+
+  const { data: keepLead } = await admin
+    .from("leads")
+    .select("requester_profile_id, receiver_profile_id")
+    .eq("id", flag.lead_id)
+    .maybeSingle();
+  if (!keepLead || !isLeadParticipant(profile, keepLead as Lead))
+    return { success: false, error: "NOT_PARTICIPANT" };
+
+  const { error } = await admin.rpc("mgp_merge_leads", {
+    p_keep_lead_id: flag.lead_id,
+    p_duplicate_lead_id: flag.duplicate_of_lead_id,
+    p_actor_profile_id: profile.id,
+  });
+  if (error) {
+    console.error("[mergeDuplicateLeads] RPC error:", error.message);
+    return { success: false, error: "UNKNOWN_ERROR" };
+  }
+
+  return { success: true, data: { keepLeadId: flag.lead_id } };
+}
+
+export async function dismissDuplicateLeadFlag(
+  flagId: string
+): Promise<ActionResult<null>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: flag } = await admin
+    .from("lead_duplicate_flags")
+    .select("id, lead_id")
+    .eq("id", flagId)
+    .maybeSingle();
+  if (!flag) return { success: false, error: "ENTITY_NOT_FOUND" };
+
+  const { data: lead } = await admin
+    .from("leads")
+    .select("requester_profile_id, receiver_profile_id")
+    .eq("id", flag.lead_id)
+    .maybeSingle();
+  if (!lead || !isLeadParticipant(profile, lead as Lead))
+    return { success: false, error: "NOT_PARTICIPANT" };
+
+  const { error } = await admin
+    .from("lead_duplicate_flags")
+    .update({
+      status: "dismissed",
+      dismissed_by: profile.id,
+      dismissed_at: new Date().toISOString(),
+    })
+    .eq("id", flagId);
+  if (error) return { success: false, error: "UNKNOWN_ERROR" };
+  return { success: true, data: null };
 }
 
 // ============================================================

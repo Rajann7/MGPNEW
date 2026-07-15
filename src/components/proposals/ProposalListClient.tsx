@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -54,7 +55,7 @@ export function ProposalListClient({
       {items.map((p) => (
         <Card key={p.id}>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="min-w-0">
+            <Link href={`/dashboard/proposals/${p.id}`} className="min-w-0 hover:underline">
               <p className="text-sm font-semibold text-zinc-900 truncate">
                 {p.title}
               </p>
@@ -66,7 +67,7 @@ export function ProposalListClient({
               <p className="text-[11px] text-zinc-400 mt-1">
                 {new Date(p.created_at).toLocaleDateString()}
               </p>
-            </div>
+            </Link>
             <div className="flex items-center gap-2 shrink-0">
               <span
                 className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${STATUS_CLASS[p.status] ?? ""}`}

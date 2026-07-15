@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { PublicLayout } from "@/components/layout/PublicLayout";
-import { getPublicPlans } from "@/lib/actions/billing";
+import { getPublicPlans, getPendingPaymentOrder } from "@/lib/actions/billing";
 import { PricingPlans } from "@/components/pricing/PricingPlans";
 import type { PublicRole } from "@/types";
 
@@ -49,6 +49,17 @@ export default async function PricingPage() {
       ? (profile.public_role as PublicRole)
       : null;
 
+  let pendingOrderPlanName: string | null = null;
+  if (profile) {
+    const pending = await getPendingPaymentOrder();
+    if (pending.success && pending.data.order) {
+      const plan = result.data.plans.find(
+        (p) => p.id === pending.data.order!.plan_id
+      );
+      pendingOrderPlanName = plan?.name ?? "your selected plan";
+    }
+  }
+
   return (
     <PublicLayout profile={profile}>
       <PricingPlans
@@ -56,6 +67,8 @@ export default async function PricingPage() {
         isLoggedIn={Boolean(profile)}
         currentRole={currentRole}
         razorpayConfigured={result.data.razorpayConfigured}
+        razorpayMode={result.data.razorpayMode}
+        pendingOrderPlanName={pendingOrderPlanName}
       />
     </PublicLayout>
   );

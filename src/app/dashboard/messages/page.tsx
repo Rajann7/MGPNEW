@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MessagesPage() {
   const profile = await requireAuth();
-  const result = await listThreads();
+  const result = await listThreads("all");
 
   return (
     <DashboardShellV2
@@ -31,7 +31,10 @@ export default async function MessagesPage() {
       userName={profile.display_name ?? profile.full_name}
       userRole={getRoleLabel(profile.public_role)}
     >
-      <ThreadListClient items={result.success ? result.data.items : []} />
+      <ThreadListClient
+        initialItems={result.success ? result.data.items : []}
+        initialTotal={result.success ? result.data.total : 0}
+      />
     </DashboardShellV2>
   );
 }

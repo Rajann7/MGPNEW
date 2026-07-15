@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // pdfkit reads its bundled .afm font metrics via __dirname-relative
+  // requires at runtime — bundling it breaks that path resolution. Keeping
+  // it external (real `require`) fixes ENOENT on Helvetica.afm etc.
+  serverExternalPackages: ["pdfkit"],
   // DEV ONLY: allow the dev server to be opened from a phone/other device on
   // the same Wi-Fi (LAN IP) instead of only localhost. Without this, Next 16
   // blocks /_next/* dev resources (HMR + client bundles) for non-localhost

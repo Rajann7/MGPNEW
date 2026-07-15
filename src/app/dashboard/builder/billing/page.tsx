@@ -8,6 +8,10 @@ import {
   getMyInvoices,
   getMyPayments,
   getMyTrial,
+  getMyRefunds,
+  getPendingPaymentOrder,
+  getPublicAddOns,
+  getMyAddOnPurchases,
 } from "@/lib/actions/billing";
 
 export const metadata: Metadata = {
@@ -18,12 +22,17 @@ export const dynamic = "force-dynamic";
 
 export default async function BuilderBillingPage() {
   const profile = await requireRole("builder");
-  const [billing, invoices, payments, trial] = await Promise.all([
-    getCurrentBilling("builder"),
-    getMyInvoices(),
-    getMyPayments(),
-    getMyTrial(),
-  ]);
+  const [billing, invoices, payments, trial, refunds, pendingOrder, addOns, addOnPurchases] =
+    await Promise.all([
+      getCurrentBilling("builder"),
+      getMyInvoices(),
+      getMyPayments(),
+      getMyTrial(),
+      getMyRefunds(),
+      getPendingPaymentOrder(),
+      getPublicAddOns("builder"),
+      getMyAddOnPurchases(),
+    ]);
   const setupRequired = !billing.success && billing.error === "SETUP_REQUIRED";
 
   return (
@@ -45,6 +54,10 @@ export default async function BuilderBillingPage() {
         invoices={invoices.success ? invoices.data.items : []}
         payments={payments.success ? payments.data.items : []}
         trial={trial.success ? trial.data.trial : null}
+        refunds={refunds.success ? refunds.data.items : []}
+        pendingOrder={pendingOrder.success ? pendingOrder.data.order : null}
+        addOns={addOns.success ? addOns.data.items : []}
+        addOnPurchases={addOnPurchases.success ? addOnPurchases.data.items : []}
       />
     </DashboardShellV2>
   );

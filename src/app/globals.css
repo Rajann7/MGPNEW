@@ -206,3 +206,9 @@ body {
 .dark .form-input::placeholder {
   color: rgba(255, 255, 255, 0.35);
 }
+
+@media print {
+  [data-print-hide] {
+    display: none !important;
+  }
+}

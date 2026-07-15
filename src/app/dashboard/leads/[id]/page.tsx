@@ -13,6 +13,7 @@ import {
   getLeadNotes,
   getLeadFollowups,
   getLeadTimeline,
+  getPossibleDuplicateLeads,
 } from "@/lib/actions/leads";
 import { getContactRevealStatus } from "@/lib/actions/contact";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -39,12 +40,13 @@ export default async function LeadDetailPage({
     notFound();
   }
 
-  const [notesResult, followupsResult, timelineResult, contactResult] =
+  const [notesResult, followupsResult, timelineResult, contactResult, duplicatesResult] =
     await Promise.all([
       getLeadNotes(id),
       getLeadFollowups(id),
       getLeadTimeline(id),
       getContactRevealStatus(id),
+      getPossibleDuplicateLeads(id),
     ]);
 
   const admin = createServiceClient();
@@ -86,6 +88,9 @@ export default async function LeadDetailPage({
           contactResult.success ? contactResult.data.revealedEmail : null
         }
         initialSiteVisits={(siteVisits ?? []) as SiteVisit[]}
+        initialDuplicateFlags={
+          duplicatesResult.success ? duplicatesResult.data.items : []
+        }
       />
     </DashboardShellV2>
   );

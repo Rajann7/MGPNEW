@@ -135,7 +135,7 @@ export function canTransitionProposal(from: string, to: string): boolean {
 
 const SITE_VISIT_TRANSITIONS: Record<string, string[]> = {
   requested: ["accepted", "rejected", "expired"],
-  accepted: ["scheduled", "cancelled"],
+  accepted: ["scheduled", "completed", "no_show", "cancelled"],
   scheduled: ["rescheduled", "completed", "no_show", "cancelled"],
   rescheduled: ["completed", "cancelled", "no_show"],
   completed: [],

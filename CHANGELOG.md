@@ -10,6 +10,25 @@ No completed work should be undocumented.
 
 No fake completion is allowed.
 
+## 2026-07-14 (follow-up) — Phase 4 Batch 9: pending-issue closeout → PASS
+Closed the three pending gaps from the Batch 9 entry below with a follow-up migration `20260714180000_batch9_merge_archive_report_status.sql`.
+- **Duplicate-lead merge:** new `mgp_merge_leads()` SQL function (SECURITY DEFINER, transactional — reassigns notes/followups/contact_requests/proposals/site_visits/crm_events, consolidates message threads, archives the duplicate, logs a `lead_merged` event). `mergeDuplicateLeads()` action + "Merge" button with an inline confirm ("this will move… this action will be logged"). Live-verified via direct RPC test against real data: 4 messages + 2 site visits (incl. feedback/dispute) correctly consolidated onto the keep lead.
+- **Messages tabs/search/pagination:** `listThreads(filter, search, page, limit)`, new `participant_a_archived`/`participant_b_archived` columns + `archiveThread()`. `ThreadListClient.tsx` rewritten as a self-fetching component with All/Unread/Archived tabs, debounced search, Archive/Unarchive, Previous/Next. Live-verified: archive/unarchive round-trip, search narrowing correctly.
+- **Report badge persistence:** `getThreadReportStatus()` seeds `reportSubmitted` from real `user_reports` state on mount instead of always starting false.
+- Gates: tsc/eslint/build all PASS.
+
+## 2026-07-14 — Phase 4 Batch 9: Shared Lead Ops extensions → PASS
+Closed the genuinely-missing pieces of Batch 9 (Shared Lead Operations); most of the workspace already existed from Prompt 08. One batch at a time per user request — Batches 10-13 not started.
+- **Close/Lost with structured reason:** `closeLead()` (leads.ts) — receiver-only, 10-value reason enum + optional detail, blocked once already terminal.
+- **Duplicate-lead detect + dismiss:** `getPossibleDuplicateLeads()`/`dismissDuplicateLeadFlag()` + new `lead_duplicate_flags` table. Merge intentionally deferred (real transactional merge across notes/proposals/site-visits is future work, not faked).
+- **Proposal full detail page:** new `/dashboard/proposals/[id]` + `ProposalDetailClient.tsx` — sender/recipient view, real auto sent→viewed transition, status actions, embedded lead-linked message thread. `ProposalListClient.tsx` cards now link to it.
+- **Report Thread:** `reportThread()` (messages.ts), reuses existing `user_reports` table, one-open-report-per-thread guard.
+- **Site visits:** required reject reason (client+server enforced), duplicate-open-request guard, Mark Completed/No-show wired into the UI (was server-action-only before), feedback (1-5 rating + comment), dispute flow.
+- **Bug fixed:** `SITE_VISIT_TRANSITIONS` didn't allow `accepted`→`completed`/`no_show` — a host who accepted without setting a schedule could never mark the visit complete.
+- **Bug fixed (same class as prior `LANGUAGE_OPTIONS`/`AD_TYPES`):** exporting `CLOSE_REASONS`/`isValidCloseReason` from the `"use server"` leads.ts broke the build ("Server Actions must be async functions") — moved to `src/lib/leads/close-reasons.ts`.
+- **Migration:** `20260714170000_batch9_lead_ops_extensions.sql` applied to live dev DB (additive columns + new table + widened `notifications` check constraint).
+- **Live-verified** as Test Owner against real Test Broker/Builder data end-to-end: reject w/ reason → feedback → dispute → close/lost → duplicate dismiss → report thread → proposal detail + embedded thread + status transitions, each confirmed via full page reload. Gates: tsc/eslint/build all PASS.
+
 ## 2026-07-14 — Phase 3 manual verification (Owner/Broker/Builder live-driven) → PASS with fixes
 Independently live-drove the Phase 3 role flows (real OTP logins, real DB). Banner Ads screens excluded per user (already done+verified this session).
 - **DEFECT fixed — owner site-visit KPI mismatch:** Overview "Site Visits Scheduled" filtered `{scheduled,accepted}` (→2) while Analytics "Upcoming Visits" filtered `{scheduled,accepted,rescheduled}` (→3) for the same metric. Aligned Overview to include `rescheduled` in `src/app/dashboard/owner/page.tsx`; both now read 3. Verified live.

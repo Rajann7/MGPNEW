@@ -36,6 +36,11 @@ export function isWebhookConfigured(): boolean {
   return Boolean(process.env.RAZORPAY_WEBHOOK_SECRET);
 }
 
+/** "test" | "live" | null (not configured) — safe to expose to the client. */
+export function getRazorpayMode(): "test" | "live" | null {
+  return getRazorpayConfig()?.mode ?? null;
+}
+
 /** Public key id for the browser checkout (safe to expose). */
 export function getPublicKeyId(): string | null {
   return process.env.RAZORPAY_KEY_ID ?? null;

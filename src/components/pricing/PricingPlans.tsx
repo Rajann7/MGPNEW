@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Check, Loader2 } from "lucide-react";
 import {
   formatINR,
@@ -13,6 +14,9 @@ import {
   recordCheckoutStarted,
   recordClientCallback,
 } from "@/lib/actions/payments";
+import { previewCheckoutTotal } from "@/lib/actions/billing";
+import type { CheckoutPreview } from "@/lib/actions/billing";
+import { applyCoupon } from "@/lib/actions/payments";
 import type { Plan, PublicRole } from "@/types";
 
 interface RazorpayResponse {
@@ -31,6 +35,8 @@ interface Props {
   isLoggedIn: boolean;
   currentRole: PublicRole | null;
   razorpayConfigured: boolean;
+  razorpayMode: "test" | "live" | null;
+  pendingOrderPlanName: string | null;
 }
 
 const ROLES: { key: PublicRole; label: string }[] = [
@@ -44,6 +50,8 @@ export function PricingPlans({
   isLoggedIn,
   currentRole,
   razorpayConfigured,
+  razorpayMode,
+  pendingOrderPlanName,
 }: Props) {
   const router = useRouter();
   const [activeRole, setActiveRole] = useState<PublicRole>(
@@ -52,7 +60,52 @@ export function PricingPlans({
   const [busyPlan, setBusyPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // --- Review/checkout panel state (coupon + GST preview before paying) ---
+  const [reviewPlan, setReviewPlan] = useState<Plan | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [preview, setPreview] = useState<CheckoutPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [couponBusy, setCouponBusy] = useState(false);
+
   const rolePlans = plans.filter((p) => p.role === activeRole);
+
+  async function loadPreview(plan: Plan, discount: number) {
+    setPreviewLoading(true);
+    const res = await previewCheckoutTotal(plan.id, discount);
+    if (res.success) setPreview(res.data);
+    setPreviewLoading(false);
+  }
+
+  function openReview(plan: Plan) {
+    setReviewPlan(plan);
+    setCouponCode("");
+    setCouponError(null);
+    setDiscountAmount(0);
+    setPreview(null);
+    loadPreview(plan, 0);
+  }
+
+  async function handleApplyCoupon() {
+    if (!reviewPlan || !couponCode.trim()) return;
+    setCouponBusy(true);
+    setCouponError(null);
+    const res = await applyCoupon(couponCode.trim(), reviewPlan.id);
+    setCouponBusy(false);
+    if (!res.success) {
+      setCouponError(
+        res.error === "COUPON_EXPIRED"
+          ? "This coupon has expired."
+          : res.error === "COUPON_LIMIT_EXCEEDED"
+            ? "This coupon's usage limit has been reached."
+            : "Invalid coupon code."
+      );
+      return;
+    }
+    setDiscountAmount(res.data.discountAmount);
+    loadPreview(reviewPlan, res.data.discountAmount);
+  }
 
   function loadRazorpayScript(): Promise<boolean> {
     return new Promise((resolve) => {
@@ -65,7 +118,7 @@ export function PricingPlans({
     });
   }
 
-  async function handleSelect(plan: Plan) {
+  function handleSelect(plan: Plan) {
     setError(null);
     if (!isLoggedIn) {
       router.push(`/login?redirectTo=${encodeURIComponent("/pricing")}`);
@@ -80,9 +133,17 @@ export function PricingPlans({
       setError("Online payment is not set up yet. Please try again later.");
       return;
     }
+    // Open the review panel (coupon + GST breakdown) instead of paying immediately.
+    openReview(plan);
+  }
 
+  async function handleConfirmPay(plan: Plan) {
+    setError(null);
     setBusyPlan(plan.id);
-    const orderRes = await createCheckoutOrder(plan.id);
+    const orderRes = await createCheckoutOrder(
+      plan.id,
+      discountAmount > 0 ? couponCode.trim() : undefined
+    );
     if (!orderRes.success) {
       setError(
         orderRes.error === "PAYMENT_PROVIDER_SETUP_REQUIRED"
@@ -117,6 +178,7 @@ export function PricingPlans({
           resp.razorpay_payment_id,
           resp.razorpay_signature
         );
+        setReviewPlan(null);
         router.push("/dashboard?checkout=submitted");
       },
       modal: { ondismiss: () => setBusyPlan(null) },
@@ -128,6 +190,27 @@ export function PricingPlans({
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+      {razorpayMode === "test" && (
+        <div className="mb-6 rounded-lg bg-amber-100 border border-amber-300 px-4 py-2 text-center text-xs font-semibold text-amber-800 uppercase tracking-wide">
+          Test Mode — no real money is charged on this environment
+        </div>
+      )}
+
+      {pendingOrderPlanName && (
+        <div className="mb-6 rounded-lg bg-blue-50 border border-blue-200 px-4 py-3 text-sm text-blue-800">
+          You have a payment for <strong>{pendingOrderPlanName}</strong>{" "}
+          awaiting confirmation. It will activate automatically once verified —
+          check your{" "}
+          <Link
+            href={`/dashboard/${currentRole ?? "owner"}/billing`}
+            className="underline"
+          >
+            billing dashboard
+          </Link>{" "}
+          for the latest status.
+        </div>
+      )}
+
       <div className="text-center mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 mb-2">
           Plans &amp; Pricing
@@ -244,6 +327,103 @@ export function PricingPlans({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {reviewPlan && (
+        <div className="max-w-md mx-auto mt-8 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-zinc-900">
+              Review &amp; Pay — {reviewPlan.name}
+            </h3>
+            <button
+              onClick={() => setReviewPlan(null)}
+              className="text-xs text-zinc-400 hover:text-zinc-600"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+              placeholder="Coupon code (optional)"
+              className="flex-1 px-3 py-2 rounded-lg border border-zinc-300 text-sm"
+              disabled={discountAmount > 0}
+            />
+            <button
+              onClick={handleApplyCoupon}
+              disabled={couponBusy || !couponCode.trim() || discountAmount > 0}
+              className="px-3 py-2 rounded-lg border border-zinc-300 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-60"
+            >
+              {discountAmount > 0 ? "Applied" : couponBusy ? "…" : "Apply"}
+            </button>
+          </div>
+          {couponError && (
+            <p className="text-xs text-red-600 mb-4">{couponError}</p>
+          )}
+
+          {previewLoading ? (
+            <p className="text-sm text-zinc-500 mb-4">Calculating total…</p>
+          ) : preview ? (
+            <div className="text-sm text-zinc-700 mb-4 flex flex-col gap-1.5">
+              <div className="flex justify-between">
+                <span>Plan price</span>
+                <span>{formatINR(preview.grossAmount)}</span>
+              </div>
+              {preview.discountAmount > 0 && (
+                <div className="flex justify-between text-emerald-700">
+                  <span>Coupon discount</span>
+                  <span>−{formatINR(preview.discountAmount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span>Taxable amount</span>
+                <span>{formatINR(preview.taxableAmount)}</span>
+              </div>
+              {preview.intraState ? (
+                <>
+                  <div className="flex justify-between text-zinc-500 text-xs">
+                    <span>CGST ({(preview.gstRatePercent / 2).toFixed(1)}%)</span>
+                    <span>{formatINR(preview.cgst)}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-500 text-xs">
+                    <span>SGST ({(preview.gstRatePercent / 2).toFixed(1)}%)</span>
+                    <span>{formatINR(preview.sgst)}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between text-zinc-500 text-xs">
+                  <span>IGST ({preview.gstRatePercent}%)</span>
+                  <span>{formatINR(preview.igst)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold text-zinc-900 border-t border-zinc-100 pt-1.5 mt-1">
+                <span>Total payable</span>
+                <span>{formatINR(preview.totalWithGst)}</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-1">
+                GST is calculated from your{" "}
+                <Link href="/dashboard/billing/gst" className="underline">
+                  billing / GST details
+                </Link>
+                . Update them before paying if they&apos;re incorrect.
+              </p>
+            </div>
+          ) : null}
+
+          <button
+            onClick={() => handleConfirmPay(reviewPlan)}
+            disabled={busyPlan === reviewPlan.id || previewLoading}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-60"
+          >
+            {busyPlan === reviewPlan.id && (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            )}
+            Pay {preview ? formatINR(preview.totalWithGst) : ""}
+          </button>
         </div>
       )}
 

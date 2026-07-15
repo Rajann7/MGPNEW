@@ -274,6 +274,85 @@ export async function getMyProposals(
 }
 
 // ============================================================
+// getProposalDetail — full detail for sender/recipient
+// ============================================================
+
+export interface ProposalDetail extends Proposal {
+  requirementTitle: string | null;
+  requirementCityText: string | null;
+  counterpartName: string;
+  isRecipient: boolean;
+}
+
+export async function getProposalDetail(
+  proposalId: string
+): Promise<ActionResult<ProposalDetail>> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { success: false, error: "AUTH_REQUIRED" };
+
+  const admin = createServiceClient();
+  const { data: proposal } = await admin
+    .from("proposals")
+    .select("*")
+    .eq("id", proposalId)
+    .maybeSingle();
+  if (!proposal) return { success: false, error: "ENTITY_NOT_FOUND" };
+  if (!isProposalParticipant(profile, proposal as Proposal))
+    return { success: false, error: "NOT_PARTICIPANT" };
+
+  const p = proposal as Proposal;
+  const isRecipient = p.recipient_profile_id === profile.id;
+
+  let requirementTitle: string | null = null;
+  let requirementCityText: string | null = null;
+  if (p.requirement_id) {
+    const { data: requirement } = await admin
+      .from("requirements")
+      .select("title, city_text")
+      .eq("id", p.requirement_id)
+      .maybeSingle();
+    requirementTitle = requirement?.title ?? null;
+    requirementCityText = requirement?.city_text ?? null;
+  }
+
+  const counterpartId = isRecipient
+    ? p.proposer_profile_id
+    : p.recipient_profile_id;
+  const { data: counterpart } = await admin
+    .from("profiles")
+    .select("display_name, full_name")
+    .eq("id", counterpartId)
+    .maybeSingle();
+
+  // Recipient viewing a "sent" proposal auto-transitions to "viewed" — real
+  // status change, not a fake read-receipt.
+  if (isRecipient && p.status === "sent") {
+    await admin
+      .from("proposals")
+      .update({ status: "viewed" })
+      .eq("id", proposalId);
+    p.status = "viewed";
+    await logCrmEvent({
+      entityType: "proposal",
+      entityId: proposalId,
+      eventType: "proposal_viewed",
+      actorProfileId: profile.id,
+    });
+  }
+
+  return {
+    success: true,
+    data: {
+      ...p,
+      requirementTitle,
+      requirementCityText,
+      counterpartName: counterpart?.display_name ?? counterpart?.full_name ?? "User",
+      isRecipient,
+    },
+  };
+}
+
+// ============================================================
 // getMatchingRequirements — builder-only, simple transparent match
 // ============================================================
 
