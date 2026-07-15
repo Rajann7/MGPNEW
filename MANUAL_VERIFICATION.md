@@ -4328,3 +4328,23 @@ Closed all three pending gaps from the entry above with real, live-verified impl
 Gates: `tsc --noEmit` PASS · `eslint` (changed files) PASS · `npm run build` PASS.
 
 RESULT: **PASS** — all three previously-listed pending issues closed. No remaining known gaps in Batch 9's scope (merge, archive, search/pagination, report persistence).
+
+## 2026-07-15 — Unified Inbox Phase 1 (source badges, filters, quick-status) → PASS
+
+User-requested Instagram-DM-style unified inbox (public roles): Leads/Requirements/Proposals/Site Visits/Direct Messages merged into one list with source badges, WhatsApp-preview-style context, quick contact-reveal, listing-share cards, and mobile long-press/desktop right-click status tagging. Locked a 3-phase plan with the user before building; this entry covers **Phase 1 only** (unified list — no schema change was needed since `message_threads` already links to `lead_id`/`proposal_id`).
+
+**Automated checks:**
+- `npx tsc --noEmit` — PASS (clean, twice — before and after the two live-caught fixes below)
+- `npm run lint` — PASS (no output)
+- `npm run build` — PASS, all routes including `/dashboard/messages` compiled
+
+**Live dev-server browser verification** (`npm run dev` via preview, logged in as real Test Owner via the actual mobile-OTP UI, real dev data — not seeded fixtures):
+- Messages list at `/dashboard/messages` renders 3 real threads with correct source badges/icons: a Requirement-sourced lead from Test Broker, and two Site-Visit-sourced threads (Test Builder, an owner-side visit) — each showing property/project title + city as context, matching their real underlying data.
+- Source filter chips (All/Leads/Requirement/Proposals/Site Visits/Messages): clicked "Leads" → correctly emptied (none of the 3 real threads are plain lead-sourced) with honest empty state; clicked "Site Visits" → correctly showed exactly the 2 site-visit threads; switched back to "All" → all 3 restored.
+- Right-click quick-status menu: opened correctly on the Requirement-sourced thread (Contacted/In Process/Closed/Cancel); **did not** open on the Site-Visit-sourced threads (correct — those threads' status comes from the site-visit state machine, not lead CRM stage, so a lead-stage quick-menu there would be misleading).
+- **Bug caught live and fixed:** first pass allowed the quick-status menu on every lead-linked thread including site-visit ones — fixed by gating on `source === 'lead' || 'requirement'`.
+- **Bug caught live and fixed:** clicked "Contacted" on the eligible thread — server action succeeded (`{success:true}` confirmed via network inspection) but the visible status chip stayed "New". Root cause: `updateLeadStage()` writes `lead.crm_stage`, but the badge was reading `lead.status` (a different, broader enum) — fixed to read `crm_stage` first. Re-tested after fix: chip correctly changed to "Contacted" and persisted across a full page reload.
+- Responsive: checked 375px (mobile) and 320px (narrowest supported width) — no horizontal overflow, filter chips scroll horizontally, no element overlap, archive button and status chip stay legible at both widths. Desktop (native) checked throughout.
+- Not yet checked in this pass: tablet (768px) and 1024/1366px desktop breakpoints (list-only layout is width-agnostic by design, low risk, but not explicitly screenshotted).
+
+RESULT: **PASS** for Phase 1 scope. Phase 2 (in-thread context card + Request/Share Number UI) and Phase 3 (listing-share card, needs its own schema migration) are explicitly **NOT_STARTED** — do not begin without the user's go-ahead, per the locked one-phase-at-a-time plan.

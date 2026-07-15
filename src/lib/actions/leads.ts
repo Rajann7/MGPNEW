@@ -50,7 +50,7 @@ export interface LeadTargetSummary {
   slug: string | null;
 }
 
-async function getTargetSummary(
+export async function getTargetSummary(
   targetType: LeadTargetType,
   targetId: string
 ): Promise<LeadTargetSummary | null> {

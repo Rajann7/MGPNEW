@@ -5,7 +5,28 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { isThreadParticipant } from "@/lib/permissions/communication-permissions";
 import { createNotification } from "@/lib/notifications/create";
-import type { ActionResult, Lead, MessageThread, Message } from "@/types";
+import { getTargetSummary } from "@/lib/actions/leads";
+import type {
+  ActionResult,
+  Lead,
+  LeadTargetType,
+  MessageThread,
+  Message,
+} from "@/types";
+
+export type ThreadSource =
+  | "lead"
+  | "requirement"
+  | "proposal"
+  | "site_visit"
+  | "message";
+
+const ACTIVE_SITE_VISIT_STATUSES = [
+  "requested",
+  "accepted",
+  "scheduled",
+  "rescheduled",
+];
 
 async function getProfileSafeName(profileId: string): Promise<string> {
   const admin = createServiceClient();
@@ -192,13 +213,107 @@ export interface ThreadRow extends MessageThread {
   unreadCount: number;
   lastMessagePreview: string | null;
   isArchivedByMe: boolean;
+  source: ThreadSource;
+  contextTitle: string | null;
+  contextCityText: string | null;
+  contextStatus: string | null;
+  isUrgent: boolean;
+}
+
+async function resolveThreadContext(
+  thread: MessageThread,
+  currentProfileId: string
+): Promise<{
+  source: ThreadSource;
+  contextTitle: string | null;
+  contextCityText: string | null;
+  contextStatus: string | null;
+  isUrgent: boolean;
+}> {
+  const admin = createServiceClient();
+
+  if (thread.proposal_id) {
+    const { data: proposal } = await admin
+      .from("proposals")
+      .select("status, target_type, requirement_id, property_id, project_id")
+      .eq("id", thread.proposal_id)
+      .maybeSingle();
+    if (proposal) {
+      const targetId =
+        proposal.requirement_id ?? proposal.property_id ?? proposal.project_id;
+      const targetType = (proposal.target_type ?? "requirement") as LeadTargetType;
+      const summary = targetId
+        ? await getTargetSummary(targetType, targetId)
+        : null;
+      return {
+        source: "proposal",
+        contextTitle: summary?.title ?? null,
+        contextCityText: summary?.cityText ?? null,
+        contextStatus: proposal.status ?? null,
+        isUrgent: false,
+      };
+    }
+  }
+
+  if (thread.lead_id) {
+    const { data: lead } = await admin
+      .from("leads")
+      .select(
+        "target_type, target_id, status, crm_stage, receiver_profile_id, created_at"
+      )
+      .eq("id", thread.lead_id)
+      .maybeSingle();
+    if (lead) {
+      const { data: activeVisit } = await admin
+        .from("site_visits")
+        .select("status")
+        .eq("lead_id", thread.lead_id)
+        .in("status", ACTIVE_SITE_VISIT_STATUSES)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const summary = await getTargetSummary(
+        lead.target_type as LeadTargetType,
+        lead.target_id
+      );
+      const isNew = lead.status === "new" || lead.status === "open";
+      const ageMs = Date.now() - new Date(lead.created_at).getTime();
+      const isUrgent =
+        currentProfileId === lead.receiver_profile_id &&
+        isNew &&
+        ageMs < 30 * 60 * 1000;
+
+      return {
+        source: activeVisit
+          ? "site_visit"
+          : lead.target_type === "requirement"
+            ? "requirement"
+            : "lead",
+        contextTitle: summary?.title ?? null,
+        contextCityText: summary?.cityText ?? null,
+        contextStatus:
+          activeVisit?.status ?? lead.crm_stage ?? lead.status ?? null,
+        isUrgent,
+      };
+    }
+  }
+
+  return {
+    source: "message",
+    contextTitle: null,
+    contextCityText: null,
+    contextStatus: null,
+    isUrgent: false,
+  };
 }
 
 export async function listThreads(
   filter: "all" | "unread" | "archived" = "all",
   search?: string,
   page = 1,
-  limit = 20
+  limit = 20,
+  sourceFilter?: ThreadSource
 ): Promise<ActionResult<{ items: ThreadRow[]; total: number }>> {
   const profile = await getCurrentProfile();
   if (!profile) return { success: false, error: "AUTH_REQUIRED" };
@@ -244,12 +359,15 @@ export async function listThreads(
         .limit(1)
         .maybeSingle();
 
+      const context = await resolveThreadContext(thread, profile.id);
+
       return {
         ...thread,
         counterpartName: await getProfileSafeName(counterpartId),
         unreadCount: unreadCount ?? 0,
         lastMessagePreview: lastMsg?.body?.slice(0, 100) ?? null,
         isArchivedByMe: isArchivedByMe ?? false,
+        ...context,
       };
     })
   );
@@ -258,14 +376,20 @@ export async function listThreads(
   else if (filter === "archived") items = items.filter((t) => t.isArchivedByMe);
   else items = items.filter((t) => !t.isArchivedByMe);
 
+  if (sourceFilter) items = items.filter((t) => t.source === sourceFilter);
+
   if (search && search.trim().length > 0) {
     const q = search.trim().toLowerCase();
     items = items.filter(
       (t) =>
         t.counterpartName.toLowerCase().includes(q) ||
-        (t.lastMessagePreview ?? "").toLowerCase().includes(q)
+        (t.lastMessagePreview ?? "").toLowerCase().includes(q) ||
+        (t.contextTitle ?? "").toLowerCase().includes(q)
     );
   }
+
+  // Urgent unreplied leads float to the top regardless of last_message_at.
+  items.sort((a, b) => (b.isUrgent ? 1 : 0) - (a.isUrgent ? 1 : 0));
 
   const total = items.length;
   const offset = (page - 1) * limit;

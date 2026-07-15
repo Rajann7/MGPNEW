@@ -2408,6 +2408,23 @@ The Batch 9 spec's foundation (lead detail workspace, notes/reminders, contact r
 **Gates:** `tsc --noEmit` PASS · eslint (changed files) PASS · `npm run build` PASS (`/dashboard/proposals/[id]` route emitted). Live-verified in browser as Test Owner against real Test Broker/Builder data (not seeded fixtures) — full loop: reject w/ reason → feedback → dispute → close/lost → duplicate dismiss → report thread → proposal detail + embedded thread + status transitions, all confirmed via page reload (not just optimistic UI).
 **Next:** Batch 10 (Billing & Payments) — or user's choice of remaining Batch 11/12/13, per the earlier scoping question.
 
+### Unified Inbox Phase 1 — source badges, filters, quick-status [2026-07-15]
+
+Instagram-DM-style unified inbox for public roles, per user-approved UX spec: Leads/Requirements/Proposals/Site Visits/Direct Messages merged into one list. Phase 1 of 3 (locked plan; Phase 2 = in-thread context card + number request/share UI, Phase 3 = listing-share card, not started).
+
+| ID | Feature/Module | Route/Path | Status | QA Result | Notes |
+| --- | --- | --- | --- | --- | --- |
+| INBOX-001 | Unified thread source detection | `resolveThreadContext()` in `src/lib/actions/messages.ts` | `DONE` | PASS | Derives `source` (lead/requirement/proposal/site_visit/message), `contextTitle`/`contextCityText` (via `getTargetSummary`, now exported from `leads.ts`), `contextStatus`, `isUrgent` — no schema change, joins existing `lead_id`/`proposal_id` FKs on `message_threads` |
+| INBOX-002 | Source filter chips | `ThreadListClient.tsx`, `listThreads(sourceFilter)` | `DONE` | PASS | All/Leads/Requirement/Proposals/Site Visits/Messages; live-verified Leads (empty, correct) and Site Visits (2 items, correct) partition real dev data |
+| INBOX-003 | Status chip + urgency highlight | `ThreadListClient.tsx` | `DONE` | PASS | Color-mapped chip per lead/proposal/site-visit status; "Reply soon" chip for receiver + new/open lead <30min old (unreplied-lead response-speed pattern) |
+| INBOX-004 | Quick-status menu (long-press/right-click) | `ThreadListClient.tsx` → `updateLeadStage()` | `DONE` | PASS | Contacted/In Process/Closed. Scoped to `source === 'lead' \| 'requirement'` only — site-visit/proposal-sourced threads excluded since their displayed status comes from the site-visit/proposal state machine, not `lead.crm_stage` (bug caught live, fixed same session). Live-verified: right-click opens only on eligible threads, "Contacted" click updates the visible chip |
+
+**DB changes:** None — reused existing `message_threads.lead_id`/`.proposal_id` FKs.
+**RLS changes:** None.
+**Bugs fixed during this pass (both caught via live browser verification, not typecheck):** (1) quick-status menu reachable on site-visit/proposal threads where it silently had no visible effect — scoped to lead/requirement sources; (2) badge read `lead.status` instead of `lead.crm_stage`, so Contacted/In Process changes never appeared — fixed to read `crm_stage` first, `status` as fallback.
+**Gates:** tsc/eslint/build all PASS. Live-verified as Test Owner against real dev data; responsive-checked 320px/375px, no overflow.
+**Next:** Phase 2 (in-thread context card + Request/Share Number UI) — do not start without user's go-ahead.
+
 ## Prompt 09 — Billing / Payment / Subscription / Trial / GST [2026-07-02]
 
 | Feature | Route/Module | Status | Notes |
