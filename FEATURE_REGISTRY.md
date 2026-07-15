@@ -2425,6 +2425,8 @@ Instagram-DM-style unified inbox for public roles, per user-approved UX spec: Le
 **Gates:** tsc/eslint/build all PASS. Live-verified as Test Owner against real dev data; responsive-checked 320px/375px, no overflow.
 **Next:** Phase 2 (in-thread context card + Request/Share Number UI) — do not start without user's go-ahead.
 
+**2026-07-15 follow-up — nav rename + old Leads page removed (user-approved) → PASS.** Renamed page/nav from "Messages" to "Leads"; merged the old per-role "Leads" (CRM pipeline, Kanban/table) nav entry and the "Messages" nav entry into one "Leads" item pointing at `/dashboard/messages`, for owner/broker/broker-drawer/builder sidebars + the shared mobile bottom-nav. Old `/dashboard/{owner,broker,builder}/leads/page.tsx` routes replaced with `redirect("/dashboard/messages")` (no broken links); "View Leads"/"View all" home-page links repointed. `LeadListClient`/`LeadKanbanBoard`/`LeadsTable`/etc. kept (still used by dashboard-home "Recent Leads" widgets). Closed the one Phase 1 pending item: tablet (768px) + desktop (1024/1366px) breakpoints now live-verified, single "Leads" entry, no overflow. Gates: tsc/eslint/build all PASS. **No pending issues remain for Phase 1.**
+
 ## Prompt 09 — Billing / Payment / Subscription / Trial / GST [2026-07-02]
 
 | Feature | Route/Module | Status | Notes |

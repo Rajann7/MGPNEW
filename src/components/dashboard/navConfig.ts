@@ -15,7 +15,6 @@ import {
   Megaphone,
   Users,
   Globe,
-  MessageSquare,
   MessageCircle,
   Search,
   Plus,
@@ -59,17 +58,11 @@ export function getOwnerNav(
     },
     {
       label: "Leads",
-      href: "/dashboard/owner/leads",
+      href: "/dashboard/messages",
       icon: Inbox,
-      active: activeHref === "/dashboard/owner/leads",
+      active: activeHref.startsWith("/dashboard/messages"),
       badge: badges?.leads,
       badgeVariant: "danger",
-    },
-    {
-      label: "Messages",
-      href: "/dashboard/messages",
-      icon: MessageSquare,
-      active: activeHref.startsWith("/dashboard/messages"),
     },
     {
       label: "Site Visits",
@@ -150,17 +143,11 @@ export function getOwnerDrawerNav(
     },
     {
       label: "Leads",
-      href: "/dashboard/owner/leads",
+      href: "/dashboard/messages",
       icon: Inbox,
-      active: activeHref === "/dashboard/owner/leads",
+      active: activeHref.startsWith("/dashboard/messages"),
       badge: badges?.leads,
       badgeVariant: "danger",
-    },
-    {
-      label: "Messages",
-      href: "/dashboard/messages",
-      icon: MessageSquare,
-      active: activeHref.startsWith("/dashboard/messages"),
     },
     {
       label: "Site Visits",
@@ -230,22 +217,16 @@ export function getBrokerNav(activeHref: string): SidebarNavItem[] {
       active: activeHref.startsWith("/dashboard/broker/requirements"),
     },
     {
-      label: "Leads / CRM",
-      href: "/dashboard/broker/leads",
+      label: "Leads",
+      href: "/dashboard/messages",
       icon: Inbox,
-      active: activeHref === "/dashboard/broker/leads",
+      active: activeHref.startsWith("/dashboard/messages"),
     },
     {
       label: "Proposals",
       href: "/dashboard/broker/proposals",
       icon: FileText,
       active: activeHref === "/dashboard/broker/proposals",
-    },
-    {
-      label: "Messages",
-      href: "/dashboard/messages",
-      icon: MessageSquare,
-      active: activeHref.startsWith("/dashboard/messages"),
     },
     {
       label: "Site Visits",
@@ -326,22 +307,16 @@ export function getBuilderNav(activeHref: string): SidebarNavItem[] {
       active: activeHref.startsWith("/dashboard/builder/projects"),
     },
     {
-      label: "Project Leads",
-      href: "/dashboard/builder/leads",
+      label: "Leads",
+      href: "/dashboard/messages",
       icon: Inbox,
-      active: activeHref === "/dashboard/builder/leads",
+      active: activeHref.startsWith("/dashboard/messages"),
     },
     {
       label: "Matching Requirements",
       href: "/dashboard/builder/requirements",
       icon: ClipboardList,
       active: activeHref === "/dashboard/builder/requirements",
-    },
-    {
-      label: "Messages",
-      href: "/dashboard/messages",
-      icon: MessageSquare,
-      active: activeHref.startsWith("/dashboard/messages"),
     },
     {
       label: "Site Visits",
@@ -418,7 +393,7 @@ export function getMobileTabs(
   activeHref: string
 ): MobileTabItem[] {
   const home = `/dashboard/${role}`;
-  const leads = `/dashboard/${role}/leads`;
+  const leads = "/dashboard/messages";
   const post =
     role === "builder"
       ? "/dashboard/builder/projects/new"
@@ -447,7 +422,7 @@ export function getMobileTabs(
       label: "Leads",
       href: leads,
       icon: MessageCircle,
-      active: activeHref === leads,
+      active: activeHref.startsWith(leads),
     },
     {
       label: "Profile",

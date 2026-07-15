@@ -10,7 +10,7 @@ import { ThreadListClient } from "@/components/messages/ThreadListClient";
 import { listThreads } from "@/lib/actions/messages";
 
 export const metadata: Metadata = {
-  title: "Messages",
+  title: "Leads",
   robots: { index: false, follow: false },
 };
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function MessagesPage() {
 
   return (
     <DashboardShellV2
-      title="Messages"
+      title="Leads"
       navItems={getNavForRole(profile.public_role, "/dashboard/messages")}
       mobileDrawerNav={getNavForRole(profile.public_role, "/dashboard/messages")}
       mobileTabs={getMobileTabsForRole(

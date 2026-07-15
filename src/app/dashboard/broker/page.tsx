@@ -86,7 +86,7 @@ const ACTIONS: ActionCardItem[] = [
   {
     title: "Leads / CRM",
     description: "Track and manage your leads",
-    href: "/dashboard/broker/leads",
+    href: "/dashboard/messages",
     status: "active",
   },
   {
@@ -136,7 +136,7 @@ export default async function BrokerDashboardPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Link
-            href="/dashboard/broker/leads"
+            href="/dashboard/messages"
             className="px-4 py-2 rounded-xl text-sm font-medium border border-border text-ink hover:bg-ink/5 dark:hover:bg-white/10 transition-colors"
           >
             View Leads
@@ -276,7 +276,7 @@ function RecentLeadsTable({ leads }: { leads: LeadRow[] }) {
       <div className="flex items-center justify-between px-4 sm:px-5 py-4 border-b border-border">
         <h3 className="text-sm font-semibold text-ink">Recent Leads</h3>
         <Link
-          href="/dashboard/broker/leads"
+          href="/dashboard/messages"
           className="text-xs font-medium text-brand hover:underline"
         >
           View all

@@ -4345,6 +4345,22 @@ User-requested Instagram-DM-style unified inbox (public roles): Leads/Requiremen
 - **Bug caught live and fixed:** first pass allowed the quick-status menu on every lead-linked thread including site-visit ones — fixed by gating on `source === 'lead' || 'requirement'`.
 - **Bug caught live and fixed:** clicked "Contacted" on the eligible thread — server action succeeded (`{success:true}` confirmed via network inspection) but the visible status chip stayed "New". Root cause: `updateLeadStage()` writes `lead.crm_stage`, but the badge was reading `lead.status` (a different, broader enum) — fixed to read `crm_stage` first. Re-tested after fix: chip correctly changed to "Contacted" and persisted across a full page reload.
 - Responsive: checked 375px (mobile) and 320px (narrowest supported width) — no horizontal overflow, filter chips scroll horizontally, no element overlap, archive button and status chip stay legible at both widths. Desktop (native) checked throughout.
-- Not yet checked in this pass: tablet (768px) and 1024/1366px desktop breakpoints (list-only layout is width-agnostic by design, low risk, but not explicitly screenshotted).
+- Tablet (768px) and desktop (1024px, 1366px) breakpoints checked live: single "Leads" sidebar item (no duplicate), no overflow, cards well-proportioned at all three widths.
 
-RESULT: **PASS** for Phase 1 scope. Phase 2 (in-thread context card + Request/Share Number UI) and Phase 3 (listing-share card, needs its own schema migration) are explicitly **NOT_STARTED** — do not begin without the user's go-ahead, per the locked one-phase-at-a-time plan.
+## 2026-07-15 (follow-up) — Nav rename + old Leads page removal → PASS
+
+User asked to close Phase 1's one pending item (untested tablet/desktop breakpoints) and rename "Messages" to "Leads" throughout, replacing the old separate CRM-pipeline Leads page (user explicitly approved removing it in chat).
+
+**Scope:**
+- Renamed the unified inbox page title/metadata from "Messages" to "Leads" (`src/app/dashboard/messages/page.tsx`).
+- Merged the sidebar/drawer "Leads" (→ old `/dashboard/{role}/leads`) and "Messages" (→ `/dashboard/messages`) entries into a single "Leads" entry pointing at `/dashboard/messages`, for all three roles (owner sidebar + drawer, broker, builder) in `src/components/dashboard/navConfig.ts`. Broker's "Leads / CRM" and builder's "Project Leads" labels standardized to "Leads". Removed the now-unused `MessageSquare` icon import.
+- `getMobileTabs()` (shared bottom-nav across all 3 roles) "Leads" tab now points at `/dashboard/messages` instead of `/dashboard/{role}/leads`.
+- The three old list pages (`src/app/dashboard/owner/leads/page.tsx`, `.../broker/leads/page.tsx`, `.../builder/leads/page.tsx`) replaced with a plain `redirect("/dashboard/messages")` — old bookmarked/typed URLs still resolve (no broken links / no dead route), but the old Kanban/table CRM-pipeline UI is gone, per the user's explicit approval to remove it.
+- "View Leads"/"View all" links on all 3 dashboard home pages (`src/app/dashboard/{owner,broker,builder}/page.tsx`) repointed to `/dashboard/messages`.
+- `LeadListClient`/`LeadKanbanBoard`/`LeadsTable`/`LeadStageTabs`/`LeadStageBadge` components were **not** deleted — confirmed via repo-wide grep that the 3 dashboard home pages still use them for the "Recent Leads" preview widget, so they remain live dependencies, not dead code.
+
+**Live-verified** as Test Owner: bottom-nav "Leads" tab and sidebar "Leads" item both go to the unified inbox and show it as active; "View Leads"/"View all" buttons on the Owner home dashboard go there too; typing `/dashboard/owner/leads` directly redirects cleanly to `/dashboard/messages` (tested; also tested `/dashboard/broker/leads` while logged in as Owner — redirects fine, no role-mismatch error since the redirect has no role gate); desktop sidebar at 1024px/1366px shows exactly one "Leads" entry, no duplicate "Messages" entry; 768px (tablet) and 320/375px (mobile) all clean, no overflow/overlap.
+
+Gates: `tsc --noEmit` PASS · `npm run lint` PASS · `npm run build` PASS (all `/dashboard/{role}/leads` routes still emitted as redirect pages, no 404s).
+
+RESULT: **PASS** — Phase 1 complete, no pending issues remain. Phase 2 (in-thread context card + Request/Share Number UI) and Phase 3 (listing-share card, needs its own schema migration) remain **NOT_STARTED** — do not begin without the user's go-ahead.
